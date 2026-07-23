@@ -15,13 +15,13 @@
     --green:#2F9E44; --green-bg:#EBFBEE; --gray:#868E96; --gray-bg:#F1F3F5;
   }
   * { box-sizing:border-box; }
-  body { margin:0; font-family:Pretendard,-apple-system,"Malgun Gothic",sans-serif; background:var(--bg); color:var(--txt); font-size:14px; letter-spacing:-.1px; }
+  body { margin:0; font-family:Pretendard,-apple-system,"Malgun Gothic",sans-serif; background:var(--bg); color:var(--txt); font-size:15.5px; letter-spacing:-.1px; }
   ::-webkit-scrollbar { width:8px; height:8px; } ::-webkit-scrollbar-thumb { background:#D0D3D9; border-radius:99px; }
   .hidden { display:none!important; }
-  h1 { font-size:20px; font-weight:700; margin:0; letter-spacing:-.3px; }
-  h2 { font-size:15px; font-weight:700; margin:0 0 12px; letter-spacing:-.2px; }
-  .sub { color:var(--sub); font-size:12.5px; }
-  a.link { color:var(--brand); text-decoration:none; cursor:pointer; font-size:13px; }
+  h1 { font-size:22px; font-weight:700; margin:0; letter-spacing:-.3px; }
+  h2 { font-size:17px; font-weight:700; margin:0 0 12px; letter-spacing:-.2px; }
+  .sub { color:var(--sub); font-size:13.5px; }
+  a.link { color:var(--brand); text-decoration:none; cursor:pointer; font-size:14px; }
   a.link:hover { text-decoration:underline; }
 
   /* layout */
@@ -32,7 +32,7 @@
   .side .brand span { display:block; font-size:11px; color:#6A7080; margin-top:3px; letter-spacing:.6px; }
   .side nav { flex:1; overflow-y:auto; padding:4px 10px 10px; }
   .nav-label { font-size:10.5px; color:#5D6370; letter-spacing:1.2px; padding:14px 12px 5px; }
-  .nav-item { display:flex; align-items:center; gap:9px; padding:9.5px 12px; border-radius:9px; cursor:pointer; font-size:13.5px; margin-bottom:1px; }
+  .nav-item { display:flex; align-items:center; gap:9px; padding:10px 12px; border-radius:9px; cursor:pointer; font-size:15px; margin-bottom:1px; }
   .nav-item:hover { background:#2A2F3B; color:#fff; }
   .nav-item.active { background:var(--brand); color:#fff; font-weight:600; }
   .nav-item .ico { width:18px; text-align:center; font-size:14px; }
@@ -52,27 +52,27 @@
   .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:13px; margin-bottom:16px; }
   .kpi { background:var(--card); border:1px solid var(--line); border-radius:13px; padding:15px 17px; transition:box-shadow .15s; }
   .kpi:hover { box-shadow:0 4px 14px rgba(0,0,0,.06); }
-  .kpi .label { font-size:12px; color:var(--sub); margin-bottom:6px; }
-  .kpi .value { font-size:21px; font-weight:750; letter-spacing:-.4px; }
+  .kpi .label { font-size:13.5px; color:var(--sub); margin-bottom:6px; }
+  .kpi .value { font-size:24px; font-weight:750; letter-spacing:-.4px; }
   .v-red { color:var(--red); } .v-orange { color:var(--orange); } .v-green { color:var(--green); }
 
   /* card & table */
   .card { background:var(--card); border:1px solid var(--line); border-radius:13px; padding:18px; margin-bottom:14px; transition:box-shadow .15s; }
   .card:hover { box-shadow:0 4px 14px rgba(0,0,0,.05); }
   table { width:100%; border-collapse:collapse; }
-  th, td { text-align:left; padding:9px 11px; font-size:12.8px; border-bottom:1px solid #F1F2F4; vertical-align:middle; }
-  th { color:var(--sub); font-weight:500; white-space:nowrap; font-size:12px; }
+  th, td { text-align:left; padding:10px 11px; font-size:14.5px; border-bottom:1px solid #F1F2F4; vertical-align:middle; }
+  th { color:var(--sub); font-weight:500; white-space:nowrap; font-size:13px; }
   tbody tr:last-child td { border-bottom:none; }
   tbody tr:hover { background:#FFF9F5; }
   .table-scroll { overflow-x:auto; }
   .name-cell { font-weight:600; color:var(--txt); }
 
   /* controls */
-  input, select, textarea { border:1px solid var(--line); border-radius:8px; padding:9px 11px; font-size:13px; font-family:inherit; background:#fff; color:var(--txt); }
+  input, select, textarea { border:1px solid var(--line); border-radius:8px; padding:9px 11px; font-size:14.5px; font-family:inherit; background:#fff; color:var(--txt); }
   input:focus, select:focus, textarea:focus { outline:none; border-color:var(--brand); }
   textarea { width:100%; min-height:80px; resize:vertical; }
-  label { display:block; font-size:11.5px; color:var(--sub); margin:9px 0 4px; }
-  .btn { border:1px solid var(--brand); background:var(--brand); color:#fff; border-radius:9px; padding:8.5px 15px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+  label { display:block; font-size:13px; color:var(--sub); margin:9px 0 4px; }
+  .btn { border:1px solid var(--brand); background:var(--brand); color:#fff; border-radius:9px; padding:9px 16px; font-size:14.5px; font-weight:600; cursor:pointer; font-family:inherit; }
   .btn:hover { background:var(--brand-dark); border-color:var(--brand-dark); }
   .btn.ghost { background:#fff; color:#3A3F47; border-color:var(--line); font-weight:500; }
   .btn.ghost:hover { border-color:var(--brand); color:var(--brand); background:#fff; }
@@ -80,11 +80,11 @@
   .btn.red:hover { border-color:var(--red); background:var(--red-bg); }
   .btn.green { background:var(--green); border-color:var(--green); }
   .btn.green:hover { background:#2B8A3E; border-color:#2B8A3E; }
-  .btn.sm { padding:5px 11px; font-size:12px; border-radius:7px; }
+  .btn.sm { padding:6px 12px; font-size:13px; border-radius:7px; }
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
   @media(max-width:640px){ .grid2 { grid-template-columns:1fr; } }
 
-  .badge { display:inline-block; padding:3.5px 10px; border-radius:999px; font-size:11.5px; font-weight:600; white-space:nowrap; background:var(--gray-bg); color:#495057; }
+  .badge { display:inline-block; padding:4px 11px; border-radius:999px; font-size:13px; font-weight:600; white-space:nowrap; background:var(--gray-bg); color:#495057; }
   .badge.b { background:var(--brand-soft); color:var(--brand-dark); }
   .badge.g { background:var(--green-bg); color:var(--green); }
   .badge.r { background:var(--red-bg); color:var(--red); }
@@ -127,7 +127,7 @@
 
   .toast { position:fixed; left:50%; transform:translateX(-50%); bottom:30px; background:#20242E; color:#fff; padding:11px 20px; border-radius:999px; font-size:13px; opacity:0; transition:.25s; pointer-events:none; z-index:99; }
   .toast.show { opacity:.97; }
-  .row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid #F1F2F4; font-size:13px; }
+  .row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px 0; border-bottom:1px solid #F1F2F4; font-size:14.5px; }
   .row:last-child { border-bottom:0; }
 
   @media print {
@@ -175,7 +175,9 @@
         <div class="nav-item" data-t="cal" onclick="tab('cal')"><span class="ico">🗓️</span>캘린더</div>
         <div class="nav-item" data-t="staff" onclick="tab('staff')"><span class="ico">👥</span>직원<span class="cnt hidden" id="cntStaff"></span></div>
         <div class="nav-item" data-t="att" onclick="tab('att')"><span class="ico">⏱️</span>근태</div>
+        <div class="nav-item" data-t="labor" id="navLabor" onclick="tab('labor')"><span class="ico">💸</span>인건비표</div>
         <div class="nav-item" data-t="tasks" onclick="tab('tasks')"><span class="ico">📢</span>오더</div>
+        <div class="nav-item" data-t="board" onclick="tab('board')"><span class="ico">🗂️</span>업무보드</div>
         <div class="nav-item" data-t="manual" onclick="tab('manual')"><span class="ico">📖</span>매뉴얼</div>
         <div class="nav-item" data-t="info" onclick="tab('info')"><span class="ico">ℹ️</span>매장정보</div>
         <div class="nav-label">매출 · 정산</div>
@@ -261,6 +263,42 @@
         </div>
       </div>
 
+      <!-- 인건비표 -->
+      <div id="tab-labor" class="hidden">
+        <div class="card no-print" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+          <input type="month" id="laYm" onchange="loadLabor()">
+          <button class="btn ghost" onclick="window.print()">인쇄</button>
+          <span class="sub">근태 기록으로 자동 계산돼요 (주휴수당·세금 제외 참고용)</span>
+        </div>
+        <div class="cards">
+          <div class="kpi"><div class="label">이번달 인건비</div><div class="value v-orange" id="laTotal">-</div></div>
+          <div class="kpi"><div class="label">시급제 합계</div><div class="value" id="laHourly">-</div></div>
+          <div class="kpi"><div class="label">월급제 합계</div><div class="value" id="laMonthly">-</div></div>
+          <div class="kpi"><div class="label">휴무 사용</div><div class="value" id="laLeaveCnt">-</div></div>
+        </div>
+        <div class="card">
+          <h2>직원별 이번달 요약</h2>
+          <div class="table-scroll"><table><thead><tr><th>이름</th><th>직책</th><th>방식</th><th>근무일</th><th>근무시간</th><th>급여</th><th>휴무</th></tr></thead>
+          <tbody id="laStaffBody"></tbody></table></div>
+        </div>
+        <div class="card">
+          <h2>일별 인건비 <span class="sub">— 하루하루 얼마 나갔는지</span></h2>
+          <div class="table-scroll"><table><thead><tr><th style="width:110px">날짜</th><th>근무 내역</th><th style="width:120px">하루 인건비</th></tr></thead>
+          <tbody id="laDaysBody"></tbody></table></div>
+        </div>
+        <div class="card">
+          <h2>휴무 등록 <span class="sub">— 연차·반차·병가</span></h2>
+          <div style="display:flex; gap:8px; align-items:end; flex-wrap:wrap">
+            <div><label>직원</label><select id="lvWho"></select></div>
+            <div><label>날짜</label><input type="date" id="lvDate"></div>
+            <div><label>종류</label><select id="lvKind"><option>연차</option><option>반차</option><option>병가</option><option>무급</option><option>기타</option></select></div>
+            <div style="flex:1; min-width:140px"><label>메모</label><input id="lvMemo" style="width:100%"></div>
+            <button class="btn" onclick="lvSave()">등록</button>
+          </div>
+          <div id="lvList" style="margin-top:12px"></div>
+        </div>
+      </div>
+
       <!-- 오더 -->
       <div id="tab-tasks" class="hidden">
         <div class="card">
@@ -277,6 +315,28 @@
           <h2>오더 현황</h2>
           <div class="table-scroll"><table><thead><tr><th>제목</th><th>담당</th><th>기한</th><th>상태</th><th></th></tr></thead>
           <tbody id="taskBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- 업무보드 -->
+      <div id="tab-board" class="hidden">
+        <div class="card" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+          <input type="month" id="bdYm" onchange="loadBoard()">
+          <span class="sub">오더와 직원 요청이 어떻게 처리됐는지 이력이 쌓여요 — 이게 우리 매장의 운영 데이터</span>
+        </div>
+        <div class="cards">
+          <div class="kpi"><div class="label">오더</div><div class="value" id="bdTasks">-</div></div>
+          <div class="kpi"><div class="label">오더 완료율</div><div class="value v-green" id="bdTaskRate">-</div></div>
+          <div class="kpi"><div class="label">직원 요청</div><div class="value" id="bdReqs">-</div></div>
+          <div class="kpi"><div class="label">요청 처리율</div><div class="value v-green" id="bdReqRate">-</div></div>
+        </div>
+        <div class="card">
+          <h2>이달의 일꾼 <span class="sub">— 오더 완료 건수</span></h2>
+          <div id="bdDoneBy" class="sub">-</div>
+        </div>
+        <div class="card">
+          <h2>처리 이력</h2>
+          <div id="bdTimeline"></div>
         </div>
       </div>
 
@@ -596,9 +656,9 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 let TOKEN = localStorage.getItem('store_admin_token') || '';
 let ME = null, STAFF = [], ATT = [], WAGES = null, TASKS = [];
-const TABS = ['today','cal','staff','att','tasks','manual','info','sales','exp','settle','inb','stock','setup'];
-const TITLES = {today:'오늘', cal:'캘린더', staff:'직원', att:'근태', tasks:'오더', manual:'매뉴얼', info:'매장정보',
-  sales:'매출', exp:'지출', settle:'월 정산', inb:'입고 명세서', stock:'재고', setup:'설정'};
+const TABS = ['today','cal','staff','att','labor','tasks','board','manual','info','sales','exp','settle','inb','stock','setup'];
+const TITLES = {today:'오늘', cal:'캘린더', staff:'직원', att:'근태', labor:'인건비표', tasks:'오더', board:'업무보드',
+  manual:'매뉴얼', info:'매장정보', sales:'매출', exp:'지출', settle:'월 정산', inb:'입고 명세서', stock:'재고', setup:'설정'};
 const IB_CATS = ['재료','음료','주류','소모품','기타'];
 const EV_COLORS = {
   '공사·인테리어':['#FFF4E6','#E8590C'], '행정·계약':['#E7F5FF','#1971C2'], '발주·입고':['#F3F0FF','#7048E8'],
@@ -648,7 +708,9 @@ function tab(name){
   if(name==='cal') loadCal();
   if(name==='staff') loadStaff();
   if(name==='att') loadAtt();
+  if(name==='labor') loadLabor();
   if(name==='tasks') loadTasks();
+  if(name==='board') loadBoard();
   if(name==='manual') loadManuals();
   if(name==='info') loadInfos();
   if(name==='sales') loadSales();
@@ -679,6 +741,7 @@ function boot(){
   $('meRole').textContent = ME ? (ME.role==='owner'?'사장':ME.role==='viewer'?'투자자':'매장 관리자') : '-';
   $('meAvatar').textContent = ME ? ME.name.slice(0,1) : '·';
   show('mainView');
+  $('navLabor').style.display = (ME && ME.role==='owner') ? '' : 'none';
   if(ME && ME.role==='viewer'){
     document.querySelectorAll('#tabbar .nav-item').forEach(n => {
       if(!['cal','settle'].includes(n.dataset.t)) n.style.display='none';
@@ -902,6 +965,87 @@ async function saveAttAdd(){
     await api('attAdd', TOKEN, $('aaWho').value, d, inV, outV, $('aaNote').value.trim());
     toast('추가했어요'); closeModal('attAddModal'); loadAtt();
   }catch(e){ alert(e.message); }
+}
+
+/* ---------- 인건비표 ---------- */
+let LABOR = null;
+async function loadLabor(){
+  if(!$('laYm').value) $('laYm').value = localYm();
+  if(!$('lvDate').value) $('lvDate').value = localDate();
+  if(!STAFF.length){ try{ STAFF = await api('staffList', TOKEN); fillWhoSelects(); }catch(e){} }
+  $('lvWho').innerHTML = STAFF.filter(s=>s.status==='active' && s.role!=='owner')
+    .map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');
+  try{
+    LABOR = await api('laborMonth', TOKEN, $('laYm').value);
+    $('laTotal').textContent = fmtWon(LABOR.monthTotal);
+    $('laHourly').textContent = fmtWon(LABOR.hourlyTotal);
+    $('laMonthly').textContent = fmtWon(LABOR.monthlyTotal);
+    $('laLeaveCnt').textContent = LABOR.leaves.length + '건';
+    $('laStaffBody').innerHTML = (LABOR.staff||[]).map(s =>
+      '<tr><td class="name-cell">'+esc(s.name)+'</td><td>'+esc(s.position||'-')+'</td>'
+      + '<td>'+(s.pay_type==='monthly'?'<span class="badge b">월급</span>':'<span class="badge">시급 '+fmtWon(s.hourly_wage)+'</span>')+'</td>'
+      + '<td>'+s.days+'일</td><td>'+fmtMins(s.mins)+'</td>'
+      + '<td class="name-cell">'+fmtWon(s.pay)+'</td>'
+      + '<td>'+(s.leave_cnt>0?(s.leave_cnt+'건'+(s.half_cnt>0?' (반차 '+s.half_cnt+')':'')):'-')+'</td></tr>'
+    ).join('') || '<tr><td colspan="7" class="sub">이번 달 기록이 없어요.</td></tr>';
+    $('laDaysBody').innerHTML = (LABOR.days||[]).map(d =>
+      '<tr><td>'+fmtDate(d.date)+'</td>'
+      + '<td>'+d.entries.map(e =>
+          '<span class="badge" style="margin:2px">'+esc(e.name)+' '
+          + (e.open?'<span style="color:var(--green)">근무중</span>':fmtMins(e.mins))
+          + (e.pay!=null?' · '+fmtWon(e.pay):(e.pay_type==='monthly'?' · 월급제':''))+'</span>'
+        ).join(' ')+'</td>'
+      + '<td class="name-cell">'+fmtWon(d.total)+'</td></tr>'
+    ).join('') || '<tr><td colspan="3" class="sub">이번 달 근무 기록이 없어요.</td></tr>';
+    $('lvList').innerHTML = (LABOR.leaves||[]).map(l =>
+      '<div class="row"><span><span class="badge a">'+esc(l.kind)+'</span> <b>'+esc(l.name)+'</b> '
+      + fmtDate(l.leave_date)+(l.memo?' <span class="sub">'+esc(l.memo)+'</span>':'')+'</span>'
+      + '<button class="btn sm red" onclick="lvDel(\''+l.id+'\')">삭제</button></div>'
+    ).join('') || '<div class="sub">이번 달 등록된 휴무가 없어요.</div>';
+  }catch(e){ toast(e.message); }
+}
+async function lvSave(){
+  try{
+    await api('leaveSave', TOKEN, { staff_id:$('lvWho').value, leave_date:$('lvDate').value,
+      kind:$('lvKind').value, memo:$('lvMemo').value.trim() });
+    $('lvMemo').value=''; toast('휴무를 등록했어요'); loadLabor();
+  }catch(e){ alert(e.message); }
+}
+async function lvDel(id){
+  if(!confirm('이 휴무 기록을 삭제할까요?')) return;
+  try{ await api('leaveDelete', TOKEN, id); loadLabor(); }catch(e){ alert(e.message); }
+}
+
+/* ---------- 업무보드 ---------- */
+async function loadBoard(){
+  if(!$('bdYm').value) $('bdYm').value = localYm();
+  try{
+    const b = await api('boardMonth', TOKEN, $('bdYm').value);
+    const tDone = b.tasks.filter(t=>t.status==='done').length;
+    const rDone = b.reqs.filter(r=>r.status==='done').length;
+    $('bdTasks').textContent = b.tasks.length + '건';
+    $('bdTaskRate').textContent = b.tasks.length ? Math.round(tDone/b.tasks.length*100)+'%' : '-';
+    $('bdReqs').textContent = b.reqs.length + '건';
+    $('bdReqRate').textContent = b.reqs.length ? Math.round(rDone/b.reqs.length*100)+'%' : '-';
+    $('bdDoneBy').innerHTML = (b.doneBy||[]).map(x =>
+      '<span class="badge g" style="margin:3px; font-size:14px">🏅 '+esc(x.name)+' '+x.cnt+'건</span>').join(' ')
+      || '아직 완료된 오더가 없어요.';
+    const items = [
+      ...b.tasks.map(t=>({type:'오더', at:t.created_at, title:t.title,
+        who:t.assignee_name||'전체', status:t.status, doneName:t.done_name, doneAt:t.done_at})),
+      ...b.reqs.map(r=>({type:'요청', at:r.created_at, title:r.body,
+        who:r.name, status:r.status, doneName:r.done_name, doneAt:r.done_at}))
+    ].sort((a,b2)=>b2.at.localeCompare(a.at));
+    $('bdTimeline').innerHTML = items.map(x =>
+      '<div class="row"><span style="flex:1">'
+      + (x.type==='오더'?'<span class="badge b">오더</span>':'<span class="badge">요청</span>')
+      + ' <b>'+esc(x.title)+'</b> <span class="sub">'+esc(x.who)+' · '+new Date(x.at).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'})+'</span></span>'
+      + (x.status==='done'
+        ? '<span class="badge g">완료'+(x.doneName?' · '+esc(x.doneName):'')+(x.doneAt?' '+new Date(x.doneAt).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'}):'')+'</span>'
+        : '<span class="badge a">진행중</span>')
+      + '</div>'
+    ).join('') || '<div class="sub">이번 달 기록이 없어요.</div>';
+  }catch(e){ toast(e.message); }
 }
 
 /* ---------- 오더 ---------- */
