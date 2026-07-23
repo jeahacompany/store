@@ -418,6 +418,13 @@
 
       <!-- 매출 -->
       <div id="tab-sales" class="hidden">
+        <div class="card" style="border-color:#FFD8A8">
+          <h2>📷 정산표 사진으로 자동 입력 <span class="badge b">AI</span></h2>
+          <div class="sub" style="margin-bottom:10px">포스 일마감 정산표를 찍어 올리면 날짜·채널별 금액을 읽어서 채워줘요. 사진 원본도 함께 보관돼요. 여러 장 한꺼번에는 <a class="link" href="upload.html" target="_blank">대량 업로드</a>에서.</div>
+          <button class="btn" onclick="document.getElementById('slFile').click()">정산표 사진 올리기</button>
+          <input type="file" id="slFile" accept="image/*" class="hidden">
+          <span class="sub" id="slAiStatus" style="margin-left:10px"></span>
+        </div>
         <div class="card">
           <h2>오늘 매출 입력 <span class="sub">— 마감하고 채널별 금액만 적으면 끝</span></h2>
           <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:4px">
@@ -1402,11 +1409,42 @@ function dmGoExp(){ closeModal('dayModal'); tab('exp'); setTimeout(()=>{ $('exDa
 async function loadChannels(){
   try{ const s = await api('storeGet', TOKEN); if(Array.isArray(s.salesChannels) && s.salesChannels.length) CHANNELS = s.salesChannels; }catch(e){}
 }
+let SL_PHOTO = null;
 function renderSaleInputs(amounts){
-  $('saleChannels').innerHTML = CHANNELS.map(c =>
+  const keys = [...CHANNELS];
+  if(amounts) Object.keys(amounts).forEach(k => { if(!keys.includes(k)) keys.push(k); });
+  $('saleChannels').innerHTML = keys.map(c =>
     '<div><label>'+esc(c)+' (원)</label><input type="number" inputmode="numeric" data-ch="'+esc(c)+'" style="width:100%" value="'+(amounts&&amounts[c]!=null?amounts[c]:'')+'"></div>'
   ).join('');
 }
+document.addEventListener('DOMContentLoaded', () => {
+  $('slFile').onchange = async () => {
+    const f = $('slFile').files[0]; $('slFile').value = '';
+    if(!f) return;
+    $('slAiStatus').textContent = '사진 압축 중...';
+    try{
+      let b64 = await ibCompress(f, 2000, 0.85);
+      if(b64.length > 1400000) b64 = await ibCompress(f, 1600, 0.7);
+      SL_PHOTO = b64;
+      $('slAiStatus').textContent = 'AI가 정산표를 읽는 중... (10~30초)';
+      const res = await fetch(SUPABASE_URL + '/functions/v1/parse-invoice', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'apikey':SUPABASE_ANON, 'Authorization':'Bearer '+SUPABASE_ANON },
+        body: JSON.stringify({ token: TOKEN, b64, mode: 'sales' })
+      });
+      const data = await res.json();
+      if(!data || data.error) throw new Error((data && data.error) || 'AI 호출 실패 ('+res.status+')');
+      const r = data.result;
+      $('saleDate').value = r.sale_date || localDate();
+      $('saleMemo').value = r.memo || '';
+      const amounts = {};
+      (r.channels||[]).forEach(x => { if(x.amount) amounts[x.name] = +x.amount; });
+      renderSaleInputs(amounts);
+      $('slAiStatus').textContent = '분석 완료! 금액 확인하고 저장하세요.';
+      toast('AI 분석 완료 — 합계 '+fmtWon(r.total||0));
+    }catch(e){ $('slAiStatus').textContent = ''; alert(e.message); }
+  };
+});
 async function loadSales(){
   if(!$('saleDate').value) $('saleDate').value = localDate();
   if(!$('saleYm').value) $('saleYm').value = localYm();
@@ -1420,10 +1458,12 @@ async function loadSales(){
       + Object.entries(r.byChannel||{}).sort((a,b)=>b[1]-a[1]).map(([k,v]) =>
         '<span class="badge" style="margin:2px">'+esc(k)+' '+fmtWon(v)+'</span>').join(' ');
     $('saleBody').innerHTML = SALES.map(x =>
-      '<tr><td>'+fmtDate(x.sale_date)+'</td><td class="name-cell">'+fmtWon(x.total)+'</td>'
+      '<tr><td>'+fmtDate(x.sale_date)+(x.ai_parsed?' <span class="badge b">AI</span>':'')+'</td><td class="name-cell">'+fmtWon(x.total)+'</td>'
       + '<td class="sub">'+Object.entries(x.amounts||{}).filter(([k,v])=>+String(v).replace(/[^0-9-]/g,'')).map(([k,v])=>esc(k)+' '+fmtWon(+String(v).replace(/[^0-9-]/g,''))).join(' · ')+'</td>'
       + '<td class="sub">'+esc(x.memo||'')+'</td>'
-      + '<td style="white-space:nowrap"><button class="btn sm ghost" onclick="editSale(\''+x.id+'\')">수정</button> '
+      + '<td style="white-space:nowrap">'
+      + (x.has_photo?'<button class="btn sm ghost" onclick="viewSalePhoto(\''+x.id+'\')">사진</button> ':'')
+      + '<button class="btn sm ghost" onclick="editSale(\''+x.id+'\')">수정</button> '
       + '<button class="btn sm red" onclick="delSale(\''+x.id+'\')">삭제</button></td></tr>'
     ).join('') || '<tr><td colspan="5" class="sub">이 달 매출 기록이 아직 없어요.</td></tr>';
   }catch(e){ toast(e.message); }
@@ -1438,8 +1478,10 @@ async function saveSale(){
   try{
     const amounts = {};
     document.querySelectorAll('#saleChannels input[data-ch]').forEach(i => { if(i.value!=='') amounts[i.dataset.ch] = +i.value; });
-    const r = await api('saleSave', TOKEN, { sale_date:$('saleDate').value, amounts, memo:$('saleMemo').value.trim() });
+    const r = await api('saleSave', TOKEN, { sale_date:$('saleDate').value, amounts, memo:$('saleMemo').value.trim(),
+      photo_b64: SL_PHOTO || '', ai_parsed: !!SL_PHOTO });
     toast(fmtDate($('saleDate').value)+' 매출 '+fmtWon(r.total)+' 저장 완료');
+    SL_PHOTO = null; $('slAiStatus').textContent='';
     $('saleMemo').value=''; renderSaleInputs(null);
     $('saleYm').value = $('saleDate').value.slice(0,7);
     loadSales();
@@ -1448,6 +1490,13 @@ async function saveSale(){
 async function delSale(id){
   if(!confirm('이 날짜의 매출 기록을 삭제할까요?')) return;
   try{ await api('saleDelete', TOKEN, id); loadSales(); }catch(e){ alert(e.message); }
+}
+async function viewSalePhoto(id){
+  try{
+    const d = await api('salePhoto', TOKEN, id);
+    $('imgView').src = d.b64;
+    $('imgOverlay').classList.remove('hidden');
+  }catch(e){ alert(e.message); }
 }
 
 /* ---------- 지출 ---------- */

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>우리매장 — 대량 업로드</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{
+  --brand:#F26522; --brand-dark:#d95a1e; --brand-soft:#FFF3EC;
+  --bg:#F4F5F7; --card:#fff; --line:#E9EAEE; --txt:#1B1D22; --sub:#8A8F98; --side:#20242E;
+  --red:#D6455D; --red-bg:#FDEDF0; --green:#2F9E44; --green-bg:#EBFBEE;
+  --amber:#E8590C; --amber-bg:#FFF4E6; --gray-bg:#F1F3F5;
+}
+*{box-sizing:border-box}
+body{margin:0; font-family:Pretendard,-apple-system,'Malgun Gothic',sans-serif; background:var(--bg); color:var(--txt); font-size:16px; letter-spacing:-.1px}
+.wrap{max-width:640px; margin:0 auto; min-height:100vh; padding:0 12px 60px}
+.hidden{display:none!important}
+.card{background:var(--card); border:1px solid var(--line); border-radius:13px; padding:18px; margin:14px 0}
+h1{font-size:22px; margin:0 0 4px; font-weight:700} h1 b{color:var(--brand)}
+h2{font-size:17px; margin:0 0 10px; font-weight:700}
+.sub{color:var(--sub); font-size:14px}
+input,select{width:100%; padding:12px; border:1px solid var(--line); border-radius:10px; font-size:16px; font-family:inherit}
+input:focus{outline:none; border-color:var(--brand)}
+label{display:block; font-size:13.5px; color:var(--sub); margin:10px 0 4px}
+.btn{display:block; width:100%; padding:14px; border:1px solid var(--brand); border-radius:11px; font-size:16.5px; font-weight:700; cursor:pointer; background:var(--brand); color:#fff; font-family:inherit}
+.btn:active{background:var(--brand-dark)}
+.btn.ghost{background:#fff; color:#3A3F47; border-color:var(--line); font-weight:600}
+.btn.sm{width:auto; display:inline-block; padding:8px 14px; font-size:14px; border-radius:8px}
+.btn:disabled{background:#B8BCC4; border-color:#B8BCC4}
+.mode{display:flex; gap:8px}
+.mode button{flex:1; padding:14px; border:1px solid var(--line); background:#fff; border-radius:11px; font-size:16px; font-weight:700; cursor:pointer; font-family:inherit; color:#3A3F47}
+.mode button.on{background:var(--brand); border-color:var(--brand); color:#fff}
+.badge{display:inline-block; font-size:13px; font-weight:600; padding:4px 10px; border-radius:999px; background:var(--gray-bg); color:#495057}
+.badge.g{background:var(--green-bg); color:var(--green)} .badge.r{background:var(--red-bg); color:var(--red)} .badge.a{background:var(--amber-bg); color:var(--amber)} .badge.b{background:var(--brand-soft); color:var(--brand-dark)}
+.item{display:flex; gap:12px; padding:12px 0; border-bottom:1px solid #F1F2F4; align-items:flex-start}
+.item:last-child{border-bottom:0}
+.item img{width:64px; height:64px; object-fit:cover; border-radius:8px; border:1px solid var(--line); flex:none; cursor:pointer}
+.item .info{flex:1; min-width:0}
+.item .t{font-weight:700; font-size:15.5px}
+.item .d{font-size:14px; color:var(--sub); margin-top:2px}
+.err{color:var(--red); font-size:14px; min-height:18px; margin-top:8px}
+.toast{position:fixed; left:50%; transform:translateX(-50%); bottom:30px; background:var(--side); color:#fff; padding:11px 20px; border-radius:999px; font-size:14px; opacity:0; transition:.25s; pointer-events:none; z-index:99}
+.toast.show{opacity:.97}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 로그인 -->
+  <div id="loginView" class="hidden">
+    <div class="card" style="margin-top:60px">
+      <h1>우리매장 <b>대량 업로드</b></h1>
+      <div class="sub">미리 찍어둔 명세서·정산표를 한꺼번에 올리는 곳이에요. (관리자 전용)</div>
+      <label>아이디</label><input id="liUser" autocomplete="username">
+      <label>비밀번호</label><input id="liPw" type="password" onkeydown="if(event.key==='Enter')doLogin()">
+      <div class="err" id="liErr"></div>
+      <button class="btn" onclick="doLogin()">로그인</button>
+    </div>
+  </div>
+
+  <!-- 메인 -->
+  <div id="mainView" class="hidden">
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 4px 0">
+      <h1>대량 <b>업로드</b></h1>
+      <a style="color:var(--brand); cursor:pointer; font-size:14.5px" onclick="doLogout()">로그아웃</a>
+    </div>
+
+    <div class="card">
+      <h2>1. 무엇을 올릴까요?</h2>
+      <div class="mode">
+        <button id="modeInv" class="on" onclick="setMode('invoice')">📦 입고 명세서</button>
+        <button id="modeSal" onclick="setMode('sales')">💰 매출 정산표</button>
+      </div>
+      <label id="autoExpWrap" style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:15px; color:var(--txt)">
+        <input type="checkbox" id="autoExp" checked style="width:18px; height:18px"> 명세서 저장 시 지출(재료비)에도 자동 등록
+      </label>
+    </div>
+
+    <div class="card">
+      <h2>2. 사진 선택 <span class="sub">— 여러 장 한꺼번에 가능</span></h2>
+      <button class="btn" onclick="document.getElementById('files').click()">📷 사진 선택 (갤러리/폴더)</button>
+      <input type="file" id="files" accept="image/*" multiple class="hidden">
+      <div class="sub" style="margin-top:8px" id="queueInfo">선택된 사진 없음</div>
+    </div>
+
+    <div class="card" id="queueCard" style="display:none">
+      <h2>3. AI 분석 → 확인 → 등록</h2>
+      <button class="btn" id="runBtn" onclick="runAll()">🤖 AI 분석 시작</button>
+      <div id="queue" style="margin-top:10px"></div>
+      <button class="btn" id="saveAllBtn" style="margin-top:12px; display:none" onclick="saveAll()">✅ 확인 완료 — 전체 등록</button>
+    </div>
+  </div>
+
+  <div id="imgOverlay" class="hidden" style="position:fixed; inset:0; background:rgba(15,17,22,.85); z-index:60; display:flex; align-items:center; justify-content:center; padding:16px" onclick="this.classList.add('hidden')">
+    <img id="imgView" style="max-width:100%; max-height:85vh; border-radius:12px">
+  </div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://zcjvriedzememkiltqfa.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjanZyaWVkemVtZW1raWx0cWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMjg2MTIsImV4cCI6MjA5OTYwNDYxMn0.2nZh82xFUNORqcKObAHUnz8K5EjjL-Nym0T4YkDHxMk';
+let TOKEN = localStorage.getItem('store_upload_token') || '';
+let MODE = 'invoice', QUEUE = [];
+
+async function api(fn, ...args){
+  const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/store_api', {
+    method:'POST', headers:{ 'Content-Type':'application/json', 'apikey':SUPABASE_ANON, 'Authorization':'Bearer '+SUPABASE_ANON },
+    body: JSON.stringify({ p_fn: fn, p_args: args })
+  });
+  const data = await res.json();
+  if(!data || data.ok === false){
+    const msg = (data && data.error) || '서버 오류';
+    if(msg.includes('세션이 만료')){ localStorage.removeItem('store_upload_token'); TOKEN=''; show('loginView'); }
+    throw new Error(msg);
+  }
+  return data.result;
+}
+const $ = id => document.getElementById(id);
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2400); }
+function fmtWon(n){ return n==null?'-':Math.round(n).toLocaleString('ko-KR')+'원'; }
+function show(v){ ['loginView','mainView'].forEach(x=>$(x).classList.toggle('hidden', x!==v)); }
+function localDate(){ const d=new Date(), p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+
+async function doLogin(){
+  $('liErr').textContent='';
+  try{
+    const r = await api('login', $('liUser').value.trim(), $('liPw').value);
+    if(r.role !== 'owner' && r.role !== 'manager'){ $('liErr').textContent='관리자 계정만 사용할 수 있어요.'; return; }
+    TOKEN = r.token; localStorage.setItem('store_upload_token', TOKEN);
+    show('mainView');
+  }catch(e){ $('liErr').textContent = e.message; }
+}
+async function doLogout(){ try{ await api('logout', TOKEN); }catch(e){} localStorage.removeItem('store_upload_token'); TOKEN=''; show('loginView'); }
+
+function setMode(m){
+  MODE = m;
+  $('modeInv').classList.toggle('on', m==='invoice');
+  $('modeSal').classList.toggle('on', m==='sales');
+  $('autoExpWrap').style.display = m==='invoice' ? 'flex' : 'none';
+  QUEUE = []; renderQueue();
+}
+
+function compress(file, maxDim, q){
+  return new Promise((resolve, reject) => {
+    const img = new Image(); const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const s = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width*s); c.height = Math.round(img.height*s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); resolve(c.toDataURL('image/jpeg', q));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('이미지를 읽을 수 없어요')); };
+    img.src = url;
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  $('files').onchange = async () => {
+    const files = [...$('files').files]; $('files').value='';
+    for(const f of files){
+      try{
+        let b64 = await compress(f, 2000, 0.85);
+        if(b64.length > 1400000) b64 = await compress(f, 1600, 0.7);
+        QUEUE.push({ b64, status:'대기', result:null, err:null, saved:false });
+      }catch(e){ toast(f.name+': '+e.message); }
+    }
+    renderQueue();
+  };
+});
+
+function renderQueue(){
+  $('queueInfo').textContent = QUEUE.length ? QUEUE.length+'장 선택됨' : '선택된 사진 없음';
+  $('queueCard').style.display = QUEUE.length ? '' : 'none';
+  $('queue').innerHTML = QUEUE.map((q,i) => {
+    let info = '';
+    if(q.status==='확인'){
+      if(MODE==='invoice'){
+        const r = q.result;
+        info = '<div class="d">📅 <input type="date" value="'+(r.in_date||localDate())+'" onchange="QUEUE['+i+'].result.in_date=this.value" style="width:auto; padding:4px 8px; font-size:14px"> '
+          + '거래처 <input value="'+esc(r.supplier||'')+'" oninput="QUEUE['+i+'].result.supplier=this.value" style="width:120px; padding:4px 8px; font-size:14px">'
+          + '</div><div class="d">품목 '+(r.items||[]).length+'건 · 합계 <b>'+fmtWon(r.total||((r.items||[]).reduce((s,x)=>s+(+x.amount||0),0)))+'</b></div>';
+      } else {
+        const r = q.result;
+        info = '<div class="d">📅 <input type="date" value="'+(r.sale_date||localDate())+'" onchange="QUEUE['+i+'].result.sale_date=this.value" style="width:auto; padding:4px 8px; font-size:14px"></div>'
+          + '<div class="d">'+(r.channels||[]).map(c=>esc(c.name)+' '+fmtWon(c.amount)).join(' · ')+'</div>'
+          + '<div class="d">합계 <b>'+fmtWon(r.total)+'</b></div>';
+      }
+    }
+    const badge = q.saved ? '<span class="badge g">등록됨 ✓</span>'
+      : q.status==='분석중' ? '<span class="badge a">AI 분석 중...</span>'
+      : q.status==='확인' ? '<span class="badge b">확인 후 등록</span>'
+      : q.status==='실패' ? '<span class="badge r">실패</span>'
+      : '<span class="badge">대기</span>';
+    return '<div class="item"><img src="'+q.b64+'" onclick="viewImg('+i+')">'
+      + '<div class="info"><div class="t">'+(i+1)+'번 사진 '+badge+'</div>'
+      + (q.err?'<div class="d" style="color:var(--red)">'+esc(q.err)+'</div>':'')
+      + info + '</div>'
+      + (q.status==='확인' && !q.saved ? '<button class="btn sm" onclick="saveOne('+i+')">등록</button>' : '')
+      + '</div>';
+  }).join('');
+  const ready = QUEUE.filter(q=>q.status==='확인' && !q.saved).length;
+  $('saveAllBtn').style.display = ready > 1 ? '' : 'none';
+  $('saveAllBtn').textContent = '✅ 확인 완료 — '+ready+'장 전체 등록';
+}
+function viewImg(i){ $('imgView').src = QUEUE[i].b64; $('imgOverlay').classList.remove('hidden'); }
+
+async function runAll(){
+  $('runBtn').disabled = true;
+  for(let i=0;i<QUEUE.length;i++){
+    const q = QUEUE[i];
+    if(q.status!=='대기' && q.status!=='실패') continue;
+    q.status='분석중'; q.err=null; renderQueue();
+    try{
+      const res = await fetch(SUPABASE_URL + '/functions/v1/parse-invoice', {
+        method:'POST', headers:{ 'Content-Type':'application/json', 'apikey':SUPABASE_ANON, 'Authorization':'Bearer '+SUPABASE_ANON },
+        body: JSON.stringify({ token: TOKEN, b64: q.b64, mode: MODE==='sales'?'sales':'invoice' })
+      });
+      const data = await res.json();
+      if(!data || data.error) throw new Error((data && data.error) || 'AI 호출 실패');
+      q.result = data.result; q.status='확인';
+    }catch(e){ q.status='실패'; q.err = e.message; }
+    renderQueue();
+  }
+  $('runBtn').disabled = false;
+  $('runBtn').textContent = '🤖 다시 분석 (실패한 것만)';
+  toast('분석 끝! 내용 확인하고 등록을 눌러주세요.');
+}
+
+async function saveOne(i){
+  const q = QUEUE[i]; const r = q.result;
+  try{
+    if(MODE==='invoice'){
+      const items = (r.items||[]).filter(x=>x.name);
+      if(!items.length) throw new Error('품목이 없어요.');
+      const saved = await api('inboundSave', TOKEN, {
+        in_date: r.in_date || localDate(), supplier: r.supplier || '',
+        memo: '대량업로드', items, ai_parsed: true, photo_b64: q.b64
+      });
+      if($('autoExp').checked){
+        await api('expSave', TOKEN, { exp_date: r.in_date || localDate(), category: '재료비',
+          vendor: r.supplier || '', amount: saved.total, method: '이체', memo: '입고 대량업로드 자동등록' });
+      }
+    } else {
+      const amounts = {};
+      (r.channels||[]).forEach(c => { if(c.amount) amounts[c.name] = +c.amount; });
+      await api('saleSave', TOKEN, { sale_date: r.sale_date || localDate(), amounts,
+        memo: r.memo || '', photo_b64: q.b64, ai_parsed: true });
+    }
+    q.saved = true; renderQueue(); toast((i+1)+'번 등록 완료!');
+  }catch(e){ alert((i+1)+'번: '+e.message); }
+}
+async function saveAll(){
+  for(let i=0;i<QUEUE.length;i++){
+    if(QUEUE[i].status==='확인' && !QUEUE[i].saved) await saveOne(i);
+  }
+  toast('전체 등록 완료! 관리자 앱에서 확인하세요.');
+}
+
+(async function(){
+  if(TOKEN){
+    try{ const b = await api('boot', TOKEN);
+      if(b.me.role==='owner' || b.me.role==='manager'){ show('mainView'); return; }
+    }catch(e){}
+  }
+  show('loginView');
+})();
+</script>
+</body>
+</html>
