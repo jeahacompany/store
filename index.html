@@ -217,6 +217,22 @@
           <div id="reqHistory" class="hidden" style="margin-top:8px"></div>
         </div>
         <div class="card">
+          <h2>📢 공지 <a class="link" style="font-weight:400; margin-left:8px" onclick="document.getElementById('ntForm').classList.toggle('hidden')">공지 쓰기</a></h2>
+          <div id="ntForm" class="hidden" style="margin-bottom:10px">
+            <div class="grid2">
+              <div><label>제목</label><input id="ntTitle" style="width:100%" placeholder="예: 9/1 그랜드 오픈!"></div>
+              <div><label style="display:flex; align-items:center; gap:6px; margin-top:26px"><input type="checkbox" id="ntPin" style="width:17px;height:17px"> 상단 고정</label></div>
+            </div>
+            <label>내용</label><textarea id="ntBody" style="min-height:60px"></textarea>
+            <button class="btn sm" style="margin-top:8px" onclick="ntSave()">공지 등록</button>
+          </div>
+          <div id="ntList" class="sub">-</div>
+        </div>
+        <div class="card">
+          <h2>📝 인수인계 일지 <span class="sub">— 오늘·어제 직원들이 남긴 기록</span></h2>
+          <div id="snList" class="sub">-</div>
+        </div>
+        <div class="card">
           <h2>오늘 출근 현황 <span class="sub" id="todayDate"></span></h2>
           <div class="table-scroll"><table><thead><tr><th>이름</th><th>직책</th><th>출근</th><th>퇴근</th><th>상태</th></tr></thead>
           <tbody id="todayBody"></tbody></table></div>
@@ -265,19 +281,30 @@
 
       <!-- 인건비표 -->
       <div id="tab-labor" class="hidden">
-        <div class="card no-print" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
-          <input type="month" id="laYm" onchange="loadLabor()">
-          <button class="btn ghost" onclick="window.print()">인쇄</button>
-          <span class="sub">근태 기록으로 자동 계산돼요 (주휴수당·세금 제외 참고용)</span>
+        <div class="card no-print">
+          <div style="display:flex; gap:7px; align-items:center; flex-wrap:wrap">
+            <button class="btn sm ghost laPill" data-p="today" onclick="laPeriod('today')">오늘</button>
+            <button class="btn sm ghost laPill" data-p="yesterday" onclick="laPeriod('yesterday')">어제</button>
+            <button class="btn sm ghost laPill" data-p="7" onclick="laPeriod('7')">최근 7일</button>
+            <button class="btn sm ghost laPill" data-p="14" onclick="laPeriod('14')">최근 14일</button>
+            <button class="btn sm ghost laPill" data-p="month" onclick="laPeriod('month')">이번 달</button>
+            <input type="month" id="laYm" onchange="laPeriod('pick')">
+            <button class="btn ghost" onclick="window.print()">인쇄</button>
+          </div>
+          <div class="sub" style="margin-top:8px" id="laRangeLabel">근태 기록으로 자동 계산돼요 (주휴수당·세금 제외 참고용)</div>
         </div>
         <div class="cards">
-          <div class="kpi"><div class="label">이번달 인건비</div><div class="value v-orange" id="laTotal">-</div></div>
-          <div class="kpi"><div class="label">시급제 합계</div><div class="value" id="laHourly">-</div></div>
-          <div class="kpi"><div class="label">월급제 합계</div><div class="value" id="laMonthly">-</div></div>
+          <div class="kpi"><div class="label">기간 인건비 (시급제)</div><div class="value v-orange" id="laHourly">-</div></div>
+          <div class="kpi"><div class="label">월급제 (월 기준)</div><div class="value" id="laMonthly">-</div></div>
+          <div class="kpi"><div class="label">근무 기록</div><div class="value" id="laDayCnt">-</div></div>
           <div class="kpi"><div class="label">휴무 사용</div><div class="value" id="laLeaveCnt">-</div></div>
         </div>
+        <div class="card" id="laPendingCard" style="border-color:#FFD8A8">
+          <h2>휴무 신청 승인 대기 <span class="badge a" id="laPendingCnt">0</span></h2>
+          <div id="laPendingList" class="sub">없음</div>
+        </div>
         <div class="card">
-          <h2>직원별 이번달 요약</h2>
+          <h2>직원별 요약 <span class="sub">— 이름을 누르면 근무 기록을 수정·삭제할 수 있어요</span></h2>
           <div class="table-scroll"><table><thead><tr><th>이름</th><th>직책</th><th>방식</th><th>근무일</th><th>근무시간</th><th>급여</th><th>휴무</th></tr></thead>
           <tbody id="laStaffBody"></tbody></table></div>
         </div>
@@ -296,6 +323,10 @@
             <button class="btn" onclick="lvSave()">등록</button>
           </div>
           <div id="lvList" style="margin-top:12px"></div>
+        </div>
+        <div class="card">
+          <h2>🗑️ 삭제함 <span class="sub">— 지운 근태 기록은 여기에 90일간 증거로 남아요 (복구 가능)</span></h2>
+          <div id="laTrash" class="sub">불러오는 중...</div>
         </div>
       </div>
 
@@ -577,6 +608,17 @@
     </div>
   </div>
 
+  <!-- 직원 근무 상세 모달 (인건비표) -->
+  <div class="modal-bg hidden" id="laModal">
+    <div class="modal">
+      <h2 id="laModalTitle">근무 기록</h2>
+      <div class="sub" id="laModalSub" style="margin-bottom:10px"></div>
+      <div class="table-scroll"><table><thead><tr><th>날짜</th><th>출근</th><th>퇴근</th><th>시간</th><th>급여</th><th></th></tr></thead>
+      <tbody id="laModalBody"></tbody></table></div>
+      <div style="margin-top:14px"><button class="btn ghost" onclick="closeModal('laModal')">닫기</button></div>
+    </div>
+  </div>
+
   <!-- 근태 수정 모달 -->
   <div class="modal-bg hidden" id="attModal">
     <div class="modal">
@@ -784,7 +826,46 @@ async function loadDash(){
         + '<td>'+fmtTime(r.out_at)+'</td><td>'+st+'</td></tr>';
     }).join('') || '<tr><td colspan="5" class="sub">활동중인 직원이 없어요. 직원이 가입하면 여기 떠요.</td></tr>';
     $('stIn').textContent=cin; $('stWork').textContent=cwork; $('stNo').textContent=cno;
+    loadNotices(); loadShiftNotes();
   }catch(e){ toast(e.message); }
+}
+async function loadNotices(){
+  try{
+    const list = await api('noticeList', TOKEN);
+    $('ntList').innerHTML = list.length ? list.map(n =>
+      '<div class="row"><span style="flex:1">'+(n.pinned?'<span class="badge a">고정</span> ':'')
+      + '<b>'+esc(n.title)+'</b>'+(n.body?'<div class="sub" style="white-space:pre-wrap">'+esc(n.body)+'</div>':'')
+      + '<span class="sub"> '+new Date(n.created_at).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'})+'</span></span>'
+      + '<button class="btn sm red" onclick="ntDel(\''+n.id+'\')">삭제</button></div>'
+    ).join('') : '등록된 공지가 없어요.';
+  }catch(e){}
+}
+async function ntSave(){
+  try{
+    if(!$('ntTitle').value.trim()){ alert('공지 제목을 입력해주세요.'); return; }
+    await api('noticeSave', TOKEN, { title:$('ntTitle').value.trim(), body:$('ntBody').value.trim(), pinned:$('ntPin').checked });
+    $('ntTitle').value=''; $('ntBody').value=''; $('ntPin').checked=false;
+    $('ntForm').classList.add('hidden');
+    toast('공지를 올렸어요 — 직원들 홈에 바로 떠요'); loadNotices();
+  }catch(e){ alert(e.message); }
+}
+async function ntDel(id){
+  if(!confirm('이 공지를 삭제할까요?')) return;
+  try{ await api('noticeDelete', TOKEN, id); loadNotices(); }catch(e){ alert(e.message); }
+}
+async function loadShiftNotes(){
+  try{
+    const list = await api('shiftNotesRecent', TOKEN);
+    $('snList').innerHTML = list.length ? list.map(n =>
+      '<div class="row"><span><b>'+esc(n.name)+'</b> <span class="sub">'+fmtDate(n.note_date)+'</span>'
+      + '<div style="white-space:pre-wrap">'+esc(n.body)+'</div></span>'
+      + '<button class="btn sm red" onclick="snDel(\''+n.id+'\')">삭제</button></div>'
+    ).join('') : '오늘·어제 일지가 없어요. 직원들이 홈에서 남기면 여기 떠요.';
+  }catch(e){}
+}
+async function snDel(id){
+  if(!confirm('이 일지를 삭제할까요?')) return;
+  try{ await api('shiftNoteDelete', TOKEN, id); loadShiftNotes(); }catch(e){ alert(e.message); }
 }
 async function doneReq(id){
   try{ await api('reqDone', TOKEN, id); toast('처리 완료로 표시했어요'); loadDash(); }
@@ -943,7 +1024,9 @@ async function saveAtt(){
     const inV = $('amIn').value ? new Date($('amIn').value).toISOString() : '';
     const outV = $('amOut').value ? new Date($('amOut').value).toISOString() : '';
     await api('attFix', TOKEN, $('amId').value, inV, outV, $('amNote').value.trim());
-    toast('수정했어요'); closeModal('attModal'); loadAtt();
+    toast('수정했어요'); closeModal('attModal');
+    if(LA_FROM_MODAL){ LA_FROM_MODAL = false; openLaborStaff(LA_STAFF_ID); loadLabor(); }
+    else loadAtt();
   }catch(e){ alert(e.message); }
 }
 async function delAtt(){
@@ -968,26 +1051,51 @@ async function saveAttAdd(){
 }
 
 /* ---------- 인건비표 ---------- */
-let LABOR = null;
+let LABOR = null, LA_PERIOD = 'month', LA_FROM = '', LA_TO = '', LA_STAFF_ID = null, LA_FROM_MODAL = false;
+function laDateStr(d){ const p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+function laPeriod(p){
+  LA_PERIOD = p;
+  const now = new Date();
+  if(p==='today'){ LA_FROM = LA_TO = laDateStr(now); }
+  else if(p==='yesterday'){ const y=new Date(now); y.setDate(y.getDate()-1); LA_FROM = LA_TO = laDateStr(y); }
+  else if(p==='7'||p==='14'){ const f=new Date(now); f.setDate(f.getDate()-(+p-1)); LA_FROM = laDateStr(f); LA_TO = laDateStr(now); }
+  else { const ym = $('laYm').value || localYm(); $('laYm').value = ym;
+    LA_FROM = ym+'-01'; const [y,m]=ym.split('-').map(Number); LA_TO = laDateStr(new Date(y, m, 0)); }
+  document.querySelectorAll('.laPill').forEach(b=>{
+    const on = b.dataset.p===p || (p==='pick' && b.dataset.p==='month');
+    b.style.background = on?'var(--brand)':'#fff'; b.style.color = on?'#fff':'#3A3F47'; b.style.borderColor = on?'var(--brand)':'var(--line)';
+  });
+  loadLabor();
+}
 async function loadLabor(){
-  if(!$('laYm').value) $('laYm').value = localYm();
+  if(!LA_FROM){ $('laYm').value = localYm(); laPeriod('month'); return; }
   if(!$('lvDate').value) $('lvDate').value = localDate();
   if(!STAFF.length){ try{ STAFF = await api('staffList', TOKEN); fillWhoSelects(); }catch(e){} }
   $('lvWho').innerHTML = STAFF.filter(s=>s.status==='active' && s.role!=='owner')
     .map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');
   try{
-    LABOR = await api('laborMonth', TOKEN, $('laYm').value);
-    $('laTotal').textContent = fmtWon(LABOR.monthTotal);
+    LABOR = await api('laborRange', TOKEN, LA_FROM, LA_TO);
+    $('laRangeLabel').textContent = LA_FROM + ' ~ ' + LA_TO + ' · 근태 기록 자동 계산 (주휴수당·세금 제외 참고용)';
     $('laHourly').textContent = fmtWon(LABOR.hourlyTotal);
     $('laMonthly').textContent = fmtWon(LABOR.monthlyTotal);
-    $('laLeaveCnt').textContent = LABOR.leaves.length + '건';
+    $('laDayCnt').textContent = (LABOR.days||[]).length + '일';
+    $('laLeaveCnt').textContent = (LABOR.leaves||[]).length + '건';
+    const pd = LABOR.pending || [];
+    $('laPendingCnt').textContent = pd.length;
+    $('laPendingCard').style.display = pd.length ? '' : 'none';
+    $('laPendingList').innerHTML = pd.map(l =>
+      '<div class="row"><span><span class="badge a">'+esc(l.kind)+'</span> <b>'+esc(l.name)+'</b> '
+      + fmtDate(l.leave_date)+(l.memo?' <span class="sub">'+esc(l.memo)+'</span>':'')+'</span>'
+      + '<span style="white-space:nowrap"><button class="btn sm green" onclick="lvDecide(\''+l.id+'\', true)">승인</button> '
+      + '<button class="btn sm red" onclick="lvDecide(\''+l.id+'\', false)">거절</button></span></div>'
+    ).join('') || '없음';
     $('laStaffBody').innerHTML = (LABOR.staff||[]).map(s =>
-      '<tr><td class="name-cell">'+esc(s.name)+'</td><td>'+esc(s.position||'-')+'</td>'
+      '<tr><td><a class="link" onclick="openLaborStaff(\''+s.staff_id+'\')"><b>'+esc(s.name)+'</b></a></td><td>'+esc(s.position||'-')+'</td>'
       + '<td>'+(s.pay_type==='monthly'?'<span class="badge b">월급</span>':'<span class="badge">시급 '+fmtWon(s.hourly_wage)+'</span>')+'</td>'
       + '<td>'+s.days+'일</td><td>'+fmtMins(s.mins)+'</td>'
       + '<td class="name-cell">'+fmtWon(s.pay)+'</td>'
       + '<td>'+(s.leave_cnt>0?(s.leave_cnt+'건'+(s.half_cnt>0?' (반차 '+s.half_cnt+')':'')):'-')+'</td></tr>'
-    ).join('') || '<tr><td colspan="7" class="sub">이번 달 기록이 없어요.</td></tr>';
+    ).join('') || '<tr><td colspan="7" class="sub">이 기간 기록이 없어요.</td></tr>';
     $('laDaysBody').innerHTML = (LABOR.days||[]).map(d =>
       '<tr><td>'+fmtDate(d.date)+'</td>'
       + '<td>'+d.entries.map(e =>
@@ -996,13 +1104,66 @@ async function loadLabor(){
           + (e.pay!=null?' · '+fmtWon(e.pay):(e.pay_type==='monthly'?' · 월급제':''))+'</span>'
         ).join(' ')+'</td>'
       + '<td class="name-cell">'+fmtWon(d.total)+'</td></tr>'
-    ).join('') || '<tr><td colspan="3" class="sub">이번 달 근무 기록이 없어요.</td></tr>';
+    ).join('') || '<tr><td colspan="3" class="sub">이 기간 근무 기록이 없어요.</td></tr>';
     $('lvList').innerHTML = (LABOR.leaves||[]).map(l =>
-      '<div class="row"><span><span class="badge a">'+esc(l.kind)+'</span> <b>'+esc(l.name)+'</b> '
+      '<div class="row"><span><span class="badge '+(l.status==='거절'?'r':'a')+'">'+esc(l.kind)+(l.status==='거절'?' 거절':'')+'</span> <b>'+esc(l.name)+'</b> '
       + fmtDate(l.leave_date)+(l.memo?' <span class="sub">'+esc(l.memo)+'</span>':'')+'</span>'
       + '<button class="btn sm red" onclick="lvDel(\''+l.id+'\')">삭제</button></div>'
-    ).join('') || '<div class="sub">이번 달 등록된 휴무가 없어요.</div>';
+    ).join('') || '<div class="sub">이 기간 등록된 휴무가 없어요.</div>';
+    loadLaTrash();
   }catch(e){ toast(e.message); }
+}
+async function lvDecide(id, ok){
+  try{ await api('leaveDecide', TOKEN, id, ok); toast(ok?'승인했어요':'거절했어요'); loadLabor(); }
+  catch(e){ alert(e.message); }
+}
+async function loadLaTrash(){
+  try{
+    const tr = await api('attTrash', TOKEN);
+    $('laTrash').innerHTML = tr.length ? tr.map(x =>
+      '<div class="row"><span><b>'+esc(x.name)+'</b> '+fmtDate(x.work_date)+' '+fmtTime(x.in_at)+'~'+fmtTime(x.out_at)
+      + ' <span class="sub">삭제: '+new Date(x.deleted_at).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+'</span></span>'
+      + '<button class="btn sm ghost" onclick="laRestore(\''+x.id+'\')">복구</button></div>'
+    ).join('') : '삭제된 기록이 없어요.';
+  }catch(e){ $('laTrash').textContent = e.message; }
+}
+async function laRestore(id){
+  if(!confirm('이 기록을 복구할까요?')) return;
+  try{ await api('attRestore', TOKEN, id); toast('복구했어요'); loadLabor(); }catch(e){ alert(e.message); }
+}
+async function openLaborStaff(staffId){
+  LA_STAFF_ID = staffId;
+  try{
+    const d = await api('staffAttRange', TOKEN, staffId, LA_FROM, LA_TO);
+    $('laModalTitle').textContent = d.name + ' — 근무 기록';
+    $('laModalSub').textContent = LA_FROM+' ~ '+LA_TO+' · '
+      + (d.pay_type==='monthly' ? '월급 '+fmtWon(d.monthly_wage) : '시급 '+fmtWon(d.hourly_wage))
+      + ' · 시간을 고치면 급여가 다시 계산돼요 (0원으로 만들려면 퇴근=출근으로)';
+    $('laModalBody').innerHTML = (d.rows||[]).map(r =>
+      '<tr><td>'+fmtDate(r.work_date)+'</td><td>'+fmtTime(r.in_at)+'</td>'
+      + '<td>'+(r.out_at?fmtTime(r.out_at):'<span class="badge r">누락</span>')+'</td>'
+      + '<td>'+fmtMins(r.mins)+(r.edited?' <span class="badge a">수정됨</span>':'')+'</td>'
+      + '<td class="name-cell">'+(r.pay!=null?fmtWon(r.pay):'-')+'</td>'
+      + '<td style="white-space:nowrap"><button class="btn sm ghost" onclick="laEditRow(\''+r.id+'\')">수정</button> '
+      + '<button class="btn sm red" onclick="laDelRow(\''+r.id+'\')">삭제</button></td></tr>'
+    ).join('') || '<tr><td colspan="6" class="sub">이 기간 기록이 없어요.</td></tr>';
+    $('laModal').classList.remove('hidden');
+    window.LA_ROWS = d.rows || [];
+  }catch(e){ alert(e.message); }
+}
+function laEditRow(id){
+  const a = (window.LA_ROWS||[]).find(x=>x.id===id); if(!a) return;
+  LA_FROM_MODAL = true;
+  $('amId').value = a.id;
+  $('amWho').textContent = $('laModalTitle').textContent.replace(' — 근무 기록','')+' · '+fmtDate(a.work_date);
+  $('amIn').value = toLocalInput(a.in_at); $('amOut').value = toLocalInput(a.out_at);
+  $('amNote').value = a.edit_note||'';
+  $('attModal').classList.remove('hidden');
+}
+async function laDelRow(id){
+  if(!confirm('이 근무 기록을 삭제할까요? 삭제함에 90일간 보관돼요.')) return;
+  try{ await api('attDelete', TOKEN, id); toast('삭제했어요 (삭제함에 보관됨)'); openLaborStaff(LA_STAFF_ID); loadLabor(); }
+  catch(e){ alert(e.message); }
 }
 async function lvSave(){
   try{

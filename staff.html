@@ -111,7 +111,7 @@ a.link{color:var(--brand); text-decoration:none; font-size:13.5px; cursor:pointe
       <div class="card" id="docsBanner" style="border-color:var(--amber); display:none">
         <h2>📋 제출할 서류가 있어요</h2>
         <div id="docsBannerList" style="margin:6px 0 10px"></div>
-        <button class="btn" style="background:var(--amber)" onclick="tab('me'); setTimeout(()=>document.getElementById('docsCard').scrollIntoView({behavior:'smooth'}),100)">지금 제출하러 가기</button>
+        <button class="btn" style="background:var(--amber)" onclick="tab('more'); setTimeout(()=>document.getElementById('docsCard').scrollIntoView({behavior:'smooth'}),100)">지금 제출하러 가기</button>
       </div>
       <div class="card center">
         <div class="bigtime" id="nowClock">--:--</div>
@@ -121,17 +121,48 @@ a.link{color:var(--brand); text-decoration:none; font-size:13.5px; cursor:pointe
         <div id="todayLine" style="margin-top:10px"></div>
       </div>
       <div class="card">
+        <h2>📢 공지</h2>
+        <div id="ntList" class="sub">-</div>
+      </div>
+      <div class="card">
+        <h2>📝 인수인계</h2>
+        <div class="sub" style="margin-bottom:6px">특이사항을 남기면 사장님과 다음 근무자가 봐요. (오늘·어제 것이 보여요)</div>
+        <div id="snList" style="margin-bottom:10px"></div>
+        <textarea id="snBody" placeholder="예: 3번 테이블 컴플레인 있었음, 서비스로 처리 / 콜라 재고 얼마 안 남음"></textarea>
+        <button class="btn" style="margin-top:8px" onclick="snSave()">일지 남기기</button>
+      </div>
+    </div>
+
+    <!-- 근무 -->
+    <div id="tab-work" class="hidden">
+      <div class="card">
         <h2>이번 달 근무 <span class="sub" id="mmYm"></span></h2>
         <div class="row"><span>근무 시간</span><b id="mmHours">-</b></div>
-        <div class="row"><span>예상 급여 <span class="sub">(참고용)</span></span><b id="mmPay">-</b></div>
+        <div class="row"><span>예상 급여 <span class="sub">(참고용 · 세전)</span></span><b id="mmPay" style="color:var(--brand)">-</b></div>
         <div id="mmRows" style="margin-top:6px"></div>
       </div>
+      <div class="card">
+        <h2>내가 남긴 일지</h2>
+        <div id="myNotes" class="sub">-</div>
+      </div>
+    </div>
+
+    <!-- 소통 -->
+    <div id="tab-talk" class="hidden">
       <div class="card">
         <h2>사장님께 요청하기</h2>
         <div class="sub" style="margin-bottom:6px">필요한 물건, 고장난 것, 건의사항 — 뭐든 남기면 사장님 화면에 바로 떠요.</div>
         <textarea id="reqBody" placeholder="예: 홀 휴지 다 떨어졌어요 / 튀김기 온도조절 이상해요"></textarea>
         <button class="btn" style="margin-top:8px" onclick="sendReq()">보내기</button>
         <div id="myReqs" style="margin-top:10px"></div>
+      </div>
+      <div class="card">
+        <h2>휴무 신청 <span class="sub">— 연차·반차</span></h2>
+        <label>날짜</label><input type="date" id="lrDate">
+        <label>종류</label><select id="lrKind"><option>연차</option><option>반차</option><option>병가</option><option>무급</option><option>기타</option></select>
+        <label>사유 (선택)</label><input id="lrMemo" placeholder="예: 개인 사정">
+        <button class="btn" style="margin-top:10px" onclick="lrSend()">신청하기</button>
+        <div id="myLeaves" style="margin-top:10px"></div>
       </div>
     </div>
 
@@ -143,26 +174,18 @@ a.link{color:var(--brand); text-decoration:none; font-size:13.5px; cursor:pointe
       </div>
     </div>
 
-    <!-- 매뉴얼 -->
-    <div id="tab-manual" class="hidden">
+    <!-- 더보기 (매뉴얼 + 매장정보 + 내정보) -->
+    <div id="tab-more" class="hidden">
       <div class="card">
         <h2>매뉴얼</h2>
         <div class="sub" style="margin-bottom:6px">내 역할에 해당하는 업무 안내예요.</div>
         <div id="manualList" class="sub">불러오는 중...</div>
       </div>
-    </div>
-
-    <!-- 매장정보 -->
-    <div id="tab-info" class="hidden">
       <div class="card">
         <h2>매장 정보</h2>
         <div class="sub" style="margin-bottom:6px">포스기, 연락처, 와이파이 등 필요한 정보.</div>
         <div id="infoList" class="sub">불러오는 중...</div>
       </div>
-    </div>
-
-    <!-- 내정보 -->
-    <div id="tab-me" class="hidden">
       <div class="card">
         <h2>내 정보</h2>
         <div class="sub" style="margin-bottom:6px">근로계약서·급여이체에 쓰이는 정보예요. 정확하게 입력해주세요.</div>
@@ -191,9 +214,9 @@ a.link{color:var(--brand); text-decoration:none; font-size:13.5px; cursor:pointe
     <div class="nav">
       <button id="nav-home" class="on" onclick="tab('home')"><span class="ico">🏠</span>홈</button>
       <button id="nav-tasks" onclick="tab('tasks')"><span class="ico">✅</span>할일</button>
-      <button id="nav-manual" onclick="tab('manual')"><span class="ico">📖</span>매뉴얼</button>
-      <button id="nav-info" onclick="tab('info')"><span class="ico">ℹ️</span>정보</button>
-      <button id="nav-me" onclick="tab('me')"><span class="ico">👤</span>내정보</button>
+      <button id="nav-work" onclick="tab('work')"><span class="ico">💰</span>근무</button>
+      <button id="nav-talk" onclick="tab('talk')"><span class="ico">💬</span>소통</button>
+      <button id="nav-more" onclick="tab('more')"><span class="ico">☰</span>더보기</button>
     </div>
   </div>
 
@@ -211,7 +234,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 let TOKEN = localStorage.getItem('store_staff_token') || '';
 let ME = null, TODAY = null, CLOCKED_IN = false, DOCS = null, MYDOCS = [];
-const TABS = ['home','tasks','manual','info','me'];
+const TABS = ['home','tasks','work','talk','more'];
 const DOC_KINDS = [
   {key:'idcard', label:'신분증', hint:'주민등록증·운전면허증 앞면'},
   {key:'bankbook', label:'통장사본', hint:'월급 받을 계좌'},
@@ -252,10 +275,11 @@ function tab(name){
     $('tab-'+t).classList.toggle('hidden', t!==name);
     $('nav-'+t).classList.toggle('on', t===name);
   });
+  if(name==='home') loadHomeFeed();
   if(name==='tasks') loadTasks();
-  if(name==='manual') loadManuals();
-  if(name==='info') loadInfos();
-  if(name==='me') loadMyDocs();
+  if(name==='work') loadWork();
+  if(name==='talk'){ loadMyReqs(); loadMyLeaves(); if(!$('lrDate').value) $('lrDate').value = new Date().toLocaleDateString('sv-SE'); }
+  if(name==='more'){ loadManuals(); loadInfos(); loadMyDocs(); }
 }
 
 /* ---------- 시계 ---------- */
@@ -317,6 +341,31 @@ function renderDocsBanner(){
     '<span class="badge '+(DOCS[k.key]?'g':'r')+'" style="margin:2px">'+(DOCS[k.key]?'✔ ':'✖ ')+k.label+'</span>'
   ).join(' ');
 }
+async function loadHomeFeed(){
+  try{
+    const nts = await api('noticeList', TOKEN);
+    $('ntList').innerHTML = nts.length ? nts.slice(0,5).map(n =>
+      '<div class="row"><span>'+(n.pinned?'<span class="badge a">고정</span> ':'')
+      + '<b>'+esc(n.title)+'</b>'+(n.body?'<div class="sub" style="white-space:pre-wrap">'+esc(n.body)+'</div>':'')+'</span>'
+      + '<span class="sub">'+new Date(n.created_at).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'})+'</span></div>'
+    ).join('') : '아직 공지가 없어요.';
+  }catch(e){}
+  try{
+    const sns = await api('shiftNotesRecent', TOKEN);
+    $('snList').innerHTML = sns.length ? sns.map(n =>
+      '<div class="row"><span><b>'+esc(n.name)+'</b> <span class="sub">'+fmtDate(n.note_date)+'</span>'
+      + '<div style="white-space:pre-wrap">'+esc(n.body)+'</div></span></div>'
+    ).join('') : '<div class="sub">오늘·어제 남긴 일지가 없어요.</div>';
+  }catch(e){}
+}
+async function snSave(){
+  const body = $('snBody').value.trim();
+  if(!body){ alert('내용을 입력해주세요.'); return; }
+  try{
+    await api('shiftNoteSave', TOKEN, { body });
+    $('snBody').value=''; toast('일지를 남겼어요'); loadHomeFeed();
+  }catch(e){ alert(e.message); }
+}
 function renderClock(){
   CLOCKED_IN = !!(TODAY && TODAY.in_at && !TODAY.out_at);
   const btn = $('clockBtn');
@@ -357,21 +406,46 @@ async function doClock(){
   btn.disabled = false;
 }
 
-/* ---------- 이번 달 ---------- */
-async function loadMonth(){
+/* ---------- 근무 (내 기록 · 예상급여 · 일지) ---------- */
+async function loadWork(){
   const d = new Date(), p = n=>String(n).padStart(2,'0');
   const ym = d.getFullYear()+'-'+p(d.getMonth()+1);
   $('mmYm').textContent = ym;
   try{
-    const r = await api('myMonth', TOKEN, ym);
+    const r = await api('myWork', TOKEN, ym);
     $('mmHours').textContent = fmtMins(r.totalMins);
     $('mmPay').textContent = r.payType==='monthly' ? fmtWon(r.estPay)+' (월급)' : fmtWon(r.estPay);
     $('mmRows').innerHTML = (r.rows||[]).slice(0,31).map(x =>
       '<div class="row"><span>'+fmtDate(x.work_date)+(x.edited?' <span class="badge a">수정됨</span>':'')+'</span>'
-      + '<span>'+fmtTime(x.in_at)+' ~ '+fmtTime(x.out_at)
-      + (x.mins!=null ? ' <b>('+fmtMins(x.mins)+')</b>' : ' <span class="badge r">퇴근누락</span>')+'</span></div>'
+      + '<span>'+fmtTime(x.in_at)+'~'+fmtTime(x.out_at)
+      + (x.mins!=null ? ' <b>'+fmtMins(x.mins)+'</b>' : ' <span class="badge r">퇴근누락</span>')
+      + (x.pay!=null ? ' <b style="color:var(--brand)">'+fmtWon(x.pay)+'</b>' : '')+'</span></div>'
     ).join('') || '<div class="sub">이번 달 기록이 아직 없어요.</div>';
+    $('myNotes').innerHTML = (r.notes||[]).map(n =>
+      '<div class="row"><span><span class="sub">'+fmtDate(n.note_date)+'</span><div style="white-space:pre-wrap">'+esc(n.body)+'</div></span></div>'
+    ).join('') || '이번 달 남긴 일지가 없어요.';
   }catch(e){ $('mmRows').innerHTML = '<div class="sub">'+esc(e.message)+'</div>'; }
+}
+const loadMonth = loadWork;
+
+/* ---------- 휴무 신청 ---------- */
+async function lrSend(){
+  try{
+    if(!$('lrDate').value){ alert('날짜를 선택해주세요.'); return; }
+    const r = await api('leaveRequest', TOKEN, { leave_date:$('lrDate').value, kind:$('lrKind').value, memo:$('lrMemo').value.trim() });
+    $('lrMemo').value=''; toast(r.msg || '신청 완료!'); loadMyLeaves();
+  }catch(e){ alert(e.message); }
+}
+async function loadMyLeaves(){
+  try{
+    const list = await api('myLeaves', TOKEN);
+    $('myLeaves').innerHTML = list.length ? list.map(l =>
+      '<div class="row"><span><span class="badge">'+esc(l.kind)+'</span> '+fmtDate(l.leave_date)
+      + (l.memo?' <span class="sub">'+esc(l.memo)+'</span>':'')+'</span>'
+      + (l.status==='승인'?'<span class="badge g">승인됨</span>':l.status==='거절'?'<span class="badge r">거절됨</span>':'<span class="badge a">대기중</span>')
+      + '</div>'
+    ).join('') : '';
+  }catch(e){}
 }
 
 /* ---------- 할일 ---------- */
