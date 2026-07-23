@@ -268,6 +268,7 @@ async function doLogin(){
   $('liErr').textContent='';
   try{
     const r = await api('login', $('liUser').value.trim(), $('liPw').value);
+    if(r.role === 'viewer'){ $('liErr').textContent = '투자자 계정은 관리자 주소에서 로그인해주세요.'; return; }
     TOKEN = r.token; localStorage.setItem('store_staff_token', TOKEN);
     await boot();
   }catch(e){ $('liErr').textContent = e.message; }

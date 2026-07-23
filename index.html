@@ -105,6 +105,26 @@
   .modal { background:#fff; border-radius:16px; padding:24px 26px; width:min(640px,94vw); max-height:88vh; overflow:auto; }
   .modal h2 { margin-bottom:4px; }
 
+  /* calendar */
+  .cal-head { display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+  .cal-head b { font-size:17px; letter-spacing:-.3px; }
+  .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); background:var(--line); gap:1px; border:1px solid var(--line); border-radius:13px; overflow:hidden; }
+  .cal-dow { background:#FAFAFB; text-align:center; font-size:11.5px; color:var(--sub); padding:7px 0; font-weight:600; }
+  .cal-cell { background:#fff; min-height:96px; padding:5px 6px; cursor:pointer; position:relative; }
+  .cal-cell:hover { background:#FFF9F5; }
+  .cal-cell.dim { background:#FAFAFB; }
+  .cal-cell .dnum { font-size:12px; font-weight:600; color:#3A3F47; }
+  .cal-cell .dnum.sun { color:var(--red); } .cal-cell .dnum.sat { color:#1971C2; }
+  .cal-cell.today-cell { outline:2px solid var(--brand); outline-offset:-2px; }
+  .ev-chip { display:block; font-size:10.5px; font-weight:600; border-radius:5px; padding:1.5px 5px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cal-money { position:absolute; right:5px; bottom:4px; text-align:right; font-size:10.5px; line-height:1.45; font-variant-numeric:tabular-nums; }
+  .cal-money .s { color:var(--green); font-weight:700; } .cal-money .e { color:var(--red); }
+  @media(max-width:760px){
+    .cal-cell { min-height:74px; padding:3px 4px; }
+    .ev-chip { font-size:9.5px; padding:1px 3px; }
+    .cal-money { font-size:9.5px; }
+  }
+
   .toast { position:fixed; left:50%; transform:translateX(-50%); bottom:30px; background:#20242E; color:#fff; padding:11px 20px; border-radius:999px; font-size:13px; opacity:0; transition:.25s; pointer-events:none; z-index:99; }
   .toast.show { opacity:.97; }
   .row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid #F1F2F4; font-size:13px; }
@@ -152,6 +172,7 @@
       <div class="brand"><b id="hdStore">우리매장</b><span>STORE MANAGER</span></div>
       <nav id="tabbar">
         <div class="nav-item active" data-t="today" onclick="tab('today')"><span class="ico">📋</span>오늘<span class="cnt hidden" id="cntToday"></span></div>
+        <div class="nav-item" data-t="cal" onclick="tab('cal')"><span class="ico">🗓️</span>캘린더</div>
         <div class="nav-item" data-t="staff" onclick="tab('staff')"><span class="ico">👥</span>직원<span class="cnt hidden" id="cntStaff"></span></div>
         <div class="nav-item" data-t="att" onclick="tab('att')"><span class="ico">⏱️</span>근태</div>
         <div class="nav-item" data-t="tasks" onclick="tab('tasks')"><span class="ico">📢</span>오더</div>
@@ -195,6 +216,21 @@
           <h2>오늘 출근 현황 <span class="sub" id="todayDate"></span></h2>
           <div class="table-scroll"><table><thead><tr><th>이름</th><th>직책</th><th>출근</th><th>퇴근</th><th>상태</th></tr></thead>
           <tbody id="todayBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- 캘린더 -->
+      <div id="tab-cal" class="hidden">
+        <div class="card">
+          <div class="cal-head">
+            <button class="btn sm ghost" onclick="calMove(-1)">◀</button>
+            <b id="calTitle">-</b>
+            <button class="btn sm ghost" onclick="calMove(1)">▶</button>
+            <button class="btn sm ghost" onclick="calToday()">이번 달</button>
+            <span class="sub">날짜를 누르면 일정·매출·지출을 보고 기록할 수 있어요</span>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+          <div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap" id="calLegend"></div>
         </div>
       </div>
 
@@ -352,7 +388,7 @@
           <div class="card"><h2>채널별 매출</h2><div id="seByChannel"></div></div>
           <div class="card"><h2>분류별 지출</h2><div style="height:180px; margin-bottom:10px"><canvas id="chCat"></canvas></div><div id="seByCat"></div></div>
         </div>
-        <div class="card">
+        <div class="card" id="seLaborCard">
           <h2>인건비 상세 <span class="sub">(근태 기록 기준)</span></h2>
           <div class="table-scroll"><table><thead><tr><th>이름</th><th>직책</th><th>방식</th><th>근무시간</th><th>금액</th></tr></thead>
           <tbody id="seLaborBody"></tbody></table></div>
@@ -404,7 +440,8 @@
         <div><label>연락처</label><input id="smPhone" style="width:100%"></div>
         <div><label>직책 (홀/주방 등)</label><input id="smPos" style="width:100%"></div>
         <div><label>역할</label><select id="smRole" style="width:100%">
-          <option value="staff">직원</option><option value="manager">매장 관리자</option><option value="owner">사장</option></select></div>
+          <option value="staff">직원</option><option value="manager">매장 관리자</option>
+          <option value="viewer">투자자 (열람 전용)</option><option value="owner">사장</option></select></div>
         <div><label>급여 방식</label><select id="smPayType" style="width:100%">
           <option value="hourly">시급</option><option value="monthly">월급</option></select></div>
         <div><label>시급 (원)</label><input id="smHourly" type="number" style="width:100%"></div>
@@ -466,6 +503,34 @@
     </div>
   </div>
 
+  <!-- 날짜 상세 모달 -->
+  <div class="modal-bg hidden" id="dayModal">
+    <div class="modal">
+      <h2 id="dmTitle">-</h2>
+      <div id="dmMoney" class="sub" style="margin-bottom:10px"></div>
+      <div id="dmEvents" style="margin-bottom:6px"></div>
+      <div id="dmForm">
+        <label id="dmFormLabel">일정 추가</label>
+        <input type="hidden" id="dmId">
+        <div class="grid2">
+          <div><label>제목 *</label><input id="dmEvTitle" style="width:100%" placeholder="예: 전기공사, 간판 설치"></div>
+          <div><label>분류</label><select id="dmCat" style="width:100%">
+            <option>공사·인테리어</option><option>행정·계약</option><option>발주·입고</option>
+            <option>이벤트</option><option>휴무</option><option>일정</option></select></div>
+          <div><label>종료일 (여러 날이면 — 비우면 하루)</label><input type="date" id="dmEnd" style="width:100%"></div>
+          <div><label>메모</label><input id="dmMemo" style="width:100%"></div>
+        </div>
+        <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn" onclick="dmSave()">일정 저장</button>
+          <button class="btn ghost" onclick="dmReset()">새 일정</button>
+          <button class="btn ghost" id="dmGoSale" onclick="dmGoSale()">이날 매출 입력</button>
+          <button class="btn ghost" id="dmGoExp" onclick="dmGoExp()">이날 지출 입력</button>
+          <button class="btn ghost" onclick="closeModal('dayModal')">닫기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="imgOverlay" class="hidden" style="position:fixed; inset:0; background:rgba(15,17,22,.85); z-index:60; display:flex; align-items:center; justify-content:center; flex-direction:column; padding:16px" onclick="this.classList.add('hidden')">
     <img id="imgView" style="max-width:100%; max-height:80vh; border-radius:12px">
     <div style="color:#fff; margin-top:10px; font-size:13px">화면을 누르면 닫혀요</div>
@@ -479,9 +544,14 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 let TOKEN = localStorage.getItem('store_admin_token') || '';
 let ME = null, STAFF = [], ATT = [], WAGES = null, TASKS = [];
-const TABS = ['today','staff','att','tasks','manual','info','sales','exp','settle','setup'];
-const TITLES = {today:'오늘', staff:'직원', att:'근태', tasks:'오더', manual:'매뉴얼', info:'매장정보',
+const TABS = ['today','cal','staff','att','tasks','manual','info','sales','exp','settle','setup'];
+const TITLES = {today:'오늘', cal:'캘린더', staff:'직원', att:'근태', tasks:'오더', manual:'매뉴얼', info:'매장정보',
   sales:'매출', exp:'지출', settle:'월 정산', setup:'설정'};
+const EV_COLORS = {
+  '공사·인테리어':['#FFF4E6','#E8590C'], '행정·계약':['#E7F5FF','#1971C2'], '발주·입고':['#F3F0FF','#7048E8'],
+  '이벤트':['#EBFBEE','#2F9E44'], '휴무':['#FDEDF0','#D6455D'], '일정':['#F1F3F5','#495057']
+};
+let CAL = null, calYm = '', dmDate = '';
 const EXP_CATS = ['재료비','임대료','공과금','배달수수료','카드수수료','비품·소모품','수리·유지','광고·마케팅','일용직·외주','세금·보험','기타'];
 let CHANNELS = ['카드','현금','배민','요기요','쿠팡이츠'];
 let SALES = [], EXPS = [], chDaily = null, chCat = null;
@@ -516,11 +586,13 @@ function localYm(){ return localDate().slice(0,7); }
 function show(view){ ['loginView','mainView'].forEach(v => $(v).classList.toggle('hidden', v!==view)); }
 function closeModal(id){ $(id).classList.add('hidden'); }
 function tab(name){
+  if(ME && ME.role==='viewer' && !['cal','settle'].includes(name)) return;
   TABS.forEach(t => { $('tab-'+t).classList.toggle('hidden', t!==name); });
   document.querySelectorAll('#tabbar .nav-item').forEach(b => b.classList.toggle('active', b.dataset.t===name));
   $('pageTitle').textContent = TITLES[name] || '';
   $('pageMeta').textContent = name==='today' ? new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'}) : '';
   if(name==='today') loadDash();
+  if(name==='cal') loadCal();
   if(name==='staff') loadStaff();
   if(name==='att') loadAtt();
   if(name==='tasks') loadTasks();
@@ -549,9 +621,16 @@ async function doLogout(){
 function boot(){
   $('hdStore').textContent = ME ? ME.storeName : '우리매장';
   $('meName').textContent = ME ? ME.name : '-';
-  $('meRole').textContent = ME ? (ME.role==='owner'?'사장':'매장 관리자') : '-';
+  $('meRole').textContent = ME ? (ME.role==='owner'?'사장':ME.role==='viewer'?'투자자':'매장 관리자') : '-';
   $('meAvatar').textContent = ME ? ME.name.slice(0,1) : '·';
-  show('mainView'); tab('today');
+  show('mainView');
+  if(ME && ME.role==='viewer'){
+    document.querySelectorAll('#tabbar .nav-item').forEach(n => {
+      if(!['cal','settle'].includes(n.dataset.t)) n.style.display='none';
+    });
+    document.querySelectorAll('#tabbar .nav-label').forEach(l => l.style.display='none');
+    tab('cal');
+  } else tab('today');
 }
 
 /* ---------- 오늘 ---------- */
@@ -861,6 +940,104 @@ async function delInfo(id){
   try{ await api('infoDelete', TOKEN, id); loadInfos(); }catch(e){ alert(e.message); }
 }
 
+/* ---------- 캘린더 ---------- */
+async function loadCal(){
+  if(!calYm) calYm = localYm();
+  try{
+    CAL = await api('calMonth', TOKEN, calYm);
+    renderCal();
+  }catch(e){ toast(e.message); }
+}
+function calMove(n){
+  const [y, m] = calYm.split('-').map(Number);
+  const d = new Date(y, m-1+n, 1);
+  calYm = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  loadCal();
+}
+function calToday(){ calYm = localYm(); loadCal(); }
+function evsOn(dateStr){
+  return (CAL.events||[]).filter(e => e.ev_date <= dateStr && (e.end_date||e.ev_date) >= dateStr);
+}
+function renderCal(){
+  const [y, m] = calYm.split('-').map(Number);
+  $('calTitle').textContent = y+'년 '+m+'월';
+  const first = new Date(y, m-1, 1).getDay();
+  const days = new Date(y, m, 0).getDate();
+  const today = localDate();
+  let html = ['일','월','화','수','목','금','토'].map(d=>'<div class="cal-dow">'+d+'</div>').join('');
+  for(let i=0;i<first;i++) html += '<div class="cal-cell dim"></div>';
+  for(let d=1;d<=days;d++){
+    const ds = calYm+'-'+String(d).padStart(2,'0');
+    const dow = (first+d-1)%7;
+    const evs = evsOn(ds);
+    const sale = CAL.sales && CAL.sales[ds];
+    const exp = CAL.exps && CAL.exps[ds];
+    html += '<div class="cal-cell'+(ds===today?' today-cell':'')+'" onclick="openDay(\''+ds+'\')">'
+      + '<div class="dnum'+(dow===0?' sun':dow===6?' sat':'')+'">'+d+'</div>'
+      + evs.slice(0,3).map(e => {
+          const c = EV_COLORS[e.category]||EV_COLORS['일정'];
+          return '<span class="ev-chip" style="background:'+c[0]+'; color:'+c[1]+'">'+esc(e.title)+'</span>';
+        }).join('')
+      + (evs.length>3?'<span class="sub" style="font-size:10px">+'+(evs.length-3)+'</span>':'')
+      + '<div class="cal-money">'
+      + (sale!=null?'<div class="s">+'+Math.round(sale/10000)+'만</div>':'')
+      + (exp!=null?'<div class="e">-'+Math.round(exp/10000)+'만</div>':'')
+      + '</div></div>';
+  }
+  const rest = (first+days)%7;
+  if(rest) for(let i=rest;i<7;i++) html += '<div class="cal-cell dim"></div>';
+  $('calGrid').innerHTML = html;
+  $('calLegend').innerHTML = Object.entries(EV_COLORS).map(([k,c]) =>
+    '<span class="ev-chip" style="display:inline-block; background:'+c[0]+'; color:'+c[1]+'">'+k+'</span>').join('')
+    + '<span class="sub" style="margin-left:6px">숫자: <span style="color:var(--green); font-weight:700">+매출</span> / <span style="color:var(--red)">-지출</span> (만원)</span>';
+}
+function openDay(ds){
+  dmDate = ds;
+  const isViewer = ME && ME.role==='viewer';
+  $('dmTitle').textContent = ds.slice(0,4)+'년 '+fmtDate(ds);
+  const sale = CAL.sales && CAL.sales[ds], exp = CAL.exps && CAL.exps[ds];
+  $('dmMoney').innerHTML =
+    (sale!=null?'<span class="badge g" style="margin-right:6px">매출 '+fmtWon(sale)+'</span>':'')
+    + (exp!=null?'<span class="badge r">지출 '+fmtWon(exp)+'</span>':'')
+    + (sale==null&&exp==null?'매출·지출 기록 없음':'');
+  const evs = evsOn(ds);
+  $('dmEvents').innerHTML = evs.length ? evs.map(e => {
+    const c = EV_COLORS[e.category]||EV_COLORS['일정'];
+    return '<div class="row"><span><span class="badge" style="background:'+c[0]+'; color:'+c[1]+'">'+esc(e.category)+'</span> '
+      + '<b>'+esc(e.title)+'</b>'
+      + (e.end_date?' <span class="sub">'+e.ev_date.slice(5)+'~'+e.end_date.slice(5)+'</span>':'')
+      + (e.memo?'<div class="sub">'+esc(e.memo)+'</div>':'')+'</span>'
+      + (isViewer?'':'<span style="white-space:nowrap"><button class="btn sm ghost" onclick="dmEdit(\''+e.id+'\')">수정</button> '
+      + '<button class="btn sm red" onclick="dmDel(\''+e.id+'\')">삭제</button></span>')+'</div>';
+  }).join('') : '<div class="sub" style="padding:6px 0">이 날 일정이 없어요.</div>';
+  $('dmForm').style.display = isViewer ? 'none' : '';
+  dmReset();
+  $('dayModal').classList.remove('hidden');
+}
+function dmReset(){ $('dmId').value=''; $('dmEvTitle').value=''; $('dmEnd').value=''; $('dmMemo').value=''; $('dmFormLabel').textContent='일정 추가'; }
+function dmEdit(id){
+  const e = (CAL.events||[]).find(x=>x.id===id); if(!e) return;
+  dmDate = e.ev_date;
+  $('dmId').value=e.id; $('dmEvTitle').value=e.title; $('dmCat').value=e.category;
+  $('dmEnd').value=e.end_date||''; $('dmMemo').value=e.memo||'';
+  $('dmFormLabel').textContent='일정 수정';
+}
+async function dmSave(){
+  try{
+    if(!$('dmEvTitle').value.trim()){ alert('일정 제목을 입력해주세요.'); return; }
+    await api('evSave', TOKEN, { id:$('dmId').value, ev_date:dmDate, end_date:$('dmEnd').value,
+      title:$('dmEvTitle').value.trim(), category:$('dmCat').value, memo:$('dmMemo').value.trim() });
+    toast('일정을 저장했어요');
+    await loadCal(); openDay(dmDate);
+  }catch(e){ alert(e.message); }
+}
+async function dmDel(id){
+  if(!confirm('이 일정을 삭제할까요?')) return;
+  try{ await api('evDelete', TOKEN, id); await loadCal(); openDay(dmDate); }catch(e){ alert(e.message); }
+}
+function dmGoSale(){ closeModal('dayModal'); tab('sales'); setTimeout(()=>{ $('saleDate').value=dmDate; }, 400); }
+function dmGoExp(){ closeModal('dayModal'); tab('exp'); setTimeout(()=>{ $('exDate').value=dmDate; }, 400); }
+
 /* ---------- 매출 ---------- */
 async function loadChannels(){
   try{ const s = await api('storeGet', TOKEN); if(Array.isArray(s.salesChannels) && s.salesChannels.length) CHANNELS = s.salesChannels; }catch(e){}
@@ -973,6 +1150,7 @@ async function loadSettle(){
     $('seByCat').innerHTML = Object.entries(r.expenses.byCat||{}).sort((a,b)=>b[1]-a[1]).map(([k,v]) =>
       '<div class="row"><span>'+esc(k)+'</span><b>'+fmtWon(v)+'</b></div>').join('')
       || '<div class="sub">지출 기록이 없어요.</div>';
+    $('seLaborCard').style.display = (ME && ME.role==='viewer') ? 'none' : '';
     $('seLaborBody').innerHTML = (r.labor.rows||[]).map(x =>
       '<tr><td class="name-cell">'+esc(x.name)+'</td><td>'+esc(x.position||'-')+'</td>'
       + '<td>'+(x.pay_type==='monthly'?'월급':'시급')+'</td><td>'+fmtMins(x.mins)+'</td><td>'+fmtWon(x.pay)+'</td></tr>'
