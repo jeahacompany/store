@@ -358,7 +358,8 @@ async function doClock(){
 
 /* ---------- 이번 달 ---------- */
 async function loadMonth(){
-  const ym = new Date().toISOString().slice(0,7);
+  const d = new Date(), p = n=>String(n).padStart(2,'0');
+  const ym = d.getFullYear()+'-'+p(d.getMonth()+1);
   $('mmYm').textContent = ym;
   try{
     const r = await api('myMonth', TOKEN, ym);

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>우리매장 — 관리자</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <style>
   :root {
     --brand:#F26522; --brand-dark:#d95a1e; --brand-soft:#FFF3EC;
@@ -30,6 +31,7 @@
   .side .brand b { color:#fff; font-size:16.5px; letter-spacing:-.2px; }
   .side .brand span { display:block; font-size:11px; color:#6A7080; margin-top:3px; letter-spacing:.6px; }
   .side nav { flex:1; overflow-y:auto; padding:4px 10px 10px; }
+  .nav-label { font-size:10.5px; color:#5D6370; letter-spacing:1.2px; padding:14px 12px 5px; }
   .nav-item { display:flex; align-items:center; gap:9px; padding:9.5px 12px; border-radius:9px; cursor:pointer; font-size:13.5px; margin-bottom:1px; }
   .nav-item:hover { background:#2A2F3B; color:#fff; }
   .nav-item.active { background:var(--brand); color:#fff; font-weight:600; }
@@ -108,8 +110,16 @@
   .row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid #F1F2F4; font-size:13px; }
   .row:last-child { border-bottom:0; }
 
+  @media print {
+    .side, .no-print, .toast { display:none!important; }
+    .main { padding:0; }
+    body { background:#fff; }
+    .card { break-inside:avoid; box-shadow:none!important; }
+  }
+
   /* mobile: sidebar -> top bar */
   @media(max-width:760px){
+    .nav-label { display:none; }
     .app { flex-direction:column; }
     .side { width:100%; height:auto; position:static; flex-direction:column; }
     .side .brand { padding:14px 16px 4px; }
@@ -147,6 +157,11 @@
         <div class="nav-item" data-t="tasks" onclick="tab('tasks')"><span class="ico">📢</span>오더</div>
         <div class="nav-item" data-t="manual" onclick="tab('manual')"><span class="ico">📖</span>매뉴얼</div>
         <div class="nav-item" data-t="info" onclick="tab('info')"><span class="ico">ℹ️</span>매장정보</div>
+        <div class="nav-label">매출 · 정산</div>
+        <div class="nav-item" data-t="sales" onclick="tab('sales')"><span class="ico">💰</span>매출</div>
+        <div class="nav-item" data-t="exp" onclick="tab('exp')"><span class="ico">🧾</span>지출</div>
+        <div class="nav-item" data-t="settle" onclick="tab('settle')"><span class="ico">📊</span>월 정산</div>
+        <div class="nav-label">시스템</div>
         <div class="nav-item" data-t="setup" onclick="tab('setup')"><span class="ico">⚙️</span>설정</div>
       </nav>
       <div class="me">
@@ -272,6 +287,78 @@
         </div>
       </div>
 
+      <!-- 매출 -->
+      <div id="tab-sales" class="hidden">
+        <div class="card">
+          <h2>오늘 매출 입력 <span class="sub">— 마감하고 채널별 금액만 적으면 끝</span></h2>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:4px">
+            <input type="date" id="saleDate">
+          </div>
+          <div id="saleChannels" class="grid2"></div>
+          <label>메모 (날씨, 이벤트 등 — 나중에 비교할 때 도움돼요)</label><input id="saleMemo" style="width:100%">
+          <div style="margin-top:12px"><button class="btn" onclick="saveSale()">저장</button>
+          <span class="sub" style="margin-left:8px">같은 날짜에 다시 저장하면 덮어써요</span></div>
+        </div>
+        <div class="card">
+          <h2>매출 내역 <input type="month" id="saleYm" onchange="loadSales()" style="margin-left:8px"></h2>
+          <div id="saleSummary" style="margin-bottom:10px"></div>
+          <div class="table-scroll"><table><thead><tr><th>날짜</th><th>합계</th><th>내역</th><th>메모</th><th></th></tr></thead>
+          <tbody id="saleBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- 지출 -->
+      <div id="tab-exp" class="hidden">
+        <div class="card">
+          <h2>지출 입력</h2>
+          <input type="hidden" id="exId">
+          <div class="grid2">
+            <div><label>날짜</label><input type="date" id="exDate" style="width:100%"></div>
+            <div><label>분류</label><select id="exCat" style="width:100%"></select></div>
+            <div><label>사용처 (거래처·가게 이름)</label><input id="exVendor" style="width:100%" placeholder="예: OO축산, 한전"></div>
+            <div><label>금액 (원)</label><input id="exAmt" type="number" style="width:100%" inputmode="numeric"></div>
+            <div><label>결제수단</label><select id="exMethod" style="width:100%">
+              <option>카드</option><option>현금</option><option>이체</option></select></div>
+            <div><label>메모</label><input id="exMemo" style="width:100%"></div>
+          </div>
+          <div style="margin-top:12px">
+            <button class="btn" onclick="saveExp()">저장</button>
+            <button class="btn ghost" onclick="resetExp()">새로 쓰기</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>지출 내역 <input type="month" id="expYm" onchange="loadExp()" style="margin-left:8px"></h2>
+          <div id="expSummary" style="margin-bottom:10px"></div>
+          <div class="table-scroll"><table><thead><tr><th>날짜</th><th>분류</th><th>사용처</th><th>금액</th><th></th></tr></thead>
+          <tbody id="expBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- 월 정산 -->
+      <div id="tab-settle" class="hidden">
+        <div class="card no-print" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+          <input type="month" id="setYm" onchange="loadSettle()">
+          <button class="btn ghost" onclick="window.print()">정산서 인쇄</button>
+          <span class="sub">인건비는 근태 기록으로 자동 계산돼요 (참고용 · 주휴수당 미포함)</span>
+        </div>
+        <div class="cards">
+          <div class="kpi"><div class="label">매출</div><div class="value" id="seSales">-</div></div>
+          <div class="kpi"><div class="label">지출</div><div class="value v-orange" id="seExp">-</div></div>
+          <div class="kpi"><div class="label">인건비 (자동)</div><div class="value v-orange" id="seLabor">-</div></div>
+          <div class="kpi"><div class="label">순이익</div><div class="value" id="seProfit">-</div></div>
+        </div>
+        <div class="card"><h2>일별 매출</h2><div style="height:220px"><canvas id="chDaily"></canvas></div></div>
+        <div class="grid2" style="gap:14px">
+          <div class="card"><h2>채널별 매출</h2><div id="seByChannel"></div></div>
+          <div class="card"><h2>분류별 지출</h2><div style="height:180px; margin-bottom:10px"><canvas id="chCat"></canvas></div><div id="seByCat"></div></div>
+        </div>
+        <div class="card">
+          <h2>인건비 상세 <span class="sub">(근태 기록 기준)</span></h2>
+          <div class="table-scroll"><table><thead><tr><th>이름</th><th>직책</th><th>방식</th><th>근무시간</th><th>금액</th></tr></thead>
+          <tbody id="seLaborBody"></tbody></table></div>
+        </div>
+      </div>
+
       <!-- 설정 -->
       <div id="tab-setup" class="hidden">
         <div class="card">
@@ -281,6 +368,7 @@
             <div><label>주소</label><input id="stAddr" style="width:100%"></div>
             <div><label>직원 가입코드</label><input id="stCode" style="width:100%"></div>
             <div><label>출퇴근 허용 반경 (미터)</label><input id="stRadius" type="number" style="width:100%"></div>
+            <div style="grid-column:1/-1"><label>매출 채널 (쉼표로 구분 — 매출 입력칸이 이 순서로 생겨요)</label><input id="stChannels" style="width:100%" placeholder="카드, 현금, 배민, 요기요, 쿠팡이츠"></div>
           </div>
           <div style="margin-top:12px"><button class="btn" onclick="saveStore()">저장</button></div>
         </div>
@@ -391,8 +479,12 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 let TOKEN = localStorage.getItem('store_admin_token') || '';
 let ME = null, STAFF = [], ATT = [], WAGES = null, TASKS = [];
-const TABS = ['today','staff','att','tasks','manual','info','setup'];
-const TITLES = {today:'오늘', staff:'직원', att:'근태', tasks:'오더', manual:'매뉴얼', info:'매장정보', setup:'설정'};
+const TABS = ['today','staff','att','tasks','manual','info','sales','exp','settle','setup'];
+const TITLES = {today:'오늘', staff:'직원', att:'근태', tasks:'오더', manual:'매뉴얼', info:'매장정보',
+  sales:'매출', exp:'지출', settle:'월 정산', setup:'설정'};
+const EXP_CATS = ['재료비','임대료','공과금','배달수수료','카드수수료','비품·소모품','수리·유지','광고·마케팅','일용직·외주','세금·보험','기타'];
+let CHANNELS = ['카드','현금','배민','요기요','쿠팡이츠'];
+let SALES = [], EXPS = [], chDaily = null, chCat = null;
 
 async function api(fn, ...args){
   const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/store_api', {
@@ -419,6 +511,8 @@ function fmtTime(iso){ return iso ? new Date(iso).toLocaleTimeString('ko-KR',{ho
 function fmtDate(d){ if(!d) return '-'; const x=new Date(d+'T00:00:00'); return (x.getMonth()+1)+'/'+x.getDate()+'('+['일','월','화','수','목','금','토'][x.getDay()]+')'; }
 function fmtMins(m){ if(m==null) return '-'; const h=Math.floor(m/60), mm=Math.round(m%60); return h+'시간 '+(mm<10?'0':'')+mm+'분'; }
 function fmtWon(n){ return n==null ? '-' : Math.round(n).toLocaleString('ko-KR')+'원'; }
+function localDate(){ const d=new Date(), p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+function localYm(){ return localDate().slice(0,7); }
 function show(view){ ['loginView','mainView'].forEach(v => $(v).classList.toggle('hidden', v!==view)); }
 function closeModal(id){ $(id).classList.add('hidden'); }
 function tab(name){
@@ -432,6 +526,9 @@ function tab(name){
   if(name==='tasks') loadTasks();
   if(name==='manual') loadManuals();
   if(name==='info') loadInfos();
+  if(name==='sales') loadSales();
+  if(name==='exp') loadExp();
+  if(name==='settle') loadSettle();
   if(name==='setup') loadSetup();
 }
 
@@ -599,13 +696,13 @@ async function approveStaff(){
 }
 async function quitStaff(){
   if(!confirm('이 직원을 퇴사 처리할까요? 로그인이 차단되고 기록은 보존돼요.')) return;
-  try{ await api('staffSave', TOKEN, $('smId').value, { status:'quit', quit_at:new Date().toISOString().slice(0,10) }); toast('퇴사 처리했어요'); closeModal('staffModal'); loadStaff(); }
+  try{ await api('staffSave', TOKEN, $('smId').value, { status:'quit', quit_at:localDate() }); toast('퇴사 처리했어요'); closeModal('staffModal'); loadStaff(); }
   catch(e){ alert(e.message); }
 }
 
 /* ---------- 근태 ---------- */
 async function loadAtt(){
-  if(!$('attYm').value) $('attYm').value = new Date().toISOString().slice(0,7);
+  if(!$('attYm').value) $('attYm').value = localYm();
   if(!STAFF.length){ try{ STAFF = await api('staffList', TOKEN); fillWhoSelects(); }catch(e){} }
   try{
     const r = await api('attMonth', TOKEN, $('attYm').value);
@@ -659,7 +756,7 @@ async function delAtt(){
 }
 function openAttAdd(){
   if(!$('aaWho').options.length){ alert('재직중인 직원이 없어요.'); return; }
-  $('aaDate').value = new Date().toISOString().slice(0,10);
+  $('aaDate').value = localDate();
   $('attAddModal').classList.remove('hidden');
 }
 async function saveAttAdd(){
@@ -764,12 +861,159 @@ async function delInfo(id){
   try{ await api('infoDelete', TOKEN, id); loadInfos(); }catch(e){ alert(e.message); }
 }
 
+/* ---------- 매출 ---------- */
+async function loadChannels(){
+  try{ const s = await api('storeGet', TOKEN); if(Array.isArray(s.salesChannels) && s.salesChannels.length) CHANNELS = s.salesChannels; }catch(e){}
+}
+function renderSaleInputs(amounts){
+  $('saleChannels').innerHTML = CHANNELS.map(c =>
+    '<div><label>'+esc(c)+' (원)</label><input type="number" inputmode="numeric" data-ch="'+esc(c)+'" style="width:100%" value="'+(amounts&&amounts[c]!=null?amounts[c]:'')+'"></div>'
+  ).join('');
+}
+async function loadSales(){
+  if(!$('saleDate').value) $('saleDate').value = localDate();
+  if(!$('saleYm').value) $('saleYm').value = localYm();
+  await loadChannels();
+  if(!$('saleChannels').children.length) renderSaleInputs(null);
+  try{
+    const r = await api('saleMonth', TOKEN, $('saleYm').value);
+    SALES = r.rows;
+    $('saleSummary').innerHTML =
+      '<span class="badge b" style="margin:2px">합계 '+fmtWon(r.total)+'</span> '
+      + Object.entries(r.byChannel||{}).sort((a,b)=>b[1]-a[1]).map(([k,v]) =>
+        '<span class="badge" style="margin:2px">'+esc(k)+' '+fmtWon(v)+'</span>').join(' ');
+    $('saleBody').innerHTML = SALES.map(x =>
+      '<tr><td>'+fmtDate(x.sale_date)+'</td><td class="name-cell">'+fmtWon(x.total)+'</td>'
+      + '<td class="sub">'+Object.entries(x.amounts||{}).filter(([k,v])=>+String(v).replace(/[^0-9-]/g,'')).map(([k,v])=>esc(k)+' '+fmtWon(+String(v).replace(/[^0-9-]/g,''))).join(' · ')+'</td>'
+      + '<td class="sub">'+esc(x.memo||'')+'</td>'
+      + '<td style="white-space:nowrap"><button class="btn sm ghost" onclick="editSale(\''+x.id+'\')">수정</button> '
+      + '<button class="btn sm red" onclick="delSale(\''+x.id+'\')">삭제</button></td></tr>'
+    ).join('') || '<tr><td colspan="5" class="sub">이 달 매출 기록이 아직 없어요.</td></tr>';
+  }catch(e){ toast(e.message); }
+}
+function editSale(id){
+  const x = SALES.find(s=>s.id===id); if(!x) return;
+  $('saleDate').value = x.sale_date; $('saleMemo').value = x.memo||'';
+  renderSaleInputs(x.amounts);
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+async function saveSale(){
+  try{
+    const amounts = {};
+    document.querySelectorAll('#saleChannels input[data-ch]').forEach(i => { if(i.value!=='') amounts[i.dataset.ch] = +i.value; });
+    const r = await api('saleSave', TOKEN, { sale_date:$('saleDate').value, amounts, memo:$('saleMemo').value.trim() });
+    toast(fmtDate($('saleDate').value)+' 매출 '+fmtWon(r.total)+' 저장 완료');
+    $('saleMemo').value=''; renderSaleInputs(null);
+    $('saleYm').value = $('saleDate').value.slice(0,7);
+    loadSales();
+  }catch(e){ alert(e.message); }
+}
+async function delSale(id){
+  if(!confirm('이 날짜의 매출 기록을 삭제할까요?')) return;
+  try{ await api('saleDelete', TOKEN, id); loadSales(); }catch(e){ alert(e.message); }
+}
+
+/* ---------- 지출 ---------- */
+async function loadExp(){
+  if(!$('exDate').value) $('exDate').value = localDate();
+  if(!$('expYm').value) $('expYm').value = localYm();
+  if(!$('exCat').options.length) $('exCat').innerHTML = EXP_CATS.map(c=>'<option>'+c+'</option>').join('');
+  try{
+    const r = await api('expMonth', TOKEN, $('expYm').value);
+    EXPS = r.rows;
+    $('expSummary').innerHTML =
+      '<span class="badge b" style="margin:2px">합계 '+fmtWon(r.total)+'</span> '
+      + Object.entries(r.byCat||{}).sort((a,b)=>b[1]-a[1]).map(([k,v]) =>
+        '<span class="badge a" style="margin:2px">'+esc(k)+' '+fmtWon(v)+'</span>').join(' ');
+    $('expBody').innerHTML = EXPS.map(x =>
+      '<tr><td>'+fmtDate(x.exp_date)+'</td><td><span class="badge">'+esc(x.category)+'</span></td>'
+      + '<td>'+esc(x.vendor||'-')+(x.memo?'<div class="sub">'+esc(x.memo)+'</div>':'')+'</td>'
+      + '<td class="name-cell">'+fmtWon(x.amount)+'</td>'
+      + '<td style="white-space:nowrap"><button class="btn sm ghost" onclick="editExp(\''+x.id+'\')">수정</button> '
+      + '<button class="btn sm red" onclick="delExp(\''+x.id+'\')">삭제</button></td></tr>'
+    ).join('') || '<tr><td colspan="5" class="sub">이 달 지출 기록이 아직 없어요.</td></tr>';
+  }catch(e){ toast(e.message); }
+}
+function editExp(id){
+  const x = EXPS.find(e=>e.id===id); if(!x) return;
+  $('exId').value=x.id; $('exDate').value=x.exp_date;
+  if(![...$('exCat').options].some(o=>o.value===x.category)) $('exCat').innerHTML += '<option>'+esc(x.category)+'</option>';
+  $('exCat').value=x.category; $('exVendor').value=x.vendor||''; $('exAmt').value=x.amount;
+  $('exMethod').value=x.method||'카드'; $('exMemo').value=x.memo||'';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function resetExp(){ $('exId').value=''; $('exVendor').value=''; $('exAmt').value=''; $('exMemo').value=''; }
+async function saveExp(){
+  try{
+    await api('expSave', TOKEN, { id:$('exId').value, exp_date:$('exDate').value, category:$('exCat').value,
+      vendor:$('exVendor').value.trim(), amount:+$('exAmt').value||0, method:$('exMethod').value, memo:$('exMemo').value.trim() });
+    resetExp(); toast('지출을 기록했어요');
+    $('expYm').value = $('exDate').value.slice(0,7);
+    loadExp();
+  }catch(e){ alert(e.message); }
+}
+async function delExp(id){
+  if(!confirm('이 지출 기록을 삭제할까요?')) return;
+  try{ await api('expDelete', TOKEN, id); loadExp(); }catch(e){ alert(e.message); }
+}
+
+/* ---------- 월 정산 ---------- */
+async function loadSettle(){
+  if(!$('setYm').value) $('setYm').value = localYm();
+  try{
+    const r = await api('settleMonth', TOKEN, $('setYm').value);
+    $('seSales').textContent = fmtWon(r.sales.total);
+    $('seExp').textContent = fmtWon(r.expenses.total);
+    $('seLabor').textContent = fmtWon(r.labor.total);
+    $('seProfit').textContent = fmtWon(r.profit);
+    $('seProfit').className = 'value ' + (r.profit >= 0 ? 'v-green' : 'v-red');
+    $('seByChannel').innerHTML = Object.entries(r.sales.byChannel||{}).sort((a,b)=>b[1]-a[1]).map(([k,v]) =>
+      '<div class="row"><span>'+esc(k)+'</span><b>'+fmtWon(v)+'</b></div>').join('')
+      || '<div class="sub">매출 기록이 없어요.</div>';
+    $('seByCat').innerHTML = Object.entries(r.expenses.byCat||{}).sort((a,b)=>b[1]-a[1]).map(([k,v]) =>
+      '<div class="row"><span>'+esc(k)+'</span><b>'+fmtWon(v)+'</b></div>').join('')
+      || '<div class="sub">지출 기록이 없어요.</div>';
+    $('seLaborBody').innerHTML = (r.labor.rows||[]).map(x =>
+      '<tr><td class="name-cell">'+esc(x.name)+'</td><td>'+esc(x.position||'-')+'</td>'
+      + '<td>'+(x.pay_type==='monthly'?'월급':'시급')+'</td><td>'+fmtMins(x.mins)+'</td><td>'+fmtWon(x.pay)+'</td></tr>'
+    ).join('') || '<tr><td colspan="5" class="sub">이 달 근무 기록이 없어요.</td></tr>';
+    drawCharts(r);
+  }catch(e){ toast(e.message); }
+}
+function drawCharts(r){
+  if(typeof Chart === 'undefined') return;
+  const ym = $('setYm').value;
+  const days = {};
+  (r.sales.rows||[]).forEach(x => { days[x.sale_date] = x.total; });
+  const labels = Object.keys(days).sort();
+  if(chDaily) chDaily.destroy();
+  chDaily = new Chart($('chDaily'), {
+    type:'bar',
+    data:{ labels: labels.map(d=>+d.slice(8)+'일'),
+      datasets:[{ data: labels.map(d=>days[d]), backgroundColor:'rgba(242,101,34,.25)', borderColor:'#F26522', borderWidth:1.5, borderRadius:4 }] },
+    options:{ maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{ y:{ ticks:{ callback:v=>(v/10000)+'만', font:{size:11} }, grid:{color:'#F1F2F4'} }, x:{ grid:{display:false}, ticks:{font:{size:11}} } } }
+  });
+  const cats = Object.entries(r.expenses.byCat||{}).sort((a,b)=>b[1]-a[1]);
+  if(chCat) chCat.destroy();
+  if(cats.length){
+    chCat = new Chart($('chCat'), {
+      type:'doughnut',
+      data:{ labels:cats.map(c=>c[0]),
+        datasets:[{ data:cats.map(c=>c[1]),
+          backgroundColor:['#F26522','#20242E','#2F9E44','#D6455D','#1971C2','#997A00','#868E96','#E8590C','#845EF7','#0CA678','#CED4DA'] }] },
+      options:{ maintainAspectRatio:false, cutout:'55%', plugins:{legend:{position:'right', labels:{font:{size:11}, boxWidth:12}}} }
+    });
+  }
+}
+
 /* ---------- 설정 ---------- */
 async function loadSetup(){
   try{
     const s = await api('storeGet', TOKEN);
     $('stName').value=s.name||''; $('stAddr').value=s.addr||'';
     $('stCode').value=s.joinCode||''; $('stRadius').value=s.radius;
+    $('stChannels').value = Array.isArray(s.salesChannels) ? s.salesChannels.join(', ') : '';
     $('gpsStatus').innerHTML = s.lat
       ? '<span class="badge g">설정됨</span> 위도 '+s.lat.toFixed(5)+', 경도 '+s.lng.toFixed(5)+', 반경 '+s.radius+'m'
       : '<span class="badge a">미설정</span> 설정 전까지는 위치 확인 없이 출퇴근이 기록돼요.';
@@ -777,8 +1021,11 @@ async function loadSetup(){
 }
 async function saveStore(){
   try{
+    const chans = $('stChannels').value.split(',').map(s=>s.trim()).filter(Boolean);
     await api('storeSave', TOKEN, { name:$('stName').value.trim(), addr:$('stAddr').value.trim(),
-      join_code:$('stCode').value.trim(), radius_m:+$('stRadius').value||150 });
+      join_code:$('stCode').value.trim(), radius_m:+$('stRadius').value||150,
+      sales_channels: chans.length ? chans : undefined });
+    if(chans.length) CHANNELS = chans;
     toast('저장했어요'); ME.storeName=$('stName').value.trim(); $('hdStore').textContent=ME.storeName;
   }catch(e){ alert(e.message); }
 }
