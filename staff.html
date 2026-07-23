@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>우리매장 — 직원</title>
+<style>
+:root{
+  --bg:#f4f5f7; --card:#fff; --line:#e5e7eb; --txt:#111827; --sub:#6b7280;
+  --blue:#2563eb; --blue-d:#1d4ed8; --green:#16a34a; --red:#dc2626; --amber:#d97706;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+body{margin:0; font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:var(--bg); color:var(--txt); font-size:16px}
+.wrap{max-width:520px; margin:0 auto; min-height:100vh; padding-bottom:76px}
+.hidden{display:none!important}
+.card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin:12px}
+h1{font-size:20px; margin:0 0 4px}
+h2{font-size:16px; margin:0 0 10px}
+.sub{color:var(--sub); font-size:13px}
+input,select,textarea{width:100%; padding:12px; border:1px solid var(--line); border-radius:10px; font-size:16px; font-family:inherit; background:#fff}
+textarea{min-height:80px; resize:vertical}
+label{display:block; font-size:13px; color:var(--sub); margin:10px 0 4px}
+.btn{display:block; width:100%; padding:14px; border:0; border-radius:12px; font-size:17px; font-weight:700; cursor:pointer; background:var(--blue); color:#fff}
+.btn:active{background:var(--blue-d)}
+.btn.ghost{background:#fff; color:var(--blue); border:1px solid var(--blue)}
+.btn.small{width:auto; display:inline-block; padding:8px 14px; font-size:14px}
+.topbar{display:flex; justify-content:space-between; align-items:center; padding:14px 16px 0}
+.topbar .name{font-weight:700}
+.nav{position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid var(--line); display:flex; max-width:520px; margin:0 auto}
+.nav button{flex:1; padding:10px 0 12px; border:0; background:none; font-size:12px; color:var(--sub); cursor:pointer}
+.nav button .ico{display:block; font-size:20px; margin-bottom:2px}
+.nav button.on{color:var(--blue); font-weight:700}
+.clockbtn{width:190px; height:190px; border-radius:50%; border:0; margin:18px auto 8px; display:block; font-size:26px; font-weight:800; color:#fff; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,.12)}
+.clockbtn.in{background:var(--blue)} .clockbtn.out{background:var(--green)} .clockbtn:disabled{background:#9ca3af}
+.center{text-align:center}
+.bigtime{font-size:34px; font-weight:800; letter-spacing:1px}
+.row{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.badge{font-size:12px; padding:2px 8px; border-radius:999px; background:#eef2ff; color:var(--blue)}
+.badge.g{background:#ecfdf5; color:var(--green)} .badge.r{background:#fef2f2; color:var(--red)} .badge.a{background:#fffbeb; color:var(--amber)}
+.task{display:flex; gap:10px; align-items:flex-start; padding:12px 0; border-bottom:1px solid var(--line)}
+.task:last-child{border-bottom:0}
+.task input[type=checkbox]{width:22px; height:22px; margin-top:2px; flex:none}
+.task .t{font-weight:700} .task .b{font-size:14px; color:var(--sub); white-space:pre-wrap}
+.task.done .t{text-decoration:line-through; color:var(--sub)}
+.acc{border-bottom:1px solid var(--line)}
+.acc:last-child{border-bottom:0}
+.acc>button{width:100%; text-align:left; background:none; border:0; padding:13px 4px; font-size:15px; font-weight:700; cursor:pointer; display:flex; justify-content:space-between; font-family:inherit; color:var(--txt)}
+.acc .body{padding:0 4px 14px; font-size:15px; color:#374151; white-space:pre-wrap}
+.toast{position:fixed; left:50%; transform:translateX(-50%); bottom:90px; background:#111827; color:#fff; padding:10px 18px; border-radius:999px; font-size:14px; opacity:0; transition:.25s; pointer-events:none; max-width:90%; z-index:99}
+.toast.show{opacity:.95}
+.err{color:var(--red); font-size:14px; margin-top:8px; min-height:18px}
+a.link{color:var(--blue); text-decoration:none; font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 로그인 -->
+  <div id="loginView" class="hidden">
+    <div class="card" style="margin-top:60px">
+      <h1>우리매장</h1>
+      <div class="sub">직원용 — 출퇴근·할일·매뉴얼</div>
+      <label>아이디</label><input id="liUser" autocomplete="username">
+      <label>비밀번호</label><input id="liPw" type="password" autocomplete="current-password">
+      <div class="err" id="liErr"></div>
+      <button class="btn" onclick="doLogin()">로그인</button>
+      <div class="center" style="margin-top:14px"><a class="link" onclick="show('signupView')">처음이에요 — 직원 가입하기</a></div>
+    </div>
+  </div>
+
+  <!-- 가입 -->
+  <div id="signupView" class="hidden">
+    <div class="card" style="margin-top:24px">
+      <h1>직원 가입</h1>
+      <div class="sub">사장님께 받은 가입코드로 가입해요. 입력한 정보는 근로계약서 작성에 사용돼요.</div>
+      <label>가입코드 *</label><input id="suCode" placeholder="예: AB1234">
+      <label>아이디 * (3자 이상)</label><input id="suUser">
+      <label>비밀번호 * (4자 이상)</label><input id="suPw" type="password">
+      <label>이름 *</label><input id="suName">
+      <label>연락처</label><input id="suPhone" placeholder="010-0000-0000">
+      <label>생년월일</label><input id="suBirth" type="date">
+      <label>주소</label><input id="suAddr">
+      <label>급여 받을 은행</label><input id="suBank" placeholder="예: 국민은행">
+      <label>계좌번호</label><input id="suAcct">
+      <div class="err" id="suErr"></div>
+      <button class="btn" onclick="doSignup()">가입 신청</button>
+      <div class="center" style="margin-top:14px"><a class="link" onclick="show('loginView')">← 로그인으로</a></div>
+    </div>
+  </div>
+
+  <!-- 메인 -->
+  <div id="mainView" class="hidden">
+    <div class="topbar">
+      <div><span class="name" id="hdName"></span> <span class="sub" id="hdPos"></span><div class="sub" id="hdStore"></div></div>
+      <a class="link" onclick="doLogout()">로그아웃</a>
+    </div>
+
+    <!-- 홈 -->
+    <div id="tab-home">
+      <div class="card center">
+        <div class="bigtime" id="nowClock">--:--</div>
+        <div class="sub" id="nowDate"></div>
+        <button class="clockbtn in" id="clockBtn" onclick="doClock()">출근</button>
+        <div class="sub" id="clockHint">버튼을 누르면 위치 확인 후 기록돼요</div>
+        <div id="todayLine" style="margin-top:10px"></div>
+      </div>
+      <div class="card">
+        <h2>이번 달 근무 <span class="sub" id="mmYm"></span></h2>
+        <div class="row"><span>근무 시간</span><b id="mmHours">-</b></div>
+        <div class="row"><span>예상 급여 <span class="sub">(참고용)</span></span><b id="mmPay">-</b></div>
+        <div id="mmRows" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <!-- 할일 -->
+    <div id="tab-tasks" class="hidden">
+      <div class="card">
+        <h2>내 할일</h2>
+        <div id="taskList" class="sub">불러오는 중...</div>
+      </div>
+    </div>
+
+    <!-- 매뉴얼 -->
+    <div id="tab-manual" class="hidden">
+      <div class="card">
+        <h2>매뉴얼</h2>
+        <div class="sub" style="margin-bottom:6px">내 역할에 해당하는 업무 안내예요.</div>
+        <div id="manualList" class="sub">불러오는 중...</div>
+      </div>
+    </div>
+
+    <!-- 매장정보 -->
+    <div id="tab-info" class="hidden">
+      <div class="card">
+        <h2>매장 정보</h2>
+        <div class="sub" style="margin-bottom:6px">포스기, 연락처, 와이파이 등 필요한 정보.</div>
+        <div id="infoList" class="sub">불러오는 중...</div>
+      </div>
+    </div>
+
+    <!-- 내정보 -->
+    <div id="tab-me" class="hidden">
+      <div class="card">
+        <h2>내 정보</h2>
+        <div class="sub" style="margin-bottom:6px">근로계약서·급여이체에 쓰이는 정보예요. 정확하게 입력해주세요.</div>
+        <label>연락처</label><input id="mePhone">
+        <label>생년월일</label><input id="meBirth" type="date">
+        <label>주소</label><input id="meAddr">
+        <label>은행</label><input id="meBank">
+        <label>계좌번호</label><input id="meAcct">
+        <label>주민등록번호 <span class="sub">(근로계약서용 · 사장님만 열람)</span></label><input id="meRrn" placeholder="000000-0000000">
+        <button class="btn" style="margin-top:14px" onclick="saveProfile()">저장</button>
+      </div>
+      <div class="card">
+        <h2>비밀번호 변경</h2>
+        <label>현재 비밀번호</label><input id="pwOld" type="password">
+        <label>새 비밀번호</label><input id="pwNew" type="password">
+        <button class="btn ghost" style="margin-top:14px" onclick="changePw()">변경</button>
+      </div>
+    </div>
+
+    <div class="nav">
+      <button id="nav-home" class="on" onclick="tab('home')"><span class="ico">🏠</span>홈</button>
+      <button id="nav-tasks" onclick="tab('tasks')"><span class="ico">✅</span>할일</button>
+      <button id="nav-manual" onclick="tab('manual')"><span class="ico">📖</span>매뉴얼</button>
+      <button id="nav-info" onclick="tab('info')"><span class="ico">ℹ️</span>정보</button>
+      <button id="nav-me" onclick="tab('me')"><span class="ico">👤</span>내정보</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://zcjvriedzememkiltqfa.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjanZyaWVkemVtZW1raWx0cWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMjg2MTIsImV4cCI6MjA5OTYwNDYxMn0.2nZh82xFUNORqcKObAHUnz8K5EjjL-Nym0T4YkDHxMk';
+
+let TOKEN = localStorage.getItem('store_staff_token') || '';
+let ME = null, TODAY = null, CLOCKED_IN = false;
+const TABS = ['home','tasks','manual','info','me'];
+
+async function api(fn, ...args){
+  const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/store_api', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'apikey':SUPABASE_ANON, 'Authorization':'Bearer '+SUPABASE_ANON },
+    body: JSON.stringify({ p_fn: fn, p_args: args })
+  });
+  if(!res.ok) throw new Error('서버 연결에 실패했어요. ('+res.status+')');
+  const data = await res.json();
+  if(!data || data.ok === false){
+    const msg = (data && data.error) || '알 수 없는 오류가 발생했어요.';
+    if(msg.includes('세션이 만료')){ localStorage.removeItem('store_staff_token'); TOKEN=''; show('loginView'); }
+    throw new Error(msg);
+  }
+  return data.result;
+}
+function reportError(where, msg){ try{ api('logError', TOKEN, 'staff:'+where, String(msg).slice(0,900), null).catch(()=>{}); }catch(e){} }
+window.addEventListener('error', e => reportError('window', e.message));
+
+const $ = id => document.getElementById(id);
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2200); }
+function fmtTime(iso){ return iso ? new Date(iso).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '-'; }
+function fmtDate(d){ const x=new Date(d+'T00:00:00'); return (x.getMonth()+1)+'/'+x.getDate()+' ('+['일','월','화','수','목','금','토'][x.getDay()]+')'; }
+function fmtMins(m){ if(m==null) return '-'; const h=Math.floor(m/60), mm=Math.round(m%60); return h+'시간 '+(mm<10?'0':'')+mm+'분'; }
+function fmtWon(n){ return (n==null?'-':Math.round(n).toLocaleString('ko-KR')+'원'); }
+
+function show(view){
+  ['loginView','signupView','mainView'].forEach(v => $(v).classList.toggle('hidden', v!==view));
+}
+function tab(name){
+  TABS.forEach(t => {
+    $('tab-'+t).classList.toggle('hidden', t!==name);
+    $('nav-'+t).classList.toggle('on', t===name);
+  });
+  if(name==='tasks') loadTasks();
+  if(name==='manual') loadManuals();
+  if(name==='info') loadInfos();
+}
+
+/* ---------- 시계 ---------- */
+setInterval(()=>{ const n=new Date();
+  $('nowClock') && ($('nowClock').textContent = n.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+}, 1000);
+
+/* ---------- 인증 ---------- */
+async function doLogin(){
+  $('liErr').textContent='';
+  try{
+    const r = await api('login', $('liUser').value.trim(), $('liPw').value);
+    TOKEN = r.token; localStorage.setItem('store_staff_token', TOKEN);
+    await boot();
+  }catch(e){ $('liErr').textContent = e.message; }
+}
+async function doSignup(){
+  $('suErr').textContent='';
+  try{
+    const r = await api('signup', $('suCode').value.trim(), $('suUser').value.trim(), $('suPw').value, {
+      name: $('suName').value.trim(), phone: $('suPhone').value.trim(),
+      birth: $('suBirth').value, address: $('suAddr').value.trim(),
+      bank_name: $('suBank').value.trim(), bank_acct: $('suAcct').value.trim()
+    });
+    alert(r.msg); show('loginView');
+  }catch(e){ $('suErr').textContent = e.message; }
+}
+async function doLogout(){
+  try{ await api('logout', TOKEN); }catch(e){}
+  localStorage.removeItem('store_staff_token'); TOKEN=''; show('loginView');
+}
+
+/* ---------- 부팅 ---------- */
+async function boot(){
+  const b = await api('boot', TOKEN);
+  ME = b.me;
+  $('hdName').textContent = ME.name;
+  $('hdPos').textContent = ME.position ? '· '+ME.position : '';
+  $('hdStore').textContent = b.store.name;
+  $('mePhone').value = ME.phone||''; $('meBirth').value = ME.birth||'';
+  $('meAddr').value = ME.address||''; $('meBank').value = ME.bankName||'';
+  $('meAcct').value = ME.bankAcct||''; $('meRrn').value = ME.rrn||'';
+  TODAY = b.today;
+  renderClock();
+  $('nowDate').textContent = new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'});
+  show('mainView'); tab('home');
+  loadMonth();
+  if(b.openTasks > 0) toast('할일이 '+b.openTasks+'건 있어요');
+}
+function renderClock(){
+  CLOCKED_IN = !!(TODAY && TODAY.in_at && !TODAY.out_at);
+  const btn = $('clockBtn');
+  btn.textContent = CLOCKED_IN ? '퇴근' : '출근';
+  btn.className = 'clockbtn ' + (CLOCKED_IN ? 'out' : 'in');
+  if(TODAY && TODAY.in_at){
+    $('todayLine').innerHTML = '오늘 출근 <b>'+fmtTime(TODAY.in_at)+'</b>'
+      + (TODAY.out_at ? ' → 퇴근 <b>'+fmtTime(TODAY.out_at)+'</b>' : ' <span class="badge g">근무중</span>');
+  } else $('todayLine').innerHTML = '<span class="sub">오늘 기록 없음</span>';
+}
+
+/* ---------- 출퇴근 ---------- */
+function getGps(){
+  return new Promise(resolve => {
+    if(!navigator.geolocation) return resolve({lat:null, lng:null});
+    navigator.geolocation.getCurrentPosition(
+      p => resolve({lat:p.coords.latitude, lng:p.coords.longitude}),
+      () => resolve({lat:null, lng:null}),
+      {enableHighAccuracy:true, timeout:8000, maximumAge:0}
+    );
+  });
+}
+async function doClock(){
+  const btn = $('clockBtn'); btn.disabled = true;
+  $('clockHint').textContent = '위치 확인 중...';
+  try{
+    const g = await getGps();
+    if(CLOCKED_IN){
+      const r = await api('clockOut', TOKEN, g.lat, g.lng);
+      toast('퇴근 완료! 오늘 '+fmtMins(r.mins)+' 근무');
+    }else{
+      await api('clockIn', TOKEN, g.lat, g.lng);
+      toast('출근 완료! 오늘도 화이팅');
+    }
+    const b = await api('boot', TOKEN); TODAY = b.today; renderClock(); loadMonth();
+  }catch(e){ alert(e.message); }
+  $('clockHint').textContent = '버튼을 누르면 위치 확인 후 기록돼요';
+  btn.disabled = false;
+}
+
+/* ---------- 이번 달 ---------- */
+async function loadMonth(){
+  const ym = new Date().toISOString().slice(0,7);
+  $('mmYm').textContent = ym;
+  try{
+    const r = await api('myMonth', TOKEN, ym);
+    $('mmHours').textContent = fmtMins(r.totalMins);
+    $('mmPay').textContent = r.payType==='monthly' ? fmtWon(r.estPay)+' (월급)' : fmtWon(r.estPay);
+    $('mmRows').innerHTML = (r.rows||[]).slice(0,31).map(x =>
+      '<div class="row"><span>'+fmtDate(x.work_date)+(x.edited?' <span class="badge a">수정됨</span>':'')+'</span>'
+      + '<span>'+fmtTime(x.in_at)+' ~ '+fmtTime(x.out_at)
+      + (x.mins!=null ? ' <b>('+fmtMins(x.mins)+')</b>' : ' <span class="badge r">퇴근누락</span>')+'</span></div>'
+    ).join('') || '<div class="sub">이번 달 기록이 아직 없어요.</div>';
+  }catch(e){ $('mmRows').innerHTML = '<div class="sub">'+esc(e.message)+'</div>'; }
+}
+
+/* ---------- 할일 ---------- */
+async function loadTasks(){
+  try{
+    const list = await api('myTasks', TOKEN);
+    $('taskList').innerHTML = list.length ? list.map(t =>
+      '<div class="task'+(t.status==='done'?' done':'')+'">'
+      + '<input type="checkbox" '+(t.status==='done'?'checked disabled':'')+' onchange="finishTask(\''+t.id+'\', this)">'
+      + '<div><div class="t">'+esc(t.title)+(t.for_all?' <span class="badge">전체</span>':'')
+      + (t.due_date?' <span class="badge a">'+fmtDate(t.due_date)+'까지</span>':'')+'</div>'
+      + (t.body?'<div class="b">'+esc(t.body)+'</div>':'')
+      + (t.status==='done'&&t.done_name?'<div class="b">완료: '+esc(t.done_name)+'</div>':'')
+      + '</div></div>'
+    ).join('') : '지금은 할일이 없어요 👍';
+  }catch(e){ $('taskList').textContent = e.message; }
+}
+async function finishTask(id, cb){
+  cb.disabled = true;
+  try{ await api('taskDone', TOKEN, id); toast('완료 처리했어요'); loadTasks(); }
+  catch(e){ alert(e.message); cb.checked=false; cb.disabled=false; }
+}
+
+/* ---------- 매뉴얼 / 정보 ---------- */
+async function loadManuals(){
+  try{
+    const list = await api('myManuals', TOKEN);
+    $('manualList').innerHTML = list.length ? list.map((m,i) =>
+      '<div class="acc"><button onclick="this.parentNode.querySelector(\'.body\').classList.toggle(\'hidden\')">'
+      + '<span>'+esc(m.title)+(m.position?' <span class="badge">'+esc(m.position)+'</span>':' <span class="badge g">공통</span>')+'</span><span>▾</span></button>'
+      + '<div class="body hidden">'+esc(m.body)+'</div></div>'
+    ).join('') : '등록된 매뉴얼이 아직 없어요.';
+  }catch(e){ $('manualList').textContent = e.message; }
+}
+async function loadInfos(){
+  try{
+    const list = await api('myInfos', TOKEN);
+    let html = '', cat = null;
+    list.forEach(x => {
+      if(x.category !== cat){ cat = x.category; html += '<div style="font-weight:700; margin:12px 0 2px">'+esc(cat)+'</div>'; }
+      html += '<div class="row"><span>'+esc(x.title)+'</span><span style="text-align:right; white-space:pre-wrap">'+esc(x.content)+'</span></div>';
+    });
+    $('infoList').innerHTML = html || '등록된 정보가 아직 없어요.';
+  }catch(e){ $('infoList').textContent = e.message; }
+}
+
+/* ---------- 내 정보 ---------- */
+async function saveProfile(){
+  try{
+    await api('myProfileSave', TOKEN, {
+      phone: $('mePhone').value.trim(), birth: $('meBirth').value,
+      address: $('meAddr').value.trim(), bank_name: $('meBank').value.trim(),
+      bank_acct: $('meAcct').value.trim(), rrn: $('meRrn').value.trim()
+    });
+    toast('저장했어요');
+  }catch(e){ alert(e.message); }
+}
+async function changePw(){
+  try{
+    await api('changeMyPassword', TOKEN, $('pwOld').value, $('pwNew').value);
+    $('pwOld').value=''; $('pwNew').value=''; toast('비밀번호를 바꿨어요');
+  }catch(e){ alert(e.message); }
+}
+
+/* ---------- 시작 ---------- */
+(async function(){
+  if(TOKEN){
+    try{ await boot(); return; }catch(e){}
+  }
+  show('loginView');
+})();
+</script>
+</body>
+</html>

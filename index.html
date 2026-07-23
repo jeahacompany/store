@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>우리매장 — 관리자</title>
+<style>
+:root{
+  --bg:#f4f5f7; --card:#fff; --line:#e5e7eb; --txt:#111827; --sub:#6b7280;
+  --blue:#2563eb; --blue-d:#1d4ed8; --green:#16a34a; --red:#dc2626; --amber:#d97706;
+}
+*{box-sizing:border-box}
+body{margin:0; font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:var(--bg); color:var(--txt); font-size:15px}
+.wrap{max-width:960px; margin:0 auto; padding:0 12px 40px}
+.hidden{display:none!important}
+.card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin:12px 0}
+h1{font-size:20px; margin:0 0 4px}
+h2{font-size:16px; margin:0 0 10px}
+.sub{color:var(--sub); font-size:13px}
+input,select,textarea{padding:9px 10px; border:1px solid var(--line); border-radius:9px; font-size:15px; font-family:inherit; background:#fff}
+textarea{width:100%; min-height:80px; resize:vertical}
+label{display:block; font-size:13px; color:var(--sub); margin:8px 0 3px}
+.btn{padding:10px 16px; border:0; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; background:var(--blue); color:#fff}
+.btn:hover{background:var(--blue-d)}
+.btn.ghost{background:#fff; color:var(--blue); border:1px solid var(--blue)}
+.btn.red{background:#fff; color:var(--red); border:1px solid var(--red)}
+.btn.green{background:var(--green)}
+.btn.sm{padding:6px 10px; font-size:13px; border-radius:8px}
+.topbar{display:flex; justify-content:space-between; align-items:center; padding:14px 2px 6px}
+.tabs{display:flex; gap:6px; flex-wrap:wrap; margin:6px 0}
+.tabs button{padding:9px 14px; border:1px solid var(--line); background:#fff; border-radius:999px; font-size:14px; cursor:pointer; font-family:inherit}
+.tabs button.on{background:var(--blue); border-color:var(--blue); color:#fff; font-weight:700}
+table{width:100%; border-collapse:collapse; font-size:14px}
+th,td{padding:8px 6px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle}
+th{color:var(--sub); font-weight:500; font-size:13px}
+.badge{font-size:12px; padding:2px 8px; border-radius:999px; background:#eef2ff; color:var(--blue); white-space:nowrap}
+.badge.g{background:#ecfdf5; color:var(--green)} .badge.r{background:#fef2f2; color:var(--red)} .badge.a{background:#fffbeb; color:var(--amber)}
+.err{color:var(--red); font-size:14px; margin-top:8px; min-height:18px}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:0 14px}
+@media(max-width:600px){ .grid2{grid-template-columns:1fr} }
+.modal-bg{position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:50; padding:12px}
+.modal{background:#fff; border-radius:14px; padding:18px; width:100%; max-width:560px; max-height:90vh; overflow:auto}
+.toast{position:fixed; left:50%; transform:translateX(-50%); bottom:30px; background:#111827; color:#fff; padding:10px 18px; border-radius:999px; font-size:14px; opacity:0; transition:.25s; pointer-events:none; z-index:99}
+.toast.show{opacity:.95}
+a.link{color:var(--blue); text-decoration:none; font-size:14px; cursor:pointer}
+.stat{display:inline-block; margin-right:18px}
+.stat b{font-size:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 로그인 -->
+  <div id="loginView" class="hidden">
+    <div class="card" style="max-width:420px; margin:70px auto">
+      <h1>우리매장 관리자</h1>
+      <div class="sub">사장님·관리자 전용</div>
+      <label>아이디</label><input id="liUser" style="width:100%">
+      <label>비밀번호</label><input id="liPw" type="password" style="width:100%">
+      <div class="err" id="liErr"></div>
+      <button class="btn" style="width:100%" onclick="doLogin()">로그인</button>
+    </div>
+  </div>
+
+  <!-- 메인 -->
+  <div id="mainView" class="hidden">
+    <div class="topbar">
+      <div><h1 id="hdStore">우리매장</h1><span class="sub" id="hdMe"></span></div>
+      <a class="link" onclick="doLogout()">로그아웃</a>
+    </div>
+    <div class="tabs" id="tabbar">
+      <button data-t="today" class="on" onclick="tab('today')">오늘</button>
+      <button data-t="staff" onclick="tab('staff')">직원</button>
+      <button data-t="att" onclick="tab('att')">근태</button>
+      <button data-t="tasks" onclick="tab('tasks')">오더</button>
+      <button data-t="manual" onclick="tab('manual')">매뉴얼</button>
+      <button data-t="info" onclick="tab('info')">매장정보</button>
+      <button data-t="setup" onclick="tab('setup')">설정</button>
+    </div>
+
+    <!-- 오늘 -->
+    <div id="tab-today">
+      <div class="card" id="pendingCard" style="border-color:var(--amber)">
+        <h2>가입 승인 대기 <span class="badge a" id="pendingCnt">0</span></h2>
+        <div id="pendingList" class="sub">없음</div>
+      </div>
+      <div class="card">
+        <h2>오늘 출근 현황 <span class="sub" id="todayDate"></span></h2>
+        <div style="margin-bottom:8px">
+          <span class="stat"><b id="stIn">0</b> <span class="sub">출근</span></span>
+          <span class="stat"><b id="stWork">0</b> <span class="sub">근무중</span></span>
+          <span class="stat"><b id="stNo">0</b> <span class="sub">미출근</span></span>
+        </div>
+        <table><thead><tr><th>이름</th><th>직책</th><th>출근</th><th>퇴근</th><th>상태</th></tr></thead>
+        <tbody id="todayBody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- 직원 -->
+    <div id="tab-staff" class="hidden">
+      <div class="card">
+        <h2>직원 목록</h2>
+        <div class="sub" style="margin-bottom:8px">이름을 누르면 상세 정보를 보고 수정할 수 있어요. 급여·주민번호는 사장님만 보여요.</div>
+        <table><thead><tr><th>이름</th><th>직책</th><th>역할</th><th>급여</th><th>입사일</th><th>상태</th></tr></thead>
+        <tbody id="staffBody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- 근태 -->
+    <div id="tab-att" class="hidden">
+      <div class="card">
+        <h2>근태 기록</h2>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px">
+          <input type="month" id="attYm" onchange="loadAtt()">
+          <select id="attWho" onchange="renderAtt()"><option value="">전체 직원</option></select>
+          <button class="btn sm ghost" onclick="openAttAdd()">기록 직접 추가</button>
+        </div>
+        <div id="attSummary" style="margin-bottom:10px"></div>
+        <table><thead><tr><th>날짜</th><th>이름</th><th>출근</th><th>퇴근</th><th>시간</th><th></th></tr></thead>
+        <tbody id="attBody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- 오더 -->
+    <div id="tab-tasks" class="hidden">
+      <div class="card">
+        <h2>오더 내리기</h2>
+        <div class="grid2">
+          <div><label>제목 *</label><input id="tkTitle" style="width:100%" placeholder="예: 마감 후 튀김기 청소"></div>
+          <div><label>담당</label><select id="tkWho" style="width:100%"><option value="">전체 직원</option></select></div>
+        </div>
+        <label>내용</label><textarea id="tkBody" placeholder="자세한 방법이나 주의사항"></textarea>
+        <label>기한</label><input type="date" id="tkDue">
+        <div style="margin-top:10px"><button class="btn" onclick="saveTask()">오더 등록</button></div>
+      </div>
+      <div class="card">
+        <h2>오더 현황</h2>
+        <table><thead><tr><th>제목</th><th>담당</th><th>기한</th><th>상태</th><th></th></tr></thead>
+        <tbody id="taskBody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- 매뉴얼 -->
+    <div id="tab-manual" class="hidden">
+      <div class="card">
+        <h2>매뉴얼 작성</h2>
+        <div class="sub" style="margin-bottom:6px">역할을 지정하면 그 역할 직원에게만 보여요. 비우면 전체 공통.</div>
+        <input type="hidden" id="mnId">
+        <div class="grid2">
+          <div><label>제목 *</label><input id="mnTitle" style="width:100%" placeholder="예: 오픈 준비 순서"></div>
+          <div><label>역할 (비우면 공통)</label><input id="mnPos" style="width:100%" placeholder="예: 홀, 주방"></div>
+        </div>
+        <label>내용</label><textarea id="mnBody" style="min-height:120px"></textarea>
+        <div style="margin-top:10px">
+          <button class="btn" onclick="saveManual()">저장</button>
+          <button class="btn ghost" onclick="resetManual()">새로 쓰기</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>매뉴얼 목록</h2>
+        <table><thead><tr><th>제목</th><th>역할</th><th></th></tr></thead><tbody id="manualBody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- 매장정보 -->
+    <div id="tab-info" class="hidden">
+      <div class="card">
+        <h2>매장 정보 등록</h2>
+        <div class="sub" style="margin-bottom:6px">포스기 번호, AS 연락처, 와이파이 비번 등. "직원 공개"를 끄면 관리자만 봐요.</div>
+        <input type="hidden" id="ifId">
+        <div class="grid2">
+          <div><label>분류</label><input id="ifCat" style="width:100%" placeholder="예: 장비, 연락처, 와이파이"></div>
+          <div><label>제목 *</label><input id="ifTitle" style="width:100%" placeholder="예: 포스기 AS"></div>
+        </div>
+        <label>내용</label><textarea id="ifBody" placeholder="예: 1588-0000 (OO포스, 담당 김기사)"></textarea>
+        <label style="display:flex; align-items:center; gap:6px; margin-top:8px"><input type="checkbox" id="ifVis" checked style="width:18px;height:18px"> 직원에게 공개</label>
+        <div style="margin-top:10px">
+          <button class="btn" onclick="saveInfo()">저장</button>
+          <button class="btn ghost" onclick="resetInfo()">새로 쓰기</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>매장 정보 목록</h2>
+        <table><thead><tr><th>분류</th><th>제목</th><th>내용</th><th>공개</th><th></th></tr></thead><tbody id="infoBody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- 설정 -->
+    <div id="tab-setup" class="hidden">
+      <div class="card">
+        <h2>매장 설정 <span class="sub">(사장님 전용)</span></h2>
+        <div class="grid2">
+          <div><label>매장 이름</label><input id="stName" style="width:100%"></div>
+          <div><label>주소</label><input id="stAddr" style="width:100%"></div>
+          <div><label>직원 가입코드</label><input id="stCode" style="width:100%"></div>
+          <div><label>출퇴근 허용 반경 (미터)</label><input id="stRadius" type="number" style="width:100%"></div>
+        </div>
+        <div style="margin-top:10px"><button class="btn" onclick="saveStore()">저장</button></div>
+      </div>
+      <div class="card">
+        <h2>출퇴근 GPS 기준점</h2>
+        <div class="sub" id="gpsStatus" style="margin-bottom:8px">확인 중...</div>
+        <div class="sub" style="margin-bottom:8px">매장에서 아래 버튼을 누르면 그 자리가 출퇴근 기준점이 돼요. (오픈 전 매장 가서 한 번만 누르면 끝)</div>
+        <button class="btn green" onclick="setGps()">지금 내 위치를 매장 위치로 설정</button>
+      </div>
+      <div class="card">
+        <h2>내 비밀번호 변경</h2>
+        <div class="grid2">
+          <div><label>현재 비밀번호</label><input id="pwOld" type="password" style="width:100%"></div>
+          <div><label>새 비밀번호</label><input id="pwNew" type="password" style="width:100%"></div>
+        </div>
+        <div style="margin-top:10px"><button class="btn ghost" onclick="changePw()">변경</button></div>
+      </div>
+      <div class="card">
+        <h2>변경 이력</h2>
+        <div id="auditList" class="sub">로그를 보려면 <a class="link" onclick="loadAudit()">여기</a>를 누르세요.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 직원 상세 모달 -->
+  <div class="modal-bg hidden" id="staffModal">
+    <div class="modal">
+      <h2 id="smTitle">직원 정보</h2>
+      <input type="hidden" id="smId">
+      <div class="grid2">
+        <div><label>이름</label><input id="smName" style="width:100%"></div>
+        <div><label>연락처</label><input id="smPhone" style="width:100%"></div>
+        <div><label>직책 (홀/주방 등)</label><input id="smPos" style="width:100%"></div>
+        <div><label>역할</label><select id="smRole" style="width:100%">
+          <option value="staff">직원</option><option value="manager">매장 관리자</option><option value="owner">사장</option></select></div>
+        <div><label>급여 방식</label><select id="smPayType" style="width:100%">
+          <option value="hourly">시급</option><option value="monthly">월급</option></select></div>
+        <div><label>시급 (원)</label><input id="smHourly" type="number" style="width:100%"></div>
+        <div><label>월급 (원)</label><input id="smMonthly" type="number" style="width:100%"></div>
+        <div><label>입사일</label><input id="smHired" type="date" style="width:100%"></div>
+        <div><label>생년월일</label><input id="smBirth" type="date" style="width:100%"></div>
+        <div><label>주민등록번호</label><input id="smRrn" style="width:100%"></div>
+        <div><label>은행</label><input id="smBank" style="width:100%"></div>
+        <div><label>계좌번호</label><input id="smAcct" style="width:100%"></div>
+      </div>
+      <label>주소</label><input id="smAddr" style="width:100%">
+      <label>메모</label><textarea id="smMemo"></textarea>
+      <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
+        <button class="btn" onclick="saveStaff()">저장</button>
+        <button class="btn green hidden" id="smApprove" onclick="approveStaff()">승인 (입사 처리)</button>
+        <button class="btn red" id="smQuit" onclick="quitStaff()">퇴사 처리</button>
+        <button class="btn ghost" onclick="closeModal('staffModal')">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 근태 수정 모달 -->
+  <div class="modal-bg hidden" id="attModal">
+    <div class="modal">
+      <h2>근태 기록 수정</h2>
+      <input type="hidden" id="amId">
+      <div class="sub" id="amWho" style="margin-bottom:6px"></div>
+      <div class="grid2">
+        <div><label>출근 시각</label><input id="amIn" type="datetime-local" style="width:100%"></div>
+        <div><label>퇴근 시각</label><input id="amOut" type="datetime-local" style="width:100%"></div>
+      </div>
+      <label>수정 사유</label><input id="amNote" style="width:100%" placeholder="예: 퇴근 버튼 누락">
+      <div style="margin-top:12px; display:flex; gap:8px">
+        <button class="btn" onclick="saveAtt()">저장</button>
+        <button class="btn red" onclick="delAtt()">기록 삭제</button>
+        <button class="btn ghost" onclick="closeModal('attModal')">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 근태 직접 추가 모달 -->
+  <div class="modal-bg hidden" id="attAddModal">
+    <div class="modal">
+      <h2>근태 기록 직접 추가</h2>
+      <label>직원</label><select id="aaWho" style="width:100%"></select>
+      <div class="grid2">
+        <div><label>날짜</label><input id="aaDate" type="date" style="width:100%"></div>
+        <div></div>
+        <div><label>출근 시각</label><input id="aaIn" type="time" style="width:100%"></div>
+        <div><label>퇴근 시각</label><input id="aaOut" type="time" style="width:100%"></div>
+      </div>
+      <label>사유</label><input id="aaNote" style="width:100%" placeholder="예: 폰 미지참">
+      <div style="margin-top:12px; display:flex; gap:8px">
+        <button class="btn" onclick="saveAttAdd()">추가</button>
+        <button class="btn ghost" onclick="closeModal('attAddModal')">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://zcjvriedzememkiltqfa.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjanZyaWVkemVtZW1raWx0cWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMjg2MTIsImV4cCI6MjA5OTYwNDYxMn0.2nZh82xFUNORqcKObAHUnz8K5EjjL-Nym0T4YkDHxMk';
+
+let TOKEN = localStorage.getItem('store_admin_token') || '';
+let ME = null, STAFF = [], ATT = [], WAGES = null, TASKS = [];
+const TABS = ['today','staff','att','tasks','manual','info','setup'];
+
+async function api(fn, ...args){
+  const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/store_api', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'apikey':SUPABASE_ANON, 'Authorization':'Bearer '+SUPABASE_ANON },
+    body: JSON.stringify({ p_fn: fn, p_args: args })
+  });
+  if(!res.ok) throw new Error('서버 연결에 실패했어요. ('+res.status+')');
+  const data = await res.json();
+  if(!data || data.ok === false){
+    const msg = (data && data.error) || '알 수 없는 오류가 발생했어요.';
+    if(msg.includes('세션이 만료')){ localStorage.removeItem('store_admin_token'); TOKEN=''; show('loginView'); }
+    throw new Error(msg);
+  }
+  return data.result;
+}
+function reportError(where, msg){ try{ api('logError', TOKEN, 'admin:'+where, String(msg).slice(0,900), null).catch(()=>{}); }catch(e){} }
+window.addEventListener('error', e => reportError('window', e.message));
+
+const $ = id => document.getElementById(id);
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2200); }
+function fmtTime(iso){ return iso ? new Date(iso).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '-'; }
+function fmtDate(d){ if(!d) return '-'; const x=new Date(d+'T00:00:00'); return (x.getMonth()+1)+'/'+x.getDate()+'('+['일','월','화','수','목','금','토'][x.getDay()]+')'; }
+function fmtMins(m){ if(m==null) return '-'; const h=Math.floor(m/60), mm=Math.round(m%60); return h+'시간 '+(mm<10?'0':'')+mm+'분'; }
+function fmtWon(n){ return n==null ? '-' : Math.round(n).toLocaleString('ko-KR')+'원'; }
+function show(view){ ['loginView','mainView'].forEach(v => $(v).classList.toggle('hidden', v!==view)); }
+function closeModal(id){ $(id).classList.add('hidden'); }
+function tab(name){
+  TABS.forEach(t => {
+    $('tab-'+t).classList.toggle('hidden', t!==name);
+  });
+  document.querySelectorAll('#tabbar button').forEach(b => b.classList.toggle('on', b.dataset.t===name));
+  if(name==='today') loadDash();
+  if(name==='staff') loadStaff();
+  if(name==='att') loadAtt();
+  if(name==='tasks') loadTasks();
+  if(name==='manual') loadManuals();
+  if(name==='info') loadInfos();
+  if(name==='setup') loadSetup();
+}
+
+/* ---------- 인증 ---------- */
+async function doLogin(){
+  $('liErr').textContent='';
+  try{
+    const r = await api('login', $('liUser').value.trim(), $('liPw').value);
+    if(r.role === 'staff'){ $('liErr').textContent = '관리자 계정이 아니에요. 직원용 앱(staff.html)을 이용해주세요.'; return; }
+    TOKEN = r.token; localStorage.setItem('store_admin_token', TOKEN);
+    ME = r; boot();
+  }catch(e){ $('liErr').textContent = e.message; }
+}
+async function doLogout(){
+  try{ await api('logout', TOKEN); }catch(e){}
+  localStorage.removeItem('store_admin_token'); TOKEN=''; show('loginView');
+}
+function boot(){
+  $('hdStore').textContent = ME ? ME.storeName : '우리매장';
+  $('hdMe').textContent = ME ? (ME.name + (ME.role==='owner'?' (사장)':' (관리자)')) : '';
+  show('mainView'); tab('today');
+}
+
+/* ---------- 오늘 ---------- */
+async function loadDash(){
+  try{
+    const d = await api('dash', TOKEN);
+    $('todayDate').textContent = new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'});
+    $('pendingCnt').textContent = d.pending.length;
+    $('pendingCard').style.display = d.pending.length ? '' : 'none';
+    $('pendingList').innerHTML = d.pending.length ? d.pending.map(p =>
+      '<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--line)">'
+      + '<span><b>'+esc(p.name)+'</b> <span class="sub">'+esc(p.phone||'')+'</span></span>'
+      + '<button class="btn sm green" onclick="openApprove(\''+p.id+'\')">확인·승인</button></div>'
+    ).join('') : '없음';
+    let cin=0, cwork=0, cno=0;
+    $('todayBody').innerHTML = d.today.map(r => {
+      let st;
+      if(r.in_at && !r.out_at){ st='<span class="badge g">근무중</span>'; cin++; cwork++; }
+      else if(r.in_at && r.out_at){ st='<span class="badge">퇴근</span>'; cin++; }
+      else { st='<span class="badge r">미출근</span>'; cno++; }
+      return '<tr><td><b>'+esc(r.name)+'</b></td><td>'+esc(r.position||'-')+'</td>'
+        + '<td>'+fmtTime(r.in_at)+(r.edited?' <span class="badge a">수정</span>':'')+'</td>'
+        + '<td>'+fmtTime(r.out_at)+'</td><td>'+st+'</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="sub">활동중인 직원이 없어요. 직원이 가입하면 여기 떠요.</td></tr>';
+    $('stIn').textContent=cin; $('stWork').textContent=cwork; $('stNo').textContent=cno;
+  }catch(e){ toast(e.message); }
+}
+
+/* ---------- 직원 ---------- */
+async function loadStaff(){
+  try{
+    STAFF = await api('staffList', TOKEN);
+    fillWhoSelects();
+    const order = {pending:0, active:1, quit:2};
+    const rows = [...STAFF].sort((a,b)=>(order[a.status]-order[b.status])||a.name.localeCompare(b.name));
+    $('staffBody').innerHTML = rows.map(s => {
+      const st = s.status==='pending' ? '<span class="badge a">승인대기</span>'
+               : s.status==='active' ? '<span class="badge g">재직</span>' : '<span class="badge r">퇴사</span>';
+      const pay = s.hourly_wage==null ? '<span class="sub">비공개</span>'
+                : s.pay_type==='monthly' ? fmtWon(s.monthly_wage)+'/월' : fmtWon(s.hourly_wage)+'/시';
+      const role = s.role==='owner'?'사장':s.role==='manager'?'관리자':'직원';
+      return '<tr><td><a class="link" onclick="openStaff(\''+s.id+'\')"><b>'+esc(s.name)+'</b></a></td>'
+        + '<td>'+esc(s.position||'-')+'</td><td>'+role+'</td><td>'+pay+'</td>'
+        + '<td>'+(s.hired_at||'-')+'</td><td>'+st+'</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="sub">아직 직원이 없어요.</td></tr>';
+  }catch(e){ toast(e.message); }
+}
+function fillWhoSelects(){
+  const act = STAFF.filter(s=>s.status==='active');
+  const opts = act.map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');
+  $('attWho').innerHTML = '<option value="">전체 직원</option>'+opts;
+  $('tkWho').innerHTML = '<option value="">전체 직원</option>'+opts;
+  $('aaWho').innerHTML = opts;
+}
+function openApprove(id){ tab('staff'); setTimeout(()=>openStaff(id), 300); }
+async function openStaff(id){
+  if(!STAFF.length) STAFF = await api('staffList', TOKEN);
+  const s = STAFF.find(x=>x.id===id); if(!s) return;
+  $('smId').value = s.id;
+  $('smTitle').textContent = s.name + (s.status==='pending' ? ' — 승인 대기중' : '');
+  $('smName').value=s.name||''; $('smPhone').value=s.phone||''; $('smPos').value=s.position||'';
+  $('smRole').value=s.role; $('smPayType').value=s.pay_type;
+  $('smHourly').value=s.hourly_wage==null?'':s.hourly_wage; $('smMonthly').value=s.monthly_wage==null?'':s.monthly_wage;
+  $('smHired').value=s.hired_at||''; $('smBirth').value=s.birth||'';
+  $('smRrn').value=s.rrn==null?'':s.rrn; $('smBank').value=s.bank_name==null?'':s.bank_name;
+  $('smAcct').value=s.bank_acct==null?'':s.bank_acct; $('smAddr').value=s.address||''; $('smMemo').value=s.memo||'';
+  $('smApprove').classList.toggle('hidden', s.status!=='pending');
+  $('smQuit').classList.toggle('hidden', s.status!=='active' || s.role==='owner');
+  $('staffModal').classList.remove('hidden');
+}
+function staffPatch(){
+  return {
+    name:$('smName').value.trim(), phone:$('smPhone').value.trim(), position:$('smPos').value.trim(),
+    role:$('smRole').value, pay_type:$('smPayType').value,
+    hourly_wage:$('smHourly').value===''?null:+$('smHourly').value,
+    monthly_wage:$('smMonthly').value===''?null:+$('smMonthly').value,
+    hired_at:$('smHired').value, birth:$('smBirth').value,
+    rrn:$('smRrn').value.trim(), bank_name:$('smBank').value.trim(), bank_acct:$('smAcct').value.trim(),
+    address:$('smAddr').value.trim(), memo:$('smMemo').value
+  };
+}
+async function saveStaff(){
+  try{ await api('staffSave', TOKEN, $('smId').value, staffPatch()); toast('저장했어요'); closeModal('staffModal'); loadStaff(); }
+  catch(e){ alert(e.message); }
+}
+async function approveStaff(){
+  const p = staffPatch();
+  if(p.pay_type==='hourly' && !p.hourly_wage){ alert('시급을 먼저 입력해주세요. (2026년 최저시급 참고해서 정하세요)'); return; }
+  p.status = 'active';
+  try{ await api('staffSave', TOKEN, $('smId').value, p); toast('승인 완료! 이제 이 직원이 로그인할 수 있어요'); closeModal('staffModal'); loadStaff(); loadDash(); }
+  catch(e){ alert(e.message); }
+}
+async function quitStaff(){
+  if(!confirm('이 직원을 퇴사 처리할까요? 로그인이 차단되고 기록은 보존돼요.')) return;
+  try{ await api('staffSave', TOKEN, $('smId').value, { status:'quit', quit_at:new Date().toISOString().slice(0,10) }); toast('퇴사 처리했어요'); closeModal('staffModal'); loadStaff(); }
+  catch(e){ alert(e.message); }
+}
+
+/* ---------- 근태 ---------- */
+async function loadAtt(){
+  if(!$('attYm').value) $('attYm').value = new Date().toISOString().slice(0,7);
+  if(!STAFF.length){ try{ STAFF = await api('staffList', TOKEN); fillWhoSelects(); }catch(e){} }
+  try{
+    const r = await api('attMonth', TOKEN, $('attYm').value);
+    ATT = r.rows; WAGES = r.wages;
+    renderAtt();
+  }catch(e){ toast(e.message); }
+}
+function renderAtt(){
+  const who = $('attWho').value;
+  const rows = who ? ATT.filter(a=>a.staff_id===who) : ATT;
+  $('attBody').innerHTML = rows.map(a =>
+    '<tr><td>'+fmtDate(a.work_date)+'</td><td>'+esc(a.name)+'</td>'
+    + '<td>'+fmtTime(a.in_at)+(a.in_dist!=null?' <span class="sub">'+a.in_dist+'m</span>':'')+'</td>'
+    + '<td>'+(a.out_at?fmtTime(a.out_at):'<span class="badge r">누락</span>')+'</td>'
+    + '<td>'+fmtMins(a.mins)+(a.edited?' <span class="badge a">수정됨</span>':'')+'</td>'
+    + '<td><button class="btn sm ghost" onclick="openAtt(\''+a.id+'\')">수정</button></td></tr>'
+  ).join('') || '<tr><td colspan="6" class="sub">기록이 없어요.</td></tr>';
+
+  const per = {};
+  rows.forEach(a => { if(a.mins!=null){ per[a.staff_id] = per[a.staff_id] || {name:a.name, mins:0}; per[a.staff_id].mins += a.mins; } });
+  $('attSummary').innerHTML = Object.entries(per).map(([id, p]) => {
+    let pay = '';
+    if(WAGES && WAGES[id]){
+      const w = WAGES[id];
+      pay = ' · 예상 ' + (w.payType==='monthly' ? fmtWon(w.monthlyWage)+'(월급)' : fmtWon(p.mins/60*w.hourlyWage));
+    }
+    return '<span class="badge" style="margin:2px">'+esc(p.name)+' '+fmtMins(p.mins)+pay+'</span>';
+  }).join(' ') || '';
+}
+function toLocalInput(iso){ if(!iso) return ''; const d=new Date(iso); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,16); }
+function openAtt(id){
+  const a = ATT.find(x=>x.id===id); if(!a) return;
+  $('amId').value = a.id;
+  $('amWho').textContent = a.name+' · '+fmtDate(a.work_date);
+  $('amIn').value = toLocalInput(a.in_at); $('amOut').value = toLocalInput(a.out_at);
+  $('amNote').value = a.edit_note||'';
+  $('attModal').classList.remove('hidden');
+}
+async function saveAtt(){
+  try{
+    const inV = $('amIn').value ? new Date($('amIn').value).toISOString() : '';
+    const outV = $('amOut').value ? new Date($('amOut').value).toISOString() : '';
+    await api('attFix', TOKEN, $('amId').value, inV, outV, $('amNote').value.trim());
+    toast('수정했어요'); closeModal('attModal'); loadAtt();
+  }catch(e){ alert(e.message); }
+}
+async function delAtt(){
+  if(!confirm('이 출퇴근 기록을 삭제할까요?')) return;
+  try{ await api('attDelete', TOKEN, $('amId').value); toast('삭제했어요'); closeModal('attModal'); loadAtt(); }
+  catch(e){ alert(e.message); }
+}
+function openAttAdd(){
+  if(!$('aaWho').options.length){ alert('재직중인 직원이 없어요.'); return; }
+  $('aaDate').value = new Date().toISOString().slice(0,10);
+  $('attAddModal').classList.remove('hidden');
+}
+async function saveAttAdd(){
+  try{
+    const d = $('aaDate').value;
+    if(!d || !$('aaIn').value){ alert('날짜와 출근 시각을 입력해주세요.'); return; }
+    const inV = new Date(d+'T'+$('aaIn').value).toISOString();
+    const outV = $('aaOut').value ? new Date(d+'T'+$('aaOut').value).toISOString() : '';
+    await api('attAdd', TOKEN, $('aaWho').value, d, inV, outV, $('aaNote').value.trim());
+    toast('추가했어요'); closeModal('attAddModal'); loadAtt();
+  }catch(e){ alert(e.message); }
+}
+
+/* ---------- 오더 ---------- */
+async function loadTasks(){
+  if(!STAFF.length){ try{ STAFF = await api('staffList', TOKEN); fillWhoSelects(); }catch(e){} }
+  try{
+    TASKS = await api('taskList', TOKEN);
+    $('taskBody').innerHTML = TASKS.map(t => {
+      const st = t.status==='open' ? '<span class="badge a">진행중</span>'
+        : '<span class="badge g">완료'+(t.done_name?' · '+esc(t.done_name):'')+'</span>';
+      return '<tr><td><b>'+esc(t.title)+'</b>'+(t.body?'<div class="sub">'+esc(t.body)+'</div>':'')+'</td>'
+        + '<td>'+(t.assignee_name?esc(t.assignee_name):'전체')+'</td><td>'+(t.due_date?fmtDate(t.due_date):'-')+'</td>'
+        + '<td>'+st+'</td>'
+        + '<td><button class="btn sm red" onclick="delTask(\''+t.id+'\')">삭제</button></td></tr>';
+    }).join('') || '<tr><td colspan="5" class="sub">아직 오더가 없어요.</td></tr>';
+  }catch(e){ toast(e.message); }
+}
+async function saveTask(){
+  try{
+    if(!$('tkTitle').value.trim()){ alert('제목을 입력해주세요.'); return; }
+    await api('taskSave', TOKEN, { title:$('tkTitle').value.trim(), body:$('tkBody').value.trim(),
+      assignee:$('tkWho').value, due_date:$('tkDue').value });
+    $('tkTitle').value=''; $('tkBody').value=''; $('tkDue').value=''; $('tkWho').value='';
+    toast('오더를 등록했어요'); loadTasks();
+  }catch(e){ alert(e.message); }
+}
+async function delTask(id){
+  if(!confirm('이 오더를 삭제할까요?')) return;
+  try{ await api('taskDelete', TOKEN, id); loadTasks(); }catch(e){ alert(e.message); }
+}
+
+/* ---------- 매뉴얼 ---------- */
+let MANUALS = [];
+async function loadManuals(){
+  try{
+    MANUALS = await api('myManuals', TOKEN);
+    $('manualBody').innerHTML = MANUALS.map(m =>
+      '<tr><td><a class="link" onclick="editManual(\''+m.id+'\')"><b>'+esc(m.title)+'</b></a></td>'
+      + '<td>'+(m.position?esc(m.position):'<span class="badge g">공통</span>')+'</td>'
+      + '<td><button class="btn sm red" onclick="delManual(\''+m.id+'\')">삭제</button></td></tr>'
+    ).join('') || '<tr><td colspan="3" class="sub">아직 매뉴얼이 없어요.</td></tr>';
+  }catch(e){ toast(e.message); }
+}
+function editManual(id){
+  const m = MANUALS.find(x=>x.id===id); if(!m) return;
+  $('mnId').value=m.id; $('mnTitle').value=m.title; $('mnPos').value=m.position||''; $('mnBody').value=m.body||'';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function resetManual(){ $('mnId').value=''; $('mnTitle').value=''; $('mnPos').value=''; $('mnBody').value=''; }
+async function saveManual(){
+  try{
+    await api('manualSave', TOKEN, { id:$('mnId').value, title:$('mnTitle').value.trim(),
+      position:$('mnPos').value.trim(), body:$('mnBody').value });
+    resetManual(); toast('저장했어요'); loadManuals();
+  }catch(e){ alert(e.message); }
+}
+async function delManual(id){
+  if(!confirm('이 매뉴얼을 삭제할까요?')) return;
+  try{ await api('manualDelete', TOKEN, id); loadManuals(); }catch(e){ alert(e.message); }
+}
+
+/* ---------- 매장정보 ---------- */
+let INFOS = [];
+async function loadInfos(){
+  try{
+    INFOS = await api('infoList', TOKEN);
+    $('infoBody').innerHTML = INFOS.map(x =>
+      '<tr><td>'+esc(x.category)+'</td><td><a class="link" onclick="editInfo(\''+x.id+'\')"><b>'+esc(x.title)+'</b></a></td>'
+      + '<td style="white-space:pre-wrap">'+esc(x.content)+'</td>'
+      + '<td>'+(x.staff_visible?'<span class="badge g">공개</span>':'<span class="badge r">관리자만</span>')+'</td>'
+      + '<td><button class="btn sm red" onclick="delInfo(\''+x.id+'\')">삭제</button></td></tr>'
+    ).join('') || '<tr><td colspan="5" class="sub">아직 등록된 정보가 없어요.</td></tr>';
+  }catch(e){ toast(e.message); }
+}
+function editInfo(id){
+  const x = INFOS.find(i=>i.id===id); if(!x) return;
+  $('ifId').value=x.id; $('ifCat').value=x.category; $('ifTitle').value=x.title;
+  $('ifBody').value=x.content||''; $('ifVis').checked=!!x.staff_visible;
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function resetInfo(){ $('ifId').value=''; $('ifCat').value=''; $('ifTitle').value=''; $('ifBody').value=''; $('ifVis').checked=true; }
+async function saveInfo(){
+  try{
+    await api('infoSave', TOKEN, { id:$('ifId').value, category:$('ifCat').value.trim(),
+      title:$('ifTitle').value.trim(), content:$('ifBody').value, staff_visible:$('ifVis').checked });
+    resetInfo(); toast('저장했어요'); loadInfos();
+  }catch(e){ alert(e.message); }
+}
+async function delInfo(id){
+  if(!confirm('이 정보를 삭제할까요?')) return;
+  try{ await api('infoDelete', TOKEN, id); loadInfos(); }catch(e){ alert(e.message); }
+}
+
+/* ---------- 설정 ---------- */
+async function loadSetup(){
+  try{
+    const s = await api('storeGet', TOKEN);
+    $('stName').value=s.name||''; $('stAddr').value=s.addr||'';
+    $('stCode').value=s.joinCode||''; $('stRadius').value=s.radius;
+    $('gpsStatus').innerHTML = s.lat
+      ? '✅ 기준점 설정됨 (위도 '+s.lat.toFixed(5)+', 경도 '+s.lng.toFixed(5)+', 반경 '+s.radius+'m)'
+      : '⚠️ 아직 기준점이 없어요 — 설정 전까지는 위치 확인 없이 출퇴근이 기록돼요.';
+  }catch(e){ toast(e.message); }
+}
+async function saveStore(){
+  try{
+    await api('storeSave', TOKEN, { name:$('stName').value.trim(), addr:$('stAddr').value.trim(),
+      join_code:$('stCode').value.trim(), radius_m:+$('stRadius').value||150 });
+    toast('저장했어요'); ME.storeName=$('stName').value.trim(); $('hdStore').textContent=ME.storeName;
+  }catch(e){ alert(e.message); }
+}
+function setGps(){
+  if(!navigator.geolocation){ alert('이 브라우저는 위치를 지원하지 않아요.'); return; }
+  navigator.geolocation.getCurrentPosition(async p => {
+    try{
+      await api('storeSetGps', TOKEN, p.coords.latitude, p.coords.longitude);
+      toast('매장 위치를 설정했어요'); loadSetup();
+    }catch(e){ alert(e.message); }
+  }, () => alert('위치를 가져오지 못했어요. 위치 권한을 허용해주세요.'), {enableHighAccuracy:true, timeout:10000});
+}
+async function changePw(){
+  try{
+    await api('changeMyPassword', TOKEN, $('pwOld').value, $('pwNew').value);
+    $('pwOld').value=''; $('pwNew').value=''; toast('비밀번호를 바꿨어요');
+  }catch(e){ alert(e.message); }
+}
+async function loadAudit(){
+  try{
+    const list = await api('listAudit', TOKEN);
+    $('auditList').innerHTML = list.slice(0,100).map(a =>
+      '<div class="row"><span>'+esc(a.actor)+' · '+esc(a.action)+'</span><span class="sub">'+new Date(a.at).toLocaleString('ko-KR')+'</span></div>'
+    ).join('') || '기록 없음';
+  }catch(e){ $('auditList').textContent = e.message; }
+}
+
+/* ---------- 시작 ---------- */
+(async function(){
+  if(TOKEN){
+    try{
+      const b = await api('boot', TOKEN);
+      if(b.me.role === 'staff'){ show('loginView'); return; }
+      ME = { name:b.me.name, role:b.me.role, storeName:b.store.name };
+      boot(); return;
+    }catch(e){}
+  }
+  show('loginView');
+})();
+</script>
+</body>
+</html>
