@@ -98,6 +98,11 @@ a.link{color:var(--blue); text-decoration:none; font-size:14px}
 
     <!-- 홈 -->
     <div id="tab-home">
+      <div class="card" id="docsBanner" style="border-color:var(--amber); display:none">
+        <h2>📋 제출할 서류가 있어요</h2>
+        <div id="docsBannerList" style="margin:6px 0 10px"></div>
+        <button class="btn" style="background:var(--amber)" onclick="tab('me'); setTimeout(()=>document.getElementById('docsCard').scrollIntoView({behavior:'smooth'}),100)">지금 제출하러 가기</button>
+      </div>
       <div class="card center">
         <div class="bigtime" id="nowClock">--:--</div>
         <div class="sub" id="nowDate"></div>
@@ -110,6 +115,13 @@ a.link{color:var(--blue); text-decoration:none; font-size:14px}
         <div class="row"><span>근무 시간</span><b id="mmHours">-</b></div>
         <div class="row"><span>예상 급여 <span class="sub">(참고용)</span></span><b id="mmPay">-</b></div>
         <div id="mmRows" style="margin-top:6px"></div>
+      </div>
+      <div class="card">
+        <h2>사장님께 요청하기</h2>
+        <div class="sub" style="margin-bottom:6px">필요한 물건, 고장난 것, 건의사항 — 뭐든 남기면 사장님 화면에 바로 떠요.</div>
+        <textarea id="reqBody" placeholder="예: 홀 휴지 다 떨어졌어요 / 튀김기 온도조절 이상해요"></textarea>
+        <button class="btn" style="margin-top:8px" onclick="sendReq()">보내기</button>
+        <div id="myReqs" style="margin-top:10px"></div>
       </div>
     </div>
 
@@ -152,6 +164,12 @@ a.link{color:var(--blue); text-decoration:none; font-size:14px}
         <label>주민등록번호 <span class="sub">(근로계약서용 · 사장님만 열람)</span></label><input id="meRrn" placeholder="000000-0000000">
         <button class="btn" style="margin-top:14px" onclick="saveProfile()">저장</button>
       </div>
+      <div class="card" id="docsCard">
+        <h2>제출 서류</h2>
+        <div class="sub" style="margin-bottom:6px">폰 카메라로 찍어서 올리면 돼요. 사장님만 볼 수 있어요.</div>
+        <div id="docRows"></div>
+        <input type="file" id="docFile" accept="image/*" class="hidden">
+      </div>
       <div class="card">
         <h2>비밀번호 변경</h2>
         <label>현재 비밀번호</label><input id="pwOld" type="password">
@@ -169,6 +187,11 @@ a.link{color:var(--blue); text-decoration:none; font-size:14px}
     </div>
   </div>
 
+  <div id="imgOverlay" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:60; display:flex; align-items:center; justify-content:center; flex-direction:column; padding:16px" onclick="this.classList.add('hidden')">
+    <img id="imgView" style="max-width:100%; max-height:80vh; border-radius:10px">
+    <div style="color:#fff; margin-top:10px; font-size:14px">화면을 누르면 닫혀요</div>
+  </div>
+
   <div class="toast" id="toast"></div>
 </div>
 
@@ -177,8 +200,13 @@ const SUPABASE_URL = 'https://zcjvriedzememkiltqfa.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjanZyaWVkemVtZW1raWx0cWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMjg2MTIsImV4cCI6MjA5OTYwNDYxMn0.2nZh82xFUNORqcKObAHUnz8K5EjjL-Nym0T4YkDHxMk';
 
 let TOKEN = localStorage.getItem('store_staff_token') || '';
-let ME = null, TODAY = null, CLOCKED_IN = false;
+let ME = null, TODAY = null, CLOCKED_IN = false, DOCS = null, MYDOCS = [];
 const TABS = ['home','tasks','manual','info','me'];
+const DOC_KINDS = [
+  {key:'idcard', label:'신분증', hint:'주민등록증·운전면허증 앞면'},
+  {key:'bankbook', label:'통장사본', hint:'월급 받을 계좌'},
+  {key:'health', label:'보건증', hint:'건강진단결과서'}
+];
 
 async function api(fn, ...args){
   const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/store_api', {
@@ -217,6 +245,7 @@ function tab(name){
   if(name==='tasks') loadTasks();
   if(name==='manual') loadManuals();
   if(name==='info') loadInfos();
+  if(name==='me') loadMyDocs();
 }
 
 /* ---------- 시계 ---------- */
@@ -260,11 +289,22 @@ async function boot(){
   $('meAddr').value = ME.address||''; $('meBank').value = ME.bankName||'';
   $('meAcct').value = ME.bankAcct||''; $('meRrn').value = ME.rrn||'';
   TODAY = b.today;
+  DOCS = b.docs || null;
   renderClock();
+  renderDocsBanner();
   $('nowDate').textContent = new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'});
   show('mainView'); tab('home');
   loadMonth();
+  loadMyReqs();
   if(b.openTasks > 0) toast('할일이 '+b.openTasks+'건 있어요');
+}
+function renderDocsBanner(){
+  if(!DOCS){ $('docsBanner').style.display='none'; return; }
+  const missing = DOC_KINDS.filter(k => !DOCS[k.key]);
+  $('docsBanner').style.display = missing.length ? '' : 'none';
+  $('docsBannerList').innerHTML = DOC_KINDS.map(k =>
+    '<span class="badge '+(DOCS[k.key]?'g':'r')+'" style="margin:2px">'+(DOCS[k.key]?'✔ ':'✖ ')+k.label+'</span>'
+  ).join(' ');
 }
 function renderClock(){
   CLOCKED_IN = !!(TODAY && TODAY.in_at && !TODAY.out_at);
@@ -364,6 +404,88 @@ async function loadInfos(){
     });
     $('infoList').innerHTML = html || '등록된 정보가 아직 없어요.';
   }catch(e){ $('infoList').textContent = e.message; }
+}
+
+/* ---------- 요청하기 ---------- */
+async function sendReq(){
+  const body = $('reqBody').value.trim();
+  if(!body){ alert('내용을 입력해주세요.'); return; }
+  try{
+    await api('reqAdd', TOKEN, body);
+    $('reqBody').value=''; toast('사장님께 전달했어요!'); loadMyReqs();
+  }catch(e){ alert(e.message); }
+}
+async function loadMyReqs(){
+  try{
+    const list = await api('reqMine', TOKEN);
+    $('myReqs').innerHTML = list.slice(0,5).map(r =>
+      '<div class="row"><span style="flex:1; padding-right:8px">'+esc(r.body)+'</span>'
+      + (r.status==='done'?'<span class="badge g">처리됨</span>':'<span class="badge a">접수됨</span>')+'</div>'
+    ).join('');
+  }catch(e){}
+}
+
+/* ---------- 서류 ---------- */
+function renderDocRows(){
+  $('docRows').innerHTML = DOC_KINDS.map(k => {
+    const done = DOCS && DOCS[k.key];
+    const mine = MYDOCS.find(d => d.kind===k.key);
+    return '<div class="row"><div><b>'+k.label+'</b> '+(done?'<span class="badge g">제출됨</span>':'<span class="badge r">미제출</span>')
+      + '<div class="sub">'+k.hint+(mine&&mine.expires_at?' · 만료 '+mine.expires_at:'')+'</div>'
+      + (k.key==='health' && !done ? '<div class="sub" style="margin-top:2px">만료일(선택): <input type="date" id="docExp_health" style="width:auto; padding:4px 6px; font-size:13px"></div>' : '')
+      + '</div><div style="text-align:right; white-space:nowrap">'
+      + (done && mine ? '<button class="btn small ghost" onclick="viewDoc(\''+mine.id+'\')">보기</button> ' : '')
+      + '<button class="btn small" onclick="pickDoc(\''+k.key+'\')">'+(done?'다시 올리기':'올리기')+'</button>'
+      + '</div></div>';
+  }).join('');
+}
+async function loadMyDocs(){
+  try{
+    const r = await api('docList', TOKEN, null);
+    DOCS = r.status; MYDOCS = r.docs || [];
+    renderDocRows(); renderDocsBanner();
+  }catch(e){ $('docRows').innerHTML = '<div class="sub">'+esc(e.message)+'</div>'; }
+}
+function compressImage(file, maxDim, quality){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width*scale); c.height = Math.round(img.height*scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('이미지를 읽을 수 없어요. 사진 파일을 선택해주세요.')); };
+    img.src = url;
+  });
+}
+function pickDoc(kind){
+  const inp = $('docFile');
+  inp.onchange = async () => {
+    const f = inp.files[0]; inp.value='';
+    if(!f) return;
+    toast('사진 압축 중...');
+    try{
+      let b64 = await compressImage(f, 1400, 0.75);
+      if(b64.length > 900000) b64 = await compressImage(f, 1000, 0.6);
+      if(b64.length > 1500000) throw new Error('사진이 너무 커요. 다시 찍어서 올려주세요.');
+      const exp = (kind==='health' && $('docExp_health')) ? $('docExp_health').value : '';
+      DOCS = await api('docUpload', TOKEN, kind, b64, 'image/jpeg', exp);
+      toast('제출 완료!');
+      loadMyDocs();
+    }catch(e){ alert(e.message); }
+  };
+  inp.click();
+}
+async function viewDoc(id){
+  try{
+    const d = await api('docGet', TOKEN, id);
+    $('imgView').src = d.b64;
+    $('imgOverlay').classList.remove('hidden');
+  }catch(e){ alert(e.message); }
 }
 
 /* ---------- 내 정보 ---------- */

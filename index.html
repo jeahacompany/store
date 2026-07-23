@@ -84,6 +84,11 @@ a.link{color:var(--blue); text-decoration:none; font-size:14px; cursor:pointer}
         <h2>가입 승인 대기 <span class="badge a" id="pendingCnt">0</span></h2>
         <div id="pendingList" class="sub">없음</div>
       </div>
+      <div class="card" id="reqCard">
+        <h2>직원 요청사항 <span class="badge a" id="reqCnt">0</span> <a class="link" style="font-weight:400; font-size:13px; margin-left:8px" onclick="toggleReqHistory()">처리 내역 보기</a></h2>
+        <div id="reqList" class="sub">없음</div>
+        <div id="reqHistory" class="hidden" style="margin-top:8px"></div>
+      </div>
       <div class="card">
         <h2>오늘 출근 현황 <span class="sub" id="todayDate"></span></h2>
         <div style="margin-bottom:8px">
@@ -240,6 +245,8 @@ a.link{color:var(--blue); text-decoration:none; font-size:14px; cursor:pointer}
         <div><label>계좌번호</label><input id="smAcct" style="width:100%"></div>
       </div>
       <label>주소</label><input id="smAddr" style="width:100%">
+      <label>제출 서류</label>
+      <div id="smDocs" class="sub">불러오는 중...</div>
       <label>메모</label><textarea id="smMemo"></textarea>
       <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
         <button class="btn" onclick="saveStaff()">저장</button>
@@ -286,6 +293,11 @@ a.link{color:var(--blue); text-decoration:none; font-size:14px; cursor:pointer}
         <button class="btn ghost" onclick="closeModal('attAddModal')">닫기</button>
       </div>
     </div>
+  </div>
+
+  <div id="imgOverlay" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:60; display:flex; align-items:center; justify-content:center; flex-direction:column; padding:16px" onclick="this.classList.add('hidden')">
+    <img id="imgView" style="max-width:100%; max-height:80vh; border-radius:10px">
+    <div style="color:#fff; margin-top:10px; font-size:14px">화면을 누르면 닫혀요</div>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -372,6 +384,15 @@ async function loadDash(){
       + '<span><b>'+esc(p.name)+'</b> <span class="sub">'+esc(p.phone||'')+'</span></span>'
       + '<button class="btn sm green" onclick="openApprove(\''+p.id+'\')">확인·승인</button></div>'
     ).join('') : '없음';
+    const reqs = d.requests || [];
+    $('reqCnt').textContent = reqs.length;
+    $('reqCard').style.borderColor = reqs.length ? 'var(--blue)' : 'var(--line)';
+    $('reqList').innerHTML = reqs.length ? reqs.map(q =>
+      '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--line)">'
+      + '<span style="flex:1"><b>'+esc(q.name||'')+'</b> · '+esc(q.body)
+      + ' <span class="sub">'+new Date(q.created_at).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+'</span></span>'
+      + '<button class="btn sm green" onclick="doneReq(\''+q.id+'\')">처리 완료</button></div>'
+    ).join('') : '새 요청 없음';
     let cin=0, cwork=0, cno=0;
     $('todayBody').innerHTML = d.today.map(r => {
       let st;
@@ -384,6 +405,24 @@ async function loadDash(){
     }).join('') || '<tr><td colspan="5" class="sub">활동중인 직원이 없어요. 직원이 가입하면 여기 떠요.</td></tr>';
     $('stIn').textContent=cin; $('stWork').textContent=cwork; $('stNo').textContent=cno;
   }catch(e){ toast(e.message); }
+}
+
+async function doneReq(id){
+  try{ await api('reqDone', TOKEN, id); toast('처리 완료로 표시했어요'); loadDash(); }
+  catch(e){ alert(e.message); }
+}
+async function toggleReqHistory(){
+  const el = $('reqHistory');
+  if(!el.classList.contains('hidden')){ el.classList.add('hidden'); return; }
+  try{
+    const list = await api('reqList', TOKEN);
+    const done = list.filter(q=>q.status==='done');
+    el.innerHTML = done.length ? done.map(q =>
+      '<div class="row"><span class="sub">'+esc(q.name||'')+' · '+esc(q.body)+'</span>'
+      + '<span class="badge g">'+(q.done_name?esc(q.done_name)+' 처리':'처리됨')+'</span></div>'
+    ).join('') : '<div class="sub">최근 7일 처리 내역이 없어요.</div>';
+    el.classList.remove('hidden');
+  }catch(e){ alert(e.message); }
 }
 
 /* ---------- 직원 ---------- */
@@ -427,6 +466,29 @@ async function openStaff(id){
   $('smApprove').classList.toggle('hidden', s.status!=='pending');
   $('smQuit').classList.toggle('hidden', s.status!=='active' || s.role==='owner');
   $('staffModal').classList.remove('hidden');
+  loadStaffDocs(s.id);
+}
+const DOC_LABELS = {idcard:'신분증', bankbook:'통장사본', health:'보건증'};
+async function loadStaffDocs(staffId){
+  $('smDocs').innerHTML = '불러오는 중...';
+  try{
+    const r = await api('docList', TOKEN, staffId);
+    $('smDocs').innerHTML = ['idcard','bankbook','health'].map(k => {
+      const doc = (r.docs||[]).find(d=>d.kind===k);
+      return '<span style="margin-right:12px; white-space:nowrap">'
+        + (r.status[k] ? '<span class="badge g">✔ '+DOC_LABELS[k]+'</span>' : '<span class="badge r">✖ '+DOC_LABELS[k]+'</span>')
+        + (doc ? ' <button class="btn sm ghost" onclick="viewStaffDoc(\''+doc.id+'\')">보기</button>' : '')
+        + (doc && doc.expires_at ? ' <span class="sub">만료 '+doc.expires_at+'</span>' : '')
+        + '</span>';
+    }).join('');
+  }catch(e){ $('smDocs').innerHTML = esc(e.message); }
+}
+async function viewStaffDoc(id){
+  try{
+    const d = await api('docGet', TOKEN, id);
+    $('imgView').src = d.b64;
+    $('imgOverlay').classList.remove('hidden');
+  }catch(e){ alert(e.message); }
 }
 function staffPatch(){
   return {
