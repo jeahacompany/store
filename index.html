@@ -183,6 +183,7 @@
         <div class="nav-item" data-t="manual" onclick="tab('manual')"><span class="ico">📖</span>매뉴얼</div>
         <div class="nav-item" data-t="info" onclick="tab('info')"><span class="ico">ℹ️</span>매장정보</div>
         <div class="nav-label">매출 · 정산</div>
+        <div class="nav-item" data-t="cash" id="navCash" onclick="tab('cash')"><span class="ico">💼</span>자금</div>
         <div class="nav-item" data-t="sales" onclick="tab('sales')"><span class="ico">💰</span>매출</div>
         <div class="nav-item" data-t="exp" onclick="tab('exp')"><span class="ico">🧾</span>지출</div>
         <div class="nav-item" data-t="settle" onclick="tab('settle')"><span class="ico">📊</span>월 정산</div>
@@ -577,6 +578,34 @@
         </div>
       </div>
 
+      <!-- 자금 -->
+      <div id="tab-cash" class="hidden">
+        <div class="kpis" id="cashKpis" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:16px">
+          <div class="card" style="margin:0"><div class="sub">현재 잔고 (추정)</div><div class="value" id="csBalance" style="font-size:24px; font-weight:700">-</div></div>
+          <div class="card" style="margin:0"><div class="sub">입금 누적 (투자금 등)</div><div class="value" id="csIn" style="font-size:20px; font-weight:700">-</div></div>
+          <div class="card" style="margin:0"><div class="sub">출금 누적</div><div class="value" id="csOut" style="font-size:20px; font-weight:700">-</div></div>
+          <div class="card" style="margin:0"><div class="sub">장사 손익 (매출−지출)</div><div class="value" id="csBiz" style="font-size:20px; font-weight:700">-</div></div>
+        </div>
+        <div class="card">
+          <h2>입출금 기록 <span class="sub">— 투자금·대출이 들어오면 입금, 보증금·인테리어 등 큰돈이 나가면 출금</span></h2>
+          <input type="hidden" id="csId">
+          <div class="grid2">
+            <div><label>날짜</label><input id="csDate" type="date" style="width:100%"></div>
+            <div><label>구분</label><select id="csDir" style="width:100%" onchange="csDirChange()"><option>입금</option><option>출금</option></select></div>
+            <div><label>분류</label><select id="csCat" style="width:100%"></select></div>
+            <div><label>금액 (원)</label><input id="csAmt" type="text" inputmode="numeric" oninput="mFmt(this)" style="width:100%" placeholder="100,000,000"></div>
+          </div>
+          <label>메모</label><input id="csMemo" style="width:100%" placeholder="예: 투자자 ○○○ 1차 투자금">
+          <div style="margin-top:12px"><button class="btn" onclick="csSave()">저장</button> <button class="btn ghost" onclick="csReset()">새로 입력</button></div>
+        </div>
+        <div class="card">
+          <h2>입출금 내역</h2>
+          <div class="sub" style="margin-bottom:8px">잔고 = 입금 − 출금 + 누적 매출 − 누적 지출 (매출·지출 탭과 자동 연동)</div>
+          <div class="table-scroll"><table><thead><tr><th>날짜</th><th>구분</th><th>분류</th><th>금액</th><th>메모</th><th></th></tr></thead>
+          <tbody id="csBody"></tbody></table></div>
+        </div>
+      </div>
+
       <!-- 시스템 로그 -->
       <div id="tab-logs" class="hidden">
         <div class="card">
@@ -767,9 +796,9 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 let TOKEN = localStorage.getItem('store_admin_token') || '';
 let ME = null, STAFF = [], ATT = [], WAGES = null, TASKS = [];
-const TABS = ['today','cal','staff','att','labor','tasks','board','manual','info','sales','exp','settle','inb','stock','price','logs','setup'];
+const TABS = ['today','cal','staff','att','labor','tasks','board','manual','info','cash','sales','exp','settle','inb','stock','price','logs','setup'];
 const TITLES = {today:'오늘', cal:'캘린더', staff:'직원', att:'근태', labor:'인건비표', tasks:'오더', board:'업무보드',
-  manual:'매뉴얼', info:'매장정보', sales:'매출', exp:'지출', settle:'월 정산', inb:'입고 명세서', stock:'재고', price:'단가 변동', logs:'시스템 로그', setup:'설정'};
+  manual:'매뉴얼', info:'매장정보', cash:'자금', sales:'매출', exp:'지출', settle:'월 정산', inb:'입고 명세서', stock:'재고', price:'단가 변동', logs:'시스템 로그', setup:'설정'};
 const IB_CATS = ['고기','야채','식자재','음료','주류','소모품','기타'];
 const EV_COLORS = {
   '공사·인테리어':['#FFF4E6','#E8590C'], '행정·계약':['#E7F5FF','#1971C2'], '발주·입고':['#F3F0FF','#7048E8'],
@@ -851,6 +880,7 @@ function tab(name){
   if(name==='inb') loadInbound();
   if(name==='stock') loadStock();
   if(name==='price') loadPrice();
+  if(name==='cash') loadCash();
   if(name==='logs') loadLogs();
   if(name==='setup') loadSetup();
 }
@@ -877,6 +907,7 @@ function boot(){
   show('mainView');
   $('navLabor').style.display = (ME && ME.role==='owner') ? '' : 'none';
   $('navLogs').style.display = (ME && ME.role==='owner') ? '' : 'none';
+  $('navCash').style.display = (ME && ME.role==='owner') ? '' : 'none';
   if(ME && ME.role==='viewer'){
     document.querySelectorAll('#tabbar .nav-item').forEach(n => {
       if(!['cal','settle'].includes(n.dataset.t)) n.style.display='none';
@@ -1983,6 +2014,57 @@ function renderPrice(){
     + '<td><b>'+cm(x.unit_price)+'원</b></td>'
     + '<td><span class="badge '+(x.pct>0?'r':'g')+'">'+(x.pct>0?'▲ +':'▼ ')+x.pct+'%</span></td></tr>'
   ).join('') || '<tr><td colspan="7" class="sub">아직 단가 변동이 없어요. 입고를 등록하다가 단가가 바뀌면 자동으로 쌓입니다.</td></tr>';
+}
+
+/* ---------- 자금 ---------- */
+let CASH = [];
+const CS_CATS = { '입금': ['투자금','대출','개인 자금 투입','기타 입금'],
+                  '출금': ['보증금','권리금','인테리어','설비·집기','대출 상환','개인 인출','기타 출금'] };
+function csDirChange(){
+  $('csCat').innerHTML = CS_CATS[$('csDir').value].map(c=>'<option>'+c+'</option>').join('');
+}
+function csReset(){
+  $('csId').value=''; $('csDate').value = localDate(); $('csAmt').value=''; $('csMemo').value='';
+  $('csDir').value='입금'; csDirChange();
+}
+async function loadCash(){
+  if(!$('csDate').value) csReset();
+  try{
+    const r = await api('cashList', TOKEN);
+    CASH = r.rows;
+    $('csBalance').textContent = fmtWon(r.balance);
+    $('csBalance').style.color = r.balance >= 0 ? 'var(--green, #2F9E44)' : 'var(--red, #E03131)';
+    $('csIn').textContent = fmtWon(r.inSum);
+    $('csOut').textContent = fmtWon(r.outSum);
+    const biz = r.salesSum - r.expSum;
+    $('csBiz').textContent = (biz>0?'+':'') + fmtWon(biz);
+    $('csBody').innerHTML = CASH.map(x =>
+      '<tr><td>'+fmtDate(x.flow_date)+'</td>'
+      + '<td><span class="badge '+(x.direction==='입금'?'g':'r')+'">'+x.direction+'</span></td>'
+      + '<td>'+esc(x.category)+'</td>'
+      + '<td class="name-cell">'+(x.direction==='입금'?'+':'-')+fmtWon(x.amount)+'</td>'
+      + '<td class="sub">'+esc(x.memo||'')+'</td>'
+      + '<td style="white-space:nowrap"><button class="btn sm ghost" onclick="csEdit(\''+x.id+'\')">수정</button> '
+      + '<button class="btn sm red" onclick="csDel(\''+x.id+'\')">삭제</button></td></tr>'
+    ).join('') || '<tr><td colspan="6" class="sub">아직 기록이 없어요. 투자금이 들어오면 첫 입금을 기록해보세요.</td></tr>';
+  }catch(e){ toast(e.message); }
+}
+function csEdit(id){
+  const x = CASH.find(c=>c.id===id); if(!x) return;
+  $('csId').value=x.id; $('csDate').value=x.flow_date; $('csDir').value=x.direction; csDirChange();
+  $('csCat').value=x.category; $('csAmt').value=cm(x.amount); $('csMemo').value=x.memo||'';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+async function csSave(){
+  try{
+    await api('cashSave', TOKEN, { id:$('csId').value, flow_date:$('csDate').value,
+      direction:$('csDir').value, category:$('csCat').value, amount:mVal($('csAmt').value), memo:$('csMemo').value.trim() });
+    toast('기록했어요'); csReset(); loadCash();
+  }catch(e){ alert(e.message); }
+}
+async function csDel(id){
+  if(!confirm('이 입출금 기록을 삭제할까요?')) return;
+  try{ await api('cashDelete', TOKEN, id); loadCash(); }catch(e){ alert(e.message); }
 }
 
 /* ---------- 시스템 로그 ---------- */
