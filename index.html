@@ -595,22 +595,46 @@
           <div class="card" style="margin:0"><div class="sub">장사 손익 (매출−지출)</div><div class="value" id="csBiz" style="font-size:20px; font-weight:700">-</div></div>
         </div>
         <div class="card">
+          <h2>내 통장 <span class="sub">— 통장별로 입출금을 나눠 관리해요</span>
+            <button class="btn sm ghost" onclick="openAcct()" style="float:right">+ 통장 추가</button></h2>
+          <div id="acCards" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px"></div>
+        </div>
+        <div class="card">
           <h2>입출금 기록 <span class="sub">— 투자금·대출이 들어오면 입금, 보증금·인테리어 등 큰돈이 나가면 출금</span></h2>
           <input type="hidden" id="csId">
           <div class="grid2">
             <div><label>날짜</label><input id="csDate" type="date" style="width:100%"></div>
+            <div><label>통장</label><select id="csAcct" style="width:100%"></select></div>
             <div><label>구분</label><select id="csDir" style="width:100%" onchange="csDirChange()"><option>입금</option><option>출금</option></select></div>
             <div><label>분류</label><select id="csCat" style="width:100%"></select></div>
-            <div><label>금액 (원)</label><input id="csAmt" type="text" inputmode="numeric" oninput="mFmt(this)" style="width:100%" placeholder="100,000,000"></div>
           </div>
+          <label>금액 (원)</label><input id="csAmt" type="text" inputmode="numeric" oninput="mFmt(this)" style="width:100%" placeholder="100,000,000">
           <label>메모</label><input id="csMemo" style="width:100%" placeholder="예: 투자자 ○○○ 1차 투자금">
           <div style="margin-top:12px"><button class="btn" onclick="csSave()">저장</button> <button class="btn ghost" onclick="csReset()">새로 입력</button></div>
+          <div class="sub" style="margin-top:8px">💡 통장끼리 돈을 옮기면: 보낸 통장에서 출금 1건 + 받은 통장에 입금 1건으로 적으세요.</div>
         </div>
         <div class="card">
           <h2>입출금 내역</h2>
           <div class="sub" style="margin-bottom:8px">잔고 = 입금 − 출금 + 누적 매출 − 누적 지출 (매출·지출 탭과 자동 연동)</div>
-          <div class="table-scroll"><table><thead><tr><th>날짜</th><th>구분</th><th>분류</th><th>금액</th><th>메모</th><th></th></tr></thead>
+          <div class="table-scroll"><table><thead><tr><th>날짜</th><th>통장</th><th>구분</th><th>분류</th><th>금액</th><th>메모</th><th></th></tr></thead>
           <tbody id="csBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- 통장 추가/수정 모달 -->
+      <div class="modal-bg hidden" id="acModal" style="z-index:55">
+        <div class="modal">
+          <h2>통장 등록</h2>
+          <input type="hidden" id="acId">
+          <div class="grid2">
+            <div><label>별칭</label><input id="acName" style="width:100%" placeholder="예: 매장 주거래"></div>
+            <div><label>은행</label><input id="acBank" style="width:100%" placeholder="예: 농협"></div>
+          </div>
+          <label>계좌번호</label><input id="acNumber" style="width:100%" placeholder="예: 301-1234-5678-91">
+          <label>메모</label><input id="acMemo" style="width:100%" placeholder="예: 투자금 전용">
+          <div style="margin-top:14px"><button class="btn" onclick="acSave()">저장</button>
+            <button class="btn red hidden" id="acDelBtn" onclick="acDel()">삭제</button>
+            <button class="btn ghost" onclick="closeModal('acModal')">닫기</button></div>
         </div>
       </div>
 
@@ -2120,40 +2144,80 @@ function csReset(){
   $('csId').value=''; $('csDate').value = localDate(); $('csAmt').value=''; $('csMemo').value='';
   $('csDir').value='입금'; csDirChange();
 }
+let ACCTS = [];
 async function loadCash(){
   if(!$('csDate').value) csReset();
   try{
     const r = await api('cashList', TOKEN);
-    CASH = r.rows;
+    CASH = r.rows; ACCTS = r.accounts || [];
     $('csBalance').textContent = fmtWon(r.balance);
     $('csBalance').style.color = r.balance >= 0 ? 'var(--green, #2F9E44)' : 'var(--red, #E03131)';
     $('csIn').textContent = fmtWon(r.inSum);
     $('csOut').textContent = fmtWon(r.outSum);
     const biz = r.salesSum - r.expSum;
     $('csBiz').textContent = (biz>0?'+':'') + fmtWon(biz);
+    // 통장 카드
+    $('acCards').innerHTML = ACCTS.map(a =>
+      '<div class="card" style="margin:0; cursor:pointer" onclick="acEdit(\''+a.id+'\')">'
+      + '<div style="display:flex; justify-content:space-between; align-items:center"><b>'+esc(a.name)+'</b>'
+      + '<span class="sub">'+esc(a.bank||'')+'</span></div>'
+      + '<div class="sub">'+esc(a.number||'')+'</div>'
+      + '<div style="font-size:20px; font-weight:700; margin-top:6px; color:'+(a.balance>=0?'var(--green, #2F9E44)':'var(--red, #E03131)')+'">'+fmtWon(a.balance)+'</div>'
+      + (a.memo?'<div class="sub">'+esc(a.memo)+'</div>':'')+'</div>'
+    ).join('') || '<div class="sub">통장을 추가하면 통장별 잔액이 여기 보여요. (통장 없이도 기록은 가능)</div>';
+    // 입출금 폼 통장 선택 (선택 유지)
+    const keep = $('csAcct').value;
+    $('csAcct').innerHTML = '<option value="">통장 선택 안 함</option>'
+      + ACCTS.map(a=>'<option value="'+a.id+'"'+(a.id===keep?' selected':'')+'>'+esc(a.name)+(a.bank?' ('+esc(a.bank)+')':'')+'</option>').join('');
     $('csBody').innerHTML = CASH.map(x =>
       '<tr><td>'+fmtDate(x.flow_date)+'</td>'
+      + '<td class="sub">'+esc(x.account_name||'-')+'</td>'
       + '<td><span class="badge '+(x.direction==='입금'?'g':'r')+'">'+x.direction+'</span></td>'
       + '<td>'+esc(x.category)+'</td>'
       + '<td class="name-cell">'+(x.direction==='입금'?'+':'-')+fmtWon(x.amount)+'</td>'
       + '<td class="sub">'+esc(x.memo||'')+'</td>'
       + '<td style="white-space:nowrap"><button class="btn sm ghost" onclick="csEdit(\''+x.id+'\')">수정</button> '
       + '<button class="btn sm red" onclick="csDel(\''+x.id+'\')">삭제</button></td></tr>'
-    ).join('') || '<tr><td colspan="6" class="sub">아직 기록이 없어요. 투자금이 들어오면 첫 입금을 기록해보세요.</td></tr>';
+    ).join('') || '<tr><td colspan="7" class="sub">아직 기록이 없어요. 투자금이 들어오면 첫 입금을 기록해보세요.</td></tr>';
   }catch(e){ toast(e.message); }
 }
 function csEdit(id){
   const x = CASH.find(c=>c.id===id); if(!x) return;
   $('csId').value=x.id; $('csDate').value=x.flow_date; $('csDir').value=x.direction; csDirChange();
   $('csCat').value=x.category; $('csAmt').value=cm(x.amount); $('csMemo').value=x.memo||'';
+  $('csAcct').value = x.account_id || '';
   window.scrollTo({top:0, behavior:'smooth'});
 }
 async function csSave(){
   try{
     await api('cashSave', TOKEN, { id:$('csId').value, flow_date:$('csDate').value,
-      direction:$('csDir').value, category:$('csCat').value, amount:mVal($('csAmt').value), memo:$('csMemo').value.trim() });
-    toast('기록했어요'); csReset(); loadCash();
+      direction:$('csDir').value, category:$('csCat').value, amount:mVal($('csAmt').value),
+      memo:$('csMemo').value.trim(), account_id:$('csAcct').value });
+    toast('기록했어요'); csReset(); await loadCash();
   }catch(e){ alert(e.message); }
+}
+function openAcct(){
+  $('acId').value=''; $('acName').value=''; $('acBank').value=''; $('acNumber').value=''; $('acMemo').value='';
+  $('acDelBtn').classList.add('hidden');
+  $('acModal').classList.remove('hidden');
+}
+function acEdit(id){
+  const a = ACCTS.find(x=>x.id===id); if(!a) return;
+  $('acId').value=a.id; $('acName').value=a.name; $('acBank').value=a.bank||'';
+  $('acNumber').value=a.number||''; $('acMemo').value=a.memo||'';
+  $('acDelBtn').classList.remove('hidden');
+  $('acModal').classList.remove('hidden');
+}
+async function acSave(){
+  try{
+    await api('acctSave', TOKEN, { id:$('acId').value, name:$('acName').value.trim(),
+      bank:$('acBank').value.trim(), number:$('acNumber').value.trim(), memo:$('acMemo').value.trim() });
+    toast('통장을 저장했어요'); closeModal('acModal'); loadCash();
+  }catch(e){ alert(e.message); }
+}
+async function acDel(){
+  if(!confirm('이 통장을 삭제할까요? 입출금 기록은 남아있어요.')) return;
+  try{ await api('acctDelete', TOKEN, $('acId').value); closeModal('acModal'); loadCash(); }catch(e){ alert(e.message); }
 }
 async function csDel(id){
   if(!confirm('이 입출금 기록을 삭제할까요?')) return;
