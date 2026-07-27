@@ -102,8 +102,10 @@
 
   /* modal */
   .modal-bg { position:fixed; inset:0; background:rgba(15,17,22,.5); display:flex; align-items:center; justify-content:center; z-index:50; backdrop-filter:blur(2px); padding:12px; }
-  .modal { background:#fff; border-radius:16px; padding:24px 26px; width:min(640px,94vw); max-height:88vh; overflow:auto; }
-  .modal h2 { margin-bottom:4px; }
+  .modal { background:#fff; border-radius:16px; padding:24px 26px; width:min(640px,94vw); max-height:88vh; overflow:auto; position:relative; }
+  .modal h2 { margin-bottom:4px; padding-right:36px; }
+  .modal-x { position:absolute; top:14px; right:14px; width:34px; height:34px; border:none; border-radius:10px; background:#F1F3F5; color:#495057; font-size:20px; line-height:1; cursor:pointer; }
+  .modal-x:hover { background:#E9ECEF; }
 
   /* calendar */
   .cal-head { display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
@@ -620,7 +622,7 @@
     <div class="modal">
       <h2 id="laModalTitle">근무 기록</h2>
       <div class="sub" id="laModalSub" style="margin-bottom:10px"></div>
-      <div class="table-scroll"><table><thead><tr><th>날짜</th><th>출근</th><th>퇴근</th><th>시간</th><th>급여</th><th></th></tr></thead>
+      <div class="table-scroll" style="max-height:56vh;overflow:auto"><table><thead><tr><th>날짜</th><th>출근</th><th>퇴근</th><th>시간</th><th>급여</th><th></th></tr></thead>
       <tbody id="laModalBody"></tbody></table></div>
       <div style="margin-top:14px"><button class="btn ghost" onclick="closeModal('laModal')">닫기</button></div>
     </div>
@@ -747,6 +749,16 @@ function localDate(){ const d=new Date(), p=n=>String(n).padStart(2,'0'); return
 function localYm(){ return localDate().slice(0,7); }
 function show(view){ ['loginView','mainView'].forEach(v => $(v).classList.toggle('hidden', v!==view)); }
 function closeModal(id){ $(id).classList.add('hidden'); }
+/* 모든 모달에 우상단 X 버튼 + Esc로 닫기 */
+document.querySelectorAll('.modal-bg > .modal').forEach(m => {
+  const b = document.createElement('button');
+  b.className = 'modal-x'; b.innerHTML = '&times;'; b.title = '닫기';
+  b.onclick = () => m.parentElement.classList.add('hidden');
+  m.prepend(b);
+});
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') document.querySelectorAll('.modal-bg:not(.hidden)').forEach(el => el.classList.add('hidden'));
+});
 function tab(name){
   if(ME && ME.role==='viewer' && !['cal','settle'].includes(name)) return;
   TABS.forEach(t => { $('tab-'+t).classList.toggle('hidden', t!==name); });
