@@ -1694,6 +1694,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         $('ibAiStatus').textContent = '분석 완료! 검산 일치 ✓ (품목 합계 '+fmtWon(itemSum)+')';
       }
+      await ibPriceCheck();
       toast('AI 분석 완료 — 품목 '+IB_ITEMS.length+'건');
     }catch(e){ $('ibAiStatus').textContent = ''; alert(e.message); }
   };
@@ -1740,10 +1741,40 @@ function ibTotal(){
   $('ibTotal').textContent = fmtWon(t);
   return t;
 }
+/* 단가 변동 체크: 같은 품목의 지난번 입고 단가와 비교 → 단가칸 주황 표시 + 상태줄 요약 */
+let IB_PRICE_ALERTS = [];
+async function ibPriceCheck(){
+  IB_PRICE_ALERTS = [];
+  try{
+    const names = IB_ITEMS.map(x=>x.name).filter(n=>n && n.trim());
+    if(!names.length) return;
+    const prev = await api('priceCheck', TOKEN, names);
+    const norm = s => String(s).toLowerCase().replace(/\s/g,'');
+    IB_ITEMS.forEach((x,i) => {
+      const p = (prev||[]).find(q => norm(q.name) === norm(x.name));
+      if(p && x.unit_price > 0 && +p.last_price !== x.unit_price){
+        const diff = x.unit_price - p.last_price;
+        const pct = Math.round(diff / p.last_price * 1000) / 10;
+        IB_PRICE_ALERTS.push({ name:x.name, from:+p.last_price, to:x.unit_price, pct, last_date:p.last_date });
+        const row = $('ibItemsBody').rows[i];
+        if(row){ const inp = row.cells[4].firstChild;
+          inp.style.borderColor = 'var(--brand, #F26522)';
+          inp.title = '지난번('+fmtDate(p.last_date)+') '+cm(p.last_price)+'원 → 이번 '+cm(x.unit_price)+'원 ('+(pct>0?'+':'')+pct+'%)'; }
+      }
+    });
+    if(IB_PRICE_ALERTS.length){
+      $('ibAiStatus').textContent += ' · 📈 단가 변동 '+IB_PRICE_ALERTS.length+'건: '
+        + IB_PRICE_ALERTS.map(a => a.name+' '+cm(a.from)+'→'+cm(a.to)+'원('+(a.pct>0?'+':'')+a.pct+'%)').join(', ');
+    }
+  }catch(e){ /* 단가 체크 실패는 입고 흐름을 막지 않음 */ }
+}
+function ibAlertText(){
+  return IB_PRICE_ALERTS.map(a => a.name+': '+cm(a.from)+'원 → '+cm(a.to)+'원 ('+(a.pct>0?'+':'')+a.pct+'%)').join('\n');
+}
 function ibAddItem(){ IB_ITEMS.push({name:'', qty:1, weight:null, unit:'', unit_price:0, amount:0, category:'재료'}); renderIbItems(); }
 function resetInbound(){
   $('ibId').value=''; $('ibDate').value = localDate(); $('ibSupplier').value=''; $('ibMemo').value='';
-  IB_PHOTO = null; IB_ITEMS = [{name:'', qty:1, weight:null, unit:'', unit_price:0, amount:0, category:'재료'}];
+  IB_PHOTO = null; IB_PRICE_ALERTS = []; IB_ITEMS = [{name:'', qty:1, weight:null, unit:'', unit_price:0, amount:0, category:'재료'}];
   $('ibFormTitle').textContent = '입고 내용'; $('ibAiStatus').textContent='';
   renderIbItems();
 }
@@ -1753,15 +1784,30 @@ async function saveInbound(){
     if(!items.length){ alert('품목을 입력해주세요.'); return; }
     if(!$('ibDate').value){ alert('날짜를 선택해주세요.'); return; }
     const isNew = !$('ibId').value;
+    // 단가 변동이 있으면 특이사항(메모)에 자동 기록
+    let memo = $('ibMemo').value.trim();
+    if(isNew && IB_PRICE_ALERTS.length && !memo.includes('단가 변동')){
+      memo = (memo ? memo + '\n' : '') + '[단가 변동]\n' + ibAlertText();
+    }
     const r = await api('inboundSave', TOKEN, {
       id: $('ibId').value, in_date: $('ibDate').value, supplier: $('ibSupplier').value.trim(),
-      memo: $('ibMemo').value.trim(), items,
+      memo, items,
       ai_parsed: !!IB_PHOTO, photo_b64: isNew ? (IB_PHOTO||'') : ''
     });
     if(isNew && $('ibAutoExp').checked){
       await api('expSave', TOKEN, { exp_date: $('ibDate').value, category: '재료비',
         vendor: $('ibSupplier').value.trim(), amount: r.total, method: '이체', memo: '입고 명세서 자동등록',
         ref_inbound: r.id });
+    }
+    // 단가 변동 공지 자동 등록 (사장·직원 홈에 뜸)
+    if(isNew && IB_PRICE_ALERTS.length){
+      try{
+        await api('noticeSave', TOKEN, {
+          title: '📈 단가 변동 — ' + ($('ibSupplier').value.trim() || '입고'),
+          body: fmtDate($('ibDate').value) + ' 입고 시 단가 변동 ' + IB_PRICE_ALERTS.length + '건\n' + ibAlertText(),
+          pinned: false });
+        toast('단가 변동 '+IB_PRICE_ALERTS.length+'건 — 공지에 올렸어요');
+      }catch(e){}
     }
     toast('입고 '+fmtWon(r.total)+' 저장 완료'+($('ibAutoExp').checked && isNew ? ' (지출에도 등록됨)' : ''));
     resetInbound();
