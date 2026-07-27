@@ -515,7 +515,7 @@
             <div><label>거래처</label><input id="ibSupplier" style="width:100%" placeholder="예: OO축산"></div>
           </div>
           <label>품목</label>
-          <div class="table-scroll"><table><thead><tr><th>품목명</th><th>수량</th><th>단위</th><th>단가</th><th>금액</th><th>분류</th><th></th></tr></thead>
+          <div class="table-scroll"><table><thead><tr><th>품목명</th><th>수량</th><th>중량(kg)</th><th>단위</th><th>단가</th><th>금액</th><th>분류</th><th></th></tr></thead>
           <tbody id="ibItemsBody"></tbody></table></div>
           <div style="margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap">
             <button class="btn sm ghost" onclick="ibAddItem()">+ 품목 추가</button>
@@ -696,8 +696,11 @@
   </div>
 
   <div id="imgOverlay" class="hidden" style="position:fixed; inset:0; background:rgba(15,17,22,.85); z-index:60; display:flex; align-items:center; justify-content:center; flex-direction:column; padding:16px" onclick="this.classList.add('hidden')">
-    <img id="imgView" style="max-width:100%; max-height:80vh; border-radius:12px">
-    <div style="color:#fff; margin-top:10px; font-size:13px">화면을 누르면 닫혀요</div>
+    <img id="imgView" style="max-width:100%; max-height:78vh; border-radius:12px">
+    <div style="margin-top:12px; display:flex; gap:10px; align-items:center" onclick="event.stopPropagation()">
+      <button class="btn" onclick="imgDownload()">⬇ 다운로드</button>
+      <span style="color:#fff; font-size:13px">화면을 누르면 닫혀요</span>
+    </div>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -754,6 +757,13 @@ function localDate(){ const d=new Date(), p=n=>String(n).padStart(2,'0'); return
 function localYm(){ return localDate().slice(0,7); }
 function show(view){ ['loginView','mainView'].forEach(v => $(v).classList.toggle('hidden', v!==view)); }
 function closeModal(id){ $(id).classList.add('hidden'); }
+/* 사진 오버레이 다운로드: 열 때 IMG_DL_NAME을 지정하면 그 이름으로 저장됨 */
+let IMG_DL_NAME = '사진.jpg';
+function imgDownload(){
+  const a = document.createElement('a');
+  a.href = $('imgView').src; a.download = IMG_DL_NAME;
+  document.body.appendChild(a); a.click(); a.remove();
+}
 /* 모든 모달에 우상단 X 버튼 + Esc로 닫기 */
 document.querySelectorAll('.modal-bg > .modal').forEach(m => {
   const b = document.createElement('button');
@@ -970,6 +980,7 @@ async function loadStaffDocs(staffId){
 async function viewStaffDoc(id){
   try{
     const d = await api('docGet', TOKEN, id);
+    IMG_DL_NAME = '직원서류.jpg';
     $('imgView').src = d.b64;
     $('imgOverlay').classList.remove('hidden');
   }catch(e){ alert(e.message); }
@@ -1514,6 +1525,8 @@ async function delSale(id){
 async function viewSalePhoto(id){
   try{
     const d = await api('salePhoto', TOKEN, id);
+    const s = SALES.find(r=>r.id===id);
+    IMG_DL_NAME = '정산표_' + ((s && s.sale_date) || id.slice(0,8)) + '.jpg';
     $('imgView').src = d.b64;
     $('imgOverlay').classList.remove('hidden');
   }catch(e){ alert(e.message); }
@@ -1668,12 +1681,19 @@ document.addEventListener('DOMContentLoaded', () => {
       $('ibId').value = '';
       $('ibDate').value = r.in_date || localDate();
       $('ibSupplier').value = r.supplier || '';
-      IB_ITEMS = (r.items||[]).map(x => ({ name:x.name||'', qty:+x.qty||0, unit:x.unit||'',
+      IB_ITEMS = (r.items||[]).map(x => ({ name:x.name||'', qty:+x.qty||0,
+        weight:(x.weight!=null && x.weight!=='')?+x.weight:null, unit:x.unit||'',
         unit_price:+x.unit_price||0, amount:+x.amount||0, category: IB_CATS.includes(x.category)?x.category:'기타' }));
-      if(!IB_ITEMS.length) IB_ITEMS = [{name:'', qty:1, unit:'', unit_price:0, amount:0, category:'재료'}];
+      if(!IB_ITEMS.length) IB_ITEMS = [{name:'', qty:1, weight:null, unit:'', unit_price:0, amount:0, category:'재료'}];
       renderIbItems();
       $('ibFormTitle').textContent = '입고 내용 — AI가 읽은 결과를 확인하고 저장하세요';
-      $('ibAiStatus').textContent = '분석 완료! 아래 내용을 확인해주세요.';
+      // 명세서 합계와 품목 합계 검산
+      const itemSum = IB_ITEMS.reduce((s,x)=>s+(+x.amount||0), 0);
+      if(r.total && Math.abs(r.total - itemSum) > 1){
+        $('ibAiStatus').textContent = '⚠ 검산 불일치: 명세서 합계 '+fmtWon(r.total)+' ≠ 품목 합계 '+fmtWon(itemSum)+' — 빨간 칸을 확인해주세요.';
+      } else {
+        $('ibAiStatus').textContent = '분석 완료! 검산 일치 ✓ (품목 합계 '+fmtWon(itemSum)+')';
+      }
       toast('AI 분석 완료 — 품목 '+IB_ITEMS.length+'건');
     }catch(e){ $('ibAiStatus').textContent = ''; alert(e.message); }
   };
@@ -1681,8 +1701,9 @@ document.addEventListener('DOMContentLoaded', () => {
 function renderIbItems(){
   $('ibItemsBody').innerHTML = IB_ITEMS.map((x,i) =>
     '<tr>'
-    + '<td style="width:30%"><input style="width:100%; min-width:180px" value="'+esc(x.name)+'" oninput="ibU('+i+',\'name\',this.value)"></td>'
+    + '<td style="width:28%"><input style="width:100%; min-width:180px" value="'+esc(x.name)+'" oninput="ibU('+i+',\'name\',this.value)"></td>'
     + '<td><input type="number" style="width:64px" value="'+x.qty+'" oninput="ibU('+i+',\'qty\',this.value)"></td>'
+    + '<td><input type="number" step="any" style="width:76px" value="'+(x.weight!=null?x.weight:'')+'" placeholder="-" oninput="ibU('+i+',\'weight\',this.value)"></td>'
     + '<td><input style="width:56px" value="'+esc(x.unit)+'" oninput="ibU('+i+',\'unit\',this.value)"></td>'
     + '<td><input type="text" inputmode="numeric" style="width:96px" value="'+cm(x.unit_price)+'" oninput="mFmt(this); ibU('+i+',\'unit_price\',this.value)"></td>'
     + '<td><input type="text" inputmode="numeric" style="width:110px" value="'+cm(x.amount)+'" oninput="mFmt(this); ibU('+i+',\'amount\',this.value)"></td>'
@@ -1691,13 +1712,27 @@ function renderIbItems(){
     + '<td><button class="btn sm red" onclick="IB_ITEMS.splice('+i+',1); renderIbItems()">✕</button></td>'
     + '</tr>'
   ).join('');
+  IB_ITEMS.forEach((_,i)=>ibCheckRow(i));
   ibTotal();
 }
+/* 검산: 금액이 (중량 있으면 중량, 없으면 수량)×단가와 일치하는지. 틀리면 금액칸 빨간 테두리 */
+function ibCheckRow(i){
+  const x = IB_ITEMS[i], row = $('ibItemsBody').rows[i];
+  if(!row) return;
+  const inp = row.cells[5].firstChild;
+  const base = (x.weight!=null && x.weight>0) ? x.weight : x.qty;
+  const ok = !x.amount || !x.unit_price || Math.abs(x.amount - Math.round(base*x.unit_price)) <= 1;
+  inp.style.borderColor = ok ? '' : 'var(--red, #E03131)';
+  inp.title = ok ? '' : '검산 불일치: '+cm(base)+' × '+cm(x.unit_price)+' = '+cm(Math.round(base*x.unit_price))+'원';
+}
 function ibU(i, k, v){
-  IB_ITEMS[i][k] = (k==='qty') ? (+v||0) : (k==='unit_price'||k==='amount') ? mVal(v) : v;
-  if(k==='qty'||k==='unit_price'){ IB_ITEMS[i].amount = Math.round(IB_ITEMS[i].qty * IB_ITEMS[i].unit_price);
-    const inp = $('ibItemsBody').rows[i] && $('ibItemsBody').rows[i].cells[4].firstChild;
-    if(inp) inp.value = cm(IB_ITEMS[i].amount); }
+  IB_ITEMS[i][k] = (k==='qty') ? (+v||0) : (k==='weight') ? (v===''?null:(+v||0)) : (k==='unit_price'||k==='amount') ? mVal(v) : v;
+  if(k==='qty'||k==='weight'||k==='unit_price'){
+    const x = IB_ITEMS[i], base = (x.weight!=null && x.weight>0) ? x.weight : x.qty;
+    x.amount = Math.round(base * x.unit_price);
+    const inp = $('ibItemsBody').rows[i] && $('ibItemsBody').rows[i].cells[5].firstChild;
+    if(inp) inp.value = cm(x.amount); }
+  ibCheckRow(i);
   ibTotal();
 }
 function ibTotal(){
@@ -1705,10 +1740,10 @@ function ibTotal(){
   $('ibTotal').textContent = fmtWon(t);
   return t;
 }
-function ibAddItem(){ IB_ITEMS.push({name:'', qty:1, unit:'', unit_price:0, amount:0, category:'재료'}); renderIbItems(); }
+function ibAddItem(){ IB_ITEMS.push({name:'', qty:1, weight:null, unit:'', unit_price:0, amount:0, category:'재료'}); renderIbItems(); }
 function resetInbound(){
   $('ibId').value=''; $('ibDate').value = localDate(); $('ibSupplier').value=''; $('ibMemo').value='';
-  IB_PHOTO = null; IB_ITEMS = [{name:'', qty:1, unit:'', unit_price:0, amount:0, category:'재료'}];
+  IB_PHOTO = null; IB_ITEMS = [{name:'', qty:1, weight:null, unit:'', unit_price:0, amount:0, category:'재료'}];
   $('ibFormTitle').textContent = '입고 내용'; $('ibAiStatus').textContent='';
   renderIbItems();
 }
@@ -1757,7 +1792,7 @@ function editInbound(id){
   const x = IB_LIST.find(r=>r.id===id); if(!x) return;
   $('ibId').value = x.id; $('ibDate').value = x.in_date; $('ibSupplier').value = x.supplier||'';
   $('ibMemo').value = x.memo||''; IB_PHOTO = null;
-  IB_ITEMS = x.items.map(t=>({name:t.name, qty:+t.qty, unit:t.unit||'', unit_price:+t.unit_price, amount:+t.amount, category:t.category}));
+  IB_ITEMS = x.items.map(t=>({name:t.name, qty:+t.qty, weight:(t.weight!=null?+t.weight:null), unit:t.unit||'', unit_price:+t.unit_price, amount:+t.amount, category:t.category}));
   renderIbItems();
   $('ibFormTitle').textContent = '입고 내용 수정 — '+fmtDate(x.in_date)+' '+(x.supplier||'');
   window.scrollTo({top:0, behavior:'smooth'});
@@ -1765,6 +1800,9 @@ function editInbound(id){
 async function viewIbPhoto(id){
   try{
     const d = await api('inboundPhoto', TOKEN, id);
+    const src = (typeof IB_LIST!=='undefined' && IB_LIST.find(r=>r.id===id))
+             || (typeof EXPS!=='undefined' && EXPS.find(e=>e.ref_inbound===id)) || null;
+    IMG_DL_NAME = '명세서_' + (src ? ((src.in_date||src.exp_date||'')+'_'+(src.supplier||src.vendor||'')) : id.slice(0,8)) + '.jpg';
     $('imgView').src = d.b64;
     $('imgOverlay').classList.remove('hidden');
   }catch(e){ alert(e.message); }
