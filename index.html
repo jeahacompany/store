@@ -190,6 +190,7 @@
         <div class="nav-item" data-t="stock" onclick="tab('stock')"><span class="ico">🗃️</span>재고</div>
         <div class="nav-item" data-t="price" onclick="tab('price')"><span class="ico">💹</span>단가 변동</div>
         <div class="nav-label">시스템</div>
+        <div class="nav-item" data-t="logs" id="navLogs" onclick="tab('logs')"><span class="ico">🧾</span>시스템 로그</div>
         <div class="nav-item" data-t="setup" onclick="tab('setup')"><span class="ico">⚙️</span>설정</div>
       </nav>
       <div class="me">
@@ -576,6 +577,33 @@
         </div>
       </div>
 
+      <!-- 시스템 로그 -->
+      <div id="tab-logs" class="hidden">
+        <div class="card">
+          <h2>활동 로그 <span class="sub">— 누가 언제 무엇을 했는지 (변경·삭제·로그인 전부)</span>
+            <span style="margin-left:8px">
+              <button class="btn sm ghost lg-days active" data-d="7" onclick="lgDays(7,this)">7일</button>
+              <button class="btn sm ghost lg-days" data-d="30" onclick="lgDays(30,this)">30일</button>
+              <button class="btn sm ghost lg-days" data-d="90" onclick="lgDays(90,this)">90일</button>
+            </span></h2>
+          <div class="table-scroll" style="max-height:50vh; overflow:auto"><table><thead><tr><th>시간</th><th>누가</th><th>무엇을</th><th>대상/내용</th></tr></thead>
+          <tbody id="lgAuditBody"></tbody></table></div>
+        </div>
+        <div class="card">
+          <h2>로그인 시도 <span class="sub">— 실패 5회면 5분 잠금</span></h2>
+          <div id="lgAttempts"></div>
+        </div>
+        <div class="card">
+          <h2>오류 로그 <span class="sub">— 앱에서 난 에러 (개발·수리용)</span></h2>
+          <div class="table-scroll" style="max-height:36vh; overflow:auto"><table><thead><tr><th>시간</th><th>누가</th><th>어디서</th><th>내용</th></tr></thead>
+          <tbody id="lgErrBody"></tbody></table></div>
+        </div>
+        <div class="card">
+          <h2>업데이트 내역 <span class="sub">— 앱이 어떻게 발전해왔는지</span></h2>
+          <div id="lgChangelog"></div>
+        </div>
+      </div>
+
       <!-- 설정 -->
       <div id="tab-setup" class="hidden">
         <div class="card">
@@ -739,9 +767,9 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 let TOKEN = localStorage.getItem('store_admin_token') || '';
 let ME = null, STAFF = [], ATT = [], WAGES = null, TASKS = [];
-const TABS = ['today','cal','staff','att','labor','tasks','board','manual','info','sales','exp','settle','inb','stock','price','setup'];
+const TABS = ['today','cal','staff','att','labor','tasks','board','manual','info','sales','exp','settle','inb','stock','price','logs','setup'];
 const TITLES = {today:'오늘', cal:'캘린더', staff:'직원', att:'근태', labor:'인건비표', tasks:'오더', board:'업무보드',
-  manual:'매뉴얼', info:'매장정보', sales:'매출', exp:'지출', settle:'월 정산', inb:'입고 명세서', stock:'재고', price:'단가 변동', setup:'설정'};
+  manual:'매뉴얼', info:'매장정보', sales:'매출', exp:'지출', settle:'월 정산', inb:'입고 명세서', stock:'재고', price:'단가 변동', logs:'시스템 로그', setup:'설정'};
 const IB_CATS = ['고기','야채','식자재','음료','주류','소모품','기타'];
 const EV_COLORS = {
   '공사·인테리어':['#FFF4E6','#E8590C'], '행정·계약':['#E7F5FF','#1971C2'], '발주·입고':['#F3F0FF','#7048E8'],
@@ -823,6 +851,7 @@ function tab(name){
   if(name==='inb') loadInbound();
   if(name==='stock') loadStock();
   if(name==='price') loadPrice();
+  if(name==='logs') loadLogs();
   if(name==='setup') loadSetup();
 }
 
@@ -847,6 +876,7 @@ function boot(){
   $('meAvatar').textContent = ME ? ME.name.slice(0,1) : '·';
   show('mainView');
   $('navLabor').style.display = (ME && ME.role==='owner') ? '' : 'none';
+  $('navLogs').style.display = (ME && ME.role==='owner') ? '' : 'none';
   if(ME && ME.role==='viewer'){
     document.querySelectorAll('#tabbar .nav-item').forEach(n => {
       if(!['cal','settle'].includes(n.dataset.t)) n.style.display='none';
@@ -1953,6 +1983,62 @@ function renderPrice(){
     + '<td><b>'+cm(x.unit_price)+'원</b></td>'
     + '<td><span class="badge '+(x.pct>0?'r':'g')+'">'+(x.pct>0?'▲ +':'▼ ')+x.pct+'%</span></td></tr>'
   ).join('') || '<tr><td colspan="7" class="sub">아직 단가 변동이 없어요. 입고를 등록하다가 단가가 바뀌면 자동으로 쌓입니다.</td></tr>';
+}
+
+/* ---------- 시스템 로그 ---------- */
+let LG_DAYS = 7;
+const FN_LABELS = {
+  login:'로그인', login_fail:'로그인 실패', signup:'회원가입', changeMyPassword:'비밀번호 변경',
+  clockIn:'출근', clockOut:'퇴근', attFix:'근태 수정', attAdd:'근태 추가', attDelete:'근태 삭제', attRestore:'근태 복구',
+  staffSave:'직원 저장', staffDelete:'직원 삭제', myProfileSave:'내정보 수정',
+  taskSave:'오더 등록', taskDone:'오더 완료', taskDelete:'오더 삭제',
+  saleSave:'매출 저장', saleDelete:'매출 삭제', expSave:'지출 저장', expDelete:'지출 삭제',
+  inboundSave:'입고 저장', inboundDelete:'입고 삭제', stockAdjSave:'재고 조정', stockAdjDelete:'재고 조정 삭제',
+  evSave:'일정 저장', evDelete:'일정 삭제', noticeSave:'공지 저장', noticeDelete:'공지 삭제',
+  leaveRequest:'휴무 신청', leaveDecide:'휴무 승인/거절', leaveSave:'휴무 등록', leaveDelete:'휴무 삭제',
+  reqAdd:'요청 등록', reqDone:'요청 처리', reqDelete:'요청 삭제',
+  docUpload:'서류 업로드', docDelete:'서류 삭제',
+  manualSave:'매뉴얼 저장', manualDelete:'매뉴얼 삭제', infoSave:'매장정보 저장', infoDelete:'매장정보 삭제',
+  storeSave:'매장 설정 변경', storeSetGps:'GPS 기준점 설정',
+  resvSave:'예약 저장', resvStatus:'예약 상태 변경', resvDelete:'예약 삭제',
+  soldSave:'품절 등록', soldToggle:'품절 토글', soldDelete:'품절 삭제',
+  shiftNoteSave:'일지 작성', shiftNoteDelete:'일지 삭제'
+};
+function lgDays(d, btn){
+  LG_DAYS = d;
+  document.querySelectorAll('.lg-days').forEach(b=>b.classList.toggle('active', b===btn));
+  loadLogs();
+}
+function fmtDT(t){
+  const d = new Date(t);
+  return (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+async function loadLogs(){
+  try{
+    const r = await api('logsView', TOKEN, LG_DAYS);
+    $('lgAuditBody').innerHTML = (r.audit||[]).map(a => {
+      const isFail = a.action==='login_fail';
+      const label = FN_LABELS[a.action] || a.action;
+      return '<tr><td class="sub" style="white-space:nowrap">'+fmtDT(a.at)+'</td>'
+        + '<td><b>'+esc(a.actor||'-')+'</b>'+(a.role?' <span class="sub">'+esc(a.role)+'</span>':'')+'</td>'
+        + '<td><span class="badge '+(isFail?'r':a.action==='login'?'g':'')+'">'+esc(label)+'</span></td>'
+        + '<td class="sub" style="max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">'+esc(a.target||'')+'</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="sub">기간 내 기록이 없어요.</td></tr>';
+    $('lgAttempts').innerHTML = (r.attempts||[]).map(a =>
+      '<div class="row"><span><b>'+esc(a.username)+'</b> <span class="sub">실패 '+a.fail_count+'회 · 마지막 '+fmtDT(a.last_fail)+'</span></span>'
+      + (a.locked ? '<span class="badge r">잠김 (5분)</span>' : '<span class="badge">해제됨</span>')+'</div>'
+    ).join('') || '<div class="sub">로그인 실패 기록이 없어요. (성공하면 기록이 지워져요)</div>';
+    $('lgErrBody').innerHTML = (r.errors||[]).map(e =>
+      '<tr><td class="sub" style="white-space:nowrap">'+fmtDT(e.at)+'</td><td>'+esc(e.who||'-')+'</td>'
+      + '<td>'+esc(e.where_at||'')+'</td><td class="sub">'+esc((e.msg||'').slice(0,120))+'</td></tr>'
+    ).join('') || '<tr><td colspan="4" class="sub">기간 내 오류가 없어요. 👍</td></tr>';
+    const cl = await api('changelogList', TOKEN);
+    $('lgChangelog').innerHTML = (cl||[]).map(c =>
+      '<div class="row"><span><span class="badge b">'+esc(c.ver)+'</span> <b>'+esc(c.title)+'</b>'
+      + '<div class="sub" style="margin-top:2px">'+esc(c.body||'')+'</div></span>'
+      + '<span class="sub" style="white-space:nowrap">'+fmtDate(c.log_date)+'</span></div>'
+    ).join('') || '<div class="sub">내역이 없어요.</div>';
+  }catch(e){ toast(e.message); }
 }
 
 /* ---------- 설정 ---------- */
