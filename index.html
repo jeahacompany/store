@@ -185,6 +185,7 @@
         <div class="nav-label">매출 · 정산</div>
         <div class="nav-item" data-t="cash" id="navCash" onclick="tab('cash')"><span class="ico">💼</span>자금</div>
         <div class="nav-item" data-t="sales" onclick="tab('sales')"><span class="ico">💰</span>매출</div>
+        <div class="nav-item" data-t="dep" onclick="tab('dep')"><span class="ico">📥</span>입금</div>
         <div class="nav-item" data-t="exp" onclick="tab('exp')"><span class="ico">🧾</span>지출</div>
         <div class="nav-item" data-t="settle" onclick="tab('settle')"><span class="ico">📊</span>월 정산</div>
         <div class="nav-item" data-t="inb" onclick="tab('inb')"><span class="ico">📦</span>입고 명세서</div>
@@ -638,6 +639,45 @@
         </div>
       </div>
 
+      <!-- 입금 -->
+      <div id="tab-dep" class="hidden">
+        <div class="card">
+          <h2>매출 vs 입금 대사 <input type="month" id="depYm" onchange="loadDep()" style="margin-left:8px"></h2>
+          <div class="sub" style="margin-bottom:10px">포스에 찍힌 매출(발생)과 통장에 실제 들어온 입금을 비교해요. 차이 = 수수료 + 아직 안 들어온 돈.</div>
+          <div id="depRecon" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px"></div>
+        </div>
+        <div class="card">
+          <h2>입금 문자 캡쳐 올리기 <span class="sub">— 은행 입금 문자·뱅킹앱 화면을 캡쳐해서 올리면 AI가 입금처를 알아서 잡아요</span></h2>
+          <input type="file" id="dpFile" accept="image/*" class="hidden">
+          <button class="btn" onclick="$('dpFile').click()">📱 캡쳐 사진 선택</button>
+          <span id="dpAiStatus" class="sub" style="margin-left:8px"></span>
+          <div id="dpParsedWrap" class="hidden" style="margin-top:12px">
+            <div class="table-scroll"><table><thead><tr><th>입금일</th><th>입금처</th><th>분류</th><th>금액</th><th>통장</th><th></th></tr></thead>
+            <tbody id="dpParsedBody"></tbody></table></div>
+            <div style="margin-top:10px"><button class="btn" onclick="dpSaveAll()">확인했어요 — 모두 등록</button>
+              <button class="btn ghost" onclick="dpParsedReset()">취소</button></div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>직접 입력</h2>
+          <div class="grid2">
+            <div><label>입금일</label><input id="dpDate" type="date" style="width:100%"></div>
+            <div><label>입금처</label><input id="dpSource" style="width:100%" placeholder="예: 신한카드, 우아한형제들"></div>
+            <div><label>분류</label><select id="dpChannel" style="width:100%">
+              <option>카드</option><option>현금</option><option>배민</option><option>요기요</option><option>쿠팡이츠</option><option>기타</option></select></div>
+            <div><label>금액 (원)</label><input id="dpAmt" type="text" inputmode="numeric" oninput="mFmt(this)" style="width:100%"></div>
+            <div><label>통장</label><select id="dpAcct" style="width:100%"><option value="">선택 안 함</option></select></div>
+            <div><label>메모</label><input id="dpMemo" style="width:100%"></div>
+          </div>
+          <div style="margin-top:12px"><button class="btn" onclick="dpSave()">입금 등록</button></div>
+        </div>
+        <div class="card">
+          <h2>입금 내역 <span class="sub" id="depTotal"></span></h2>
+          <div class="table-scroll"><table><thead><tr><th>입금일</th><th>입금처</th><th>분류</th><th>금액</th><th>통장</th><th>메모</th><th></th></tr></thead>
+          <tbody id="depBody"></tbody></table></div>
+        </div>
+      </div>
+
       <!-- 시스템 로그 -->
       <div id="tab-logs" class="hidden">
         <div class="card">
@@ -861,9 +901,9 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 let TOKEN = localStorage.getItem('store_admin_token') || '';
 let ME = null, STAFF = [], ATT = [], WAGES = null, TASKS = [];
-const TABS = ['today','cal','staff','att','labor','tasks','board','manual','info','cash','sales','exp','settle','inb','stock','price','logs','setup'];
+const TABS = ['today','cal','staff','att','labor','tasks','board','manual','info','cash','sales','dep','exp','settle','inb','stock','price','logs','setup'];
 const TITLES = {today:'오늘', cal:'캘린더', staff:'직원', att:'근태', labor:'인건비표', tasks:'오더', board:'업무보드',
-  manual:'매뉴얼', info:'매장정보', cash:'자금', sales:'매출', exp:'지출', settle:'월 정산', inb:'입고 명세서', stock:'재고', price:'단가 변동', logs:'시스템 로그', setup:'설정'};
+  manual:'매뉴얼', info:'매장정보', cash:'자금', sales:'매출', dep:'입금', exp:'지출', settle:'월 정산', inb:'입고 명세서', stock:'재고', price:'단가 변동', logs:'시스템 로그', setup:'설정'};
 const IB_CATS = ['고기','야채','식자재','음료','주류','소모품','기타'];
 const EV_COLORS = {
   '공사·인테리어':['#FFF4E6','#E8590C'], '행정·계약':['#E7F5FF','#1971C2'], '발주·입고':['#F3F0FF','#7048E8'],
@@ -946,6 +986,7 @@ function tab(name){
   if(name==='stock') loadStock();
   if(name==='price') loadPrice();
   if(name==='cash') loadCash();
+  if(name==='dep') loadDep();
   if(name==='logs') loadLogs();
   if(name==='setup') loadSetup();
 }
@@ -2222,6 +2263,122 @@ async function acDel(){
 async function csDel(id){
   if(!confirm('이 입출금 기록을 삭제할까요?')) return;
   try{ await api('cashDelete', TOKEN, id); loadCash(); }catch(e){ alert(e.message); }
+}
+
+/* ---------- 입금 ---------- */
+let DEPS = [], DP_PARSED = [], DP_PHOTO = null;
+const DP_CHANNELS = ['카드','현금','배민','요기요','쿠팡이츠','기타'];
+async function dpFillAccts(){
+  if(!ACCTS.length && ME && ME.role==='owner'){
+    try{ const r = await api('cashList', TOKEN); ACCTS = r.accounts||[]; }catch(e){}
+  }
+  const keep = $('dpAcct').value;
+  $('dpAcct').innerHTML = '<option value="">선택 안 함</option>'
+    + ACCTS.map(a=>'<option value="'+a.id+'"'+(a.id===keep?' selected':'')+'>'+esc(a.name)+'</option>').join('');
+}
+async function loadDep(){
+  if(!$('depYm').value) $('depYm').value = localYm();
+  if(!$('dpDate').value) $('dpDate').value = localDate();
+  await dpFillAccts();
+  try{
+    const r = await api('depMonth', TOKEN, $('depYm').value);
+    DEPS = r.rows;
+    $('depTotal').textContent = '— 이달 입금 합계 ' + fmtWon(r.total);
+    const chs = [...new Set([...Object.keys(r.salesByChannel||{}), ...Object.keys(r.byChannel||{})])];
+    $('depRecon').innerHTML = chs.map(c => {
+      const s = +((r.salesByChannel||{})[c]||0), d = +((r.byChannel||{})[c]||0), diff = d - s;
+      const pct = s > 0 ? Math.round(d/s*1000)/10 : null;
+      return '<div class="card" style="margin:0"><b>'+esc(c)+'</b>'
+        + '<div class="sub" style="margin-top:4px">매출 '+fmtWon(s)+'</div>'
+        + '<div class="sub">입금 '+fmtWon(d)+(pct!=null?' <b>('+pct+'%)</b>':'')+'</div>'
+        + '<div style="font-weight:700; margin-top:4px; color:'+(diff>=0?'var(--green, #2F9E44)':'var(--red, #E03131)')+'">'
+        + (diff>=0?'+':'')+fmtWon(diff)+'</div></div>';
+    }).join('') || '<div class="sub">이 달엔 매출·입금 기록이 아직 없어요.</div>';
+    $('depBody').innerHTML = DEPS.map(x =>
+      '<tr><td>'+fmtDate(x.dep_date)+'</td><td>'+esc(x.source||'-')+'</td>'
+      + '<td><span class="badge">'+esc(x.channel)+'</span></td>'
+      + '<td class="name-cell">+'+fmtWon(x.amount)+'</td>'
+      + '<td class="sub">'+esc(x.account_name||'-')+'</td>'
+      + '<td class="sub">'+esc(x.memo||'')+'</td>'
+      + '<td style="white-space:nowrap">'
+      + (x.has_photo ? '<button class="btn sm ghost" onclick="viewDepPhoto(\''+x.id+'\')">📷</button> ' : '')
+      + '<button class="btn sm red" onclick="dpDel(\''+x.id+'\')">삭제</button></td></tr>'
+    ).join('') || '<tr><td colspan="7" class="sub">이 달 입금 기록이 없어요.</td></tr>';
+  }catch(e){ toast(e.message); }
+}
+$('dpFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if(!f) return;
+  try{
+    let b64 = await ibCompress(f, 1600, 0.8);
+    if(b64.length > 1200000) b64 = await ibCompress(f, 1200, 0.65);
+    DP_PHOTO = b64;
+    $('dpAiStatus').textContent = 'AI가 문자를 읽는 중... (5~15초)';
+    const res = await fetch(SUPABASE_URL + '/functions/v1/parse-invoice', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'apikey':SUPABASE_ANON, 'Authorization':'Bearer '+SUPABASE_ANON },
+      body: JSON.stringify({ token: TOKEN, b64, mode:'deposit' })
+    });
+    const data = await res.json();
+    if(!data || data.error) throw new Error((data && data.error) || 'AI 호출 실패 ('+res.status+')');
+    DP_PARSED = (data.result.entries||[]).map(x => ({
+      dep_date: x.dep_date || localDate(), source: x.source || '',
+      channel: DP_CHANNELS.includes(x.channel) ? x.channel : '기타',
+      amount: +x.amount || 0, account_id: '' }));
+    if(!DP_PARSED.length) throw new Error('입금 내역을 찾지 못했어요. 입금 문자가 잘 보이게 다시 캡쳐해주세요.');
+    renderDpParsed();
+    $('dpParsedWrap').classList.remove('hidden');
+    $('dpAiStatus').textContent = '입금 '+DP_PARSED.length+'건 인식 — 내용 확인 후 등록하세요.';
+  }catch(err){ $('dpAiStatus').textContent = ''; alert(err.message); }
+};
+function renderDpParsed(){
+  $('dpParsedBody').innerHTML = DP_PARSED.map((x,i) =>
+    '<tr><td><input type="date" value="'+x.dep_date+'" onchange="dpU('+i+',\'dep_date\',this.value)"></td>'
+    + '<td><input style="width:130px" value="'+esc(x.source)+'" oninput="dpU('+i+',\'source\',this.value)"></td>'
+    + '<td><select onchange="dpU('+i+',\'channel\',this.value)">'
+      + DP_CHANNELS.map(c=>'<option'+(c===x.channel?' selected':'')+'>'+c+'</option>').join('')+'</select></td>'
+    + '<td><input type="text" inputmode="numeric" style="width:110px" value="'+cm(x.amount)+'" oninput="mFmt(this); dpU('+i+',\'amount\',this.value)"></td>'
+    + '<td><select onchange="dpU('+i+',\'account_id\',this.value)"><option value="">선택 안 함</option>'
+      + ACCTS.map(a=>'<option value="'+a.id+'"'+(a.id===x.account_id?' selected':'')+'>'+esc(a.name)+'</option>').join('')+'</select></td>'
+    + '<td><button class="btn sm red" onclick="DP_PARSED.splice('+i+',1); renderDpParsed()">✕</button></td></tr>'
+  ).join('');
+}
+function dpU(i, k, v){ DP_PARSED[i][k] = (k==='amount') ? mVal(v) : v; }
+function dpParsedReset(){ DP_PARSED = []; DP_PHOTO = null; $('dpParsedWrap').classList.add('hidden'); $('dpAiStatus').textContent = ''; }
+async function dpSaveAll(){
+  try{
+    const list = DP_PARSED.filter(x => x.amount > 0);
+    if(!list.length){ alert('등록할 입금이 없어요.'); return; }
+    for(const x of list){
+      await api('depSave', TOKEN, { dep_date:x.dep_date, source:x.source, channel:x.channel,
+        amount:x.amount, account_id:x.account_id, memo:'문자 캡쳐 자동등록',
+        photo_b64: DP_PHOTO || '', ai_parsed:true });
+    }
+    toast('입금 '+list.length+'건 등록 완료');
+    dpParsedReset(); await loadDep();
+  }catch(e){ alert(e.message); }
+}
+async function dpSave(){
+  try{
+    await api('depSave', TOKEN, { dep_date:$('dpDate').value, source:$('dpSource').value.trim(),
+      channel:$('dpChannel').value, amount:mVal($('dpAmt').value),
+      account_id:$('dpAcct').value, memo:$('dpMemo').value.trim() });
+    toast('입금을 등록했어요');
+    $('dpSource').value=''; $('dpAmt').value=''; $('dpMemo').value='';
+    await loadDep();
+  }catch(e){ alert(e.message); }
+}
+async function dpDel(id){
+  if(!confirm('이 입금 기록을 삭제할까요?')) return;
+  try{ await api('depDelete', TOKEN, id); loadDep(); }catch(e){ alert(e.message); }
+}
+async function viewDepPhoto(id){
+  try{
+    const d = await api('depPhoto', TOKEN, id);
+    const x = DEPS.find(r=>r.id===id);
+    IMG_DL_NAME = '입금문자_' + ((x && x.dep_date) || id.slice(0,8)) + '.jpg';
+    $('imgView').src = d.b64;
+    $('imgOverlay').classList.remove('hidden');
+  }catch(e){ alert(e.message); }
 }
 
 /* ---------- 시스템 로그 ---------- */
