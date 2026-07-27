@@ -188,6 +188,7 @@
         <div class="nav-item" data-t="settle" onclick="tab('settle')"><span class="ico">📊</span>월 정산</div>
         <div class="nav-item" data-t="inb" onclick="tab('inb')"><span class="ico">📦</span>입고 명세서</div>
         <div class="nav-item" data-t="stock" onclick="tab('stock')"><span class="ico">🗃️</span>재고</div>
+        <div class="nav-item" data-t="price" onclick="tab('price')"><span class="ico">💹</span>단가 변동</div>
         <div class="nav-label">시스템</div>
         <div class="nav-item" data-t="setup" onclick="tab('setup')"><span class="ico">⚙️</span>설정</div>
       </nav>
@@ -542,9 +543,36 @@
       <!-- 재고 -->
       <div id="tab-stock" class="hidden">
         <div class="card">
-          <h2>재고 현황 <span class="sub">— 입고 명세서 기준 누적 (사용량 차감은 다음 단계)</span></h2>
-          <div class="table-scroll"><table><thead><tr><th>분류</th><th>품목</th><th>누적 수량</th><th>구매 횟수</th><th>최근 단가</th><th>누적 금액</th><th>최근 구매</th></tr></thead>
+          <h2>재고 조정 <span class="sub">— 실사로 추가하거나, 출고·폐기만큼 빼세요 (빼려면 음수, 예: -3)</span></h2>
+          <div class="grid2">
+            <div><label>품목명</label><input id="adjName" style="width:100%" placeholder="예: 참이슬"></div>
+            <div><label>수량 (± )</label><input id="adjQty" type="number" step="any" style="width:100%" placeholder="-3 = 3개 빼기"></div>
+            <div><label>단위</label><input id="adjUnit" style="width:100%" placeholder="박스, kg, 개..."></div>
+            <div><label>날짜</label><input id="adjDate" type="date" style="width:100%"></div>
+          </div>
+          <label>사유</label><input id="adjMemo" style="width:100%" placeholder="예: 주말 판매분 출고, 유통기한 폐기, 실사 보정...">
+          <div style="margin-top:12px"><button class="btn" onclick="adjSave()">조정 저장</button></div>
+        </div>
+        <div class="card">
+          <h2>재고 현황 <span class="sub">— 입고 누적 + 조정 반영 (판매 자동 차감은 품목별 매출 기능에서 연결 예정)</span></h2>
+          <div class="table-scroll"><table><thead><tr><th>분류</th><th>품목</th><th>재고</th><th>입고 중량</th><th>구매</th><th>최근 단가</th><th>누적 금액</th><th>최근 구매</th><th></th></tr></thead>
           <tbody id="stockBody"></tbody></table></div>
+        </div>
+        <div class="card">
+          <h2>조정 내역 <span class="sub">— 최근 100건</span></h2>
+          <div id="adjList"></div>
+        </div>
+      </div>
+
+      <!-- 단가 변동 -->
+      <div id="tab-price" class="hidden">
+        <div class="card">
+          <h2>단가 변동표
+            <select id="phItemF" onchange="renderPrice()" style="margin-left:8px; max-width:220px"><option value="">전체 품목</option></select>
+          </h2>
+          <div class="sub" style="margin-bottom:10px">입고 명세서를 등록할 때마다 단가가 지난번과 달라진 품목이 여기 자동으로 쌓여요. 문제없으면 아무것도 안 쌓입니다.</div>
+          <div class="table-scroll"><table><thead><tr><th>날짜</th><th>품목</th><th>분류</th><th>거래처</th><th>지난 단가</th><th>새 단가</th><th>변동</th></tr></thead>
+          <tbody id="phBody"></tbody></table></div>
         </div>
       </div>
 
@@ -711,10 +739,10 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 let TOKEN = localStorage.getItem('store_admin_token') || '';
 let ME = null, STAFF = [], ATT = [], WAGES = null, TASKS = [];
-const TABS = ['today','cal','staff','att','labor','tasks','board','manual','info','sales','exp','settle','inb','stock','setup'];
+const TABS = ['today','cal','staff','att','labor','tasks','board','manual','info','sales','exp','settle','inb','stock','price','setup'];
 const TITLES = {today:'오늘', cal:'캘린더', staff:'직원', att:'근태', labor:'인건비표', tasks:'오더', board:'업무보드',
-  manual:'매뉴얼', info:'매장정보', sales:'매출', exp:'지출', settle:'월 정산', inb:'입고 명세서', stock:'재고', setup:'설정'};
-const IB_CATS = ['재료','음료','주류','소모품','기타'];
+  manual:'매뉴얼', info:'매장정보', sales:'매출', exp:'지출', settle:'월 정산', inb:'입고 명세서', stock:'재고', price:'단가 변동', setup:'설정'};
+const IB_CATS = ['고기','야채','식자재','음료','주류','소모품','기타'];
 const EV_COLORS = {
   '공사·인테리어':['#FFF4E6','#E8590C'], '행정·계약':['#E7F5FF','#1971C2'], '발주·입고':['#F3F0FF','#7048E8'],
   '이벤트':['#EBFBEE','#2F9E44'], '휴무':['#FDEDF0','#D6455D'], '일정':['#F1F3F5','#495057']
@@ -794,6 +822,7 @@ function tab(name){
   if(name==='settle') loadSettle();
   if(name==='inb') loadInbound();
   if(name==='stock') loadStock();
+  if(name==='price') loadPrice();
   if(name==='setup') loadSetup();
 }
 
@@ -1859,17 +1888,71 @@ async function delInbound(id){
 }
 
 /* ---------- 재고 ---------- */
+let STOCK = [];
 async function loadStock(){
+  if(!$('adjDate').value) $('adjDate').value = localDate();
   try{
-    const list = await api('stockSummary', TOKEN);
-    $('stockBody').innerHTML = list.map(x =>
-      '<tr><td><span class="badge">'+esc(x.category)+'</span></td><td class="name-cell">'+esc(x.name)+'</td>'
-      + '<td>'+(+x.total_qty).toLocaleString('ko-KR')+' '+esc(x.unit||'')+'</td>'
+    const [list, adjs] = await Promise.all([api('stockSummary', TOKEN), api('stockAdjList', TOKEN)]);
+    STOCK = list;
+    $('stockBody').innerHTML = list.map((x,i) =>
+      '<tr><td>'+(x.category?'<span class="badge">'+esc(x.category)+'</span>':'-')+'</td><td class="name-cell">'+esc(x.name)+'</td>'
+      + '<td><b>'+(+x.stock_qty).toLocaleString('ko-KR')+'</b> '+esc(x.unit||'')
+        + (+x.adj_qty !== 0 ? ' <span class="sub">(조정 '+(x.adj_qty>0?'+':'')+(+x.adj_qty).toLocaleString('ko-KR')+')</span>' : '')+'</td>'
+      + '<td>'+(+x.in_weight > 0 ? (+x.in_weight).toLocaleString('ko-KR')+'kg' : '-')+'</td>'
       + '<td>'+x.buy_count+'회</td><td>'+fmtWon(x.last_price)+'</td>'
       + '<td>'+fmtWon(x.total_amount)+'</td>'
-      + '<td class="sub">'+fmtDate(x.last_date)+(x.last_supplier?' · '+esc(x.last_supplier):'')+'</td></tr>'
-    ).join('') || '<tr><td colspan="7" class="sub">입고 명세서를 등록하면 여기 재고가 쌓여요.</td></tr>';
+      + '<td class="sub">'+(x.last_date?fmtDate(x.last_date):'-')+(x.last_supplier?' · '+esc(x.last_supplier):'')+'</td>'
+      + '<td><button class="btn sm ghost" onclick="adjPrefill('+i+')">조정</button></td></tr>'
+    ).join('') || '<tr><td colspan="9" class="sub">입고 명세서를 등록하면 여기 재고가 쌓여요.</td></tr>';
+    $('adjList').innerHTML = adjs.map(a =>
+      '<div class="row"><span><span class="badge '+(a.qty<0?'r':'g')+'">'+(a.qty>0?'+':'')+(+a.qty).toLocaleString('ko-KR')+' '+esc(a.unit||'')+'</span> '
+      + '<b>'+esc(a.name)+'</b> <span class="sub">'+fmtDate(a.adj_date)+(a.memo?' · '+esc(a.memo):'')+' · '+esc(a.created_by||'')+'</span></span>'
+      + '<button class="btn sm red" onclick="adjDel(\''+a.id+'\')">삭제</button></div>'
+    ).join('') || '<div class="sub">아직 조정 내역이 없어요.</div>';
   }catch(e){ toast(e.message); }
+}
+function adjPrefill(i){
+  const x = STOCK[i]; if(!x) return;
+  $('adjName').value = x.name; $('adjUnit').value = x.unit||''; $('adjQty').value = '';
+  $('adjQty').focus(); window.scrollTo({top:0, behavior:'smooth'});
+}
+async function adjSave(){
+  try{
+    await api('stockAdjSave', TOKEN, { name:$('adjName').value.trim(), qty:+$('adjQty').value||0,
+      unit:$('adjUnit').value.trim(), memo:$('adjMemo').value.trim(), adj_date:$('adjDate').value });
+    toast('재고를 조정했어요');
+    $('adjName').value=''; $('adjQty').value=''; $('adjUnit').value=''; $('adjMemo').value='';
+    loadStock();
+  }catch(e){ alert(e.message); }
+}
+async function adjDel(id){
+  if(!confirm('이 조정 기록을 삭제할까요? (재고에 다시 반영됩니다)')) return;
+  try{ await api('stockAdjDelete', TOKEN, id); loadStock(); }catch(e){ alert(e.message); }
+}
+
+/* ---------- 단가 변동표 ---------- */
+let PH = [];
+async function loadPrice(){
+  try{
+    PH = await api('priceHistory', TOKEN);
+    const keep = $('phItemF').value;
+    const names = [...new Set(PH.map(x=>x.name))].sort((a,b)=>a.localeCompare(b,'ko'));
+    $('phItemF').innerHTML = '<option value="">전체 품목</option>'
+      + names.map(n=>'<option'+(n===keep?' selected':'')+'>'+esc(n)+'</option>').join('');
+    renderPrice();
+  }catch(e){ toast(e.message); }
+}
+function renderPrice(){
+  const f = $('phItemF').value;
+  const list = f ? PH.filter(x=>x.name===f) : PH;
+  $('phBody').innerHTML = list.map(x =>
+    '<tr><td>'+fmtDate(x.in_date)+'</td><td class="name-cell">'+esc(x.name)+'</td>'
+    + '<td>'+(x.category?'<span class="badge">'+esc(x.category)+'</span>':'-')+'</td>'
+    + '<td>'+esc(x.supplier||'-')+'</td>'
+    + '<td class="sub">'+cm(x.prev_price)+'원 ('+fmtDate(x.prev_date)+')</td>'
+    + '<td><b>'+cm(x.unit_price)+'원</b></td>'
+    + '<td><span class="badge '+(x.pct>0?'r':'g')+'">'+(x.pct>0?'▲ +':'▼ ')+x.pct+'%</span></td></tr>'
+  ).join('') || '<tr><td colspan="7" class="sub">아직 단가 변동이 없어요. 입고를 등록하다가 단가가 바뀌면 자동으로 쌓입니다.</td></tr>';
 }
 
 /* ---------- 설정 ---------- */
