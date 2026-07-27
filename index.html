@@ -1108,13 +1108,16 @@ async function loadLabor(){
       + '<span style="white-space:nowrap"><button class="btn sm green" onclick="lvDecide(\''+l.id+'\', true)">승인</button> '
       + '<button class="btn sm red" onclick="lvDecide(\''+l.id+'\', false)">거절</button></span></div>'
     ).join('') || '없음';
-    $('laStaffBody').innerHTML = (LABOR.staff||[]).map(s =>
+    const laStaffRows = (LABOR.staff||[]).filter(s => s.days > 0 || s.pay > 0 || s.leave_cnt > 0);
+    const laHidden = (LABOR.staff||[]).length - laStaffRows.length;
+    $('laStaffBody').innerHTML = laStaffRows.map(s =>
       '<tr><td><a class="link" onclick="openLaborStaff(\''+s.staff_id+'\')"><b>'+esc(s.name)+'</b></a></td><td>'+esc(s.position||'-')+'</td>'
       + '<td>'+(s.pay_type==='monthly'?'<span class="badge b">월급</span>':'<span class="badge">시급 '+fmtWon(s.hourly_wage)+'</span>')+'</td>'
       + '<td>'+s.days+'일</td><td>'+fmtMins(s.mins)+'</td>'
       + '<td class="name-cell">'+fmtWon(s.pay)+'</td>'
       + '<td>'+(s.leave_cnt>0?(s.leave_cnt+'건'+(s.half_cnt>0?' (반차 '+s.half_cnt+')':'')):'-')+'</td></tr>'
     ).join('') || '<tr><td colspan="7" class="sub">이 기간 기록이 없어요.</td></tr>';
+    if(laHidden > 0) $('laStaffBody').innerHTML += '<tr><td colspan="7" class="sub">근무 기록 없는 계정 '+laHidden+'명 숨김 (태블릿·업로드 등)</td></tr>';
     $('laDaysBody').innerHTML = (LABOR.days||[]).map(d =>
       '<tr><td>'+fmtDate(d.date)+'</td>'
       + '<td>'+d.entries.map(e =>
