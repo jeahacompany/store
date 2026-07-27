@@ -174,6 +174,7 @@
       <div class="brand"><b id="hdStore">우리매장</b><span>STORE MANAGER</span></div>
       <nav id="tabbar">
         <div class="nav-item active" data-t="today" onclick="tab('today')"><span class="ico">📋</span>오늘<span class="cnt hidden" id="cntToday"></span></div>
+        <div class="nav-item" data-t="ai" id="navAi" onclick="tab('ai')"><span class="ico">🤖</span>AI 비서</div>
         <div class="nav-item" data-t="cal" onclick="tab('cal')"><span class="ico">🗓️</span>캘린더</div>
         <div class="nav-item" data-t="staff" onclick="tab('staff')"><span class="ico">👥</span>직원<span class="cnt hidden" id="cntStaff"></span></div>
         <div class="nav-item" data-t="att" onclick="tab('att')"><span class="ico">⏱️</span>근태</div>
@@ -639,6 +640,26 @@
         </div>
       </div>
 
+      <!-- AI 비서 -->
+      <div id="tab-ai" class="hidden">
+        <div class="card" style="display:flex; flex-direction:column; height:calc(100vh - 140px); min-height:420px">
+          <h2 style="flex:none">AI 비서 <span class="sub">— 매장 데이터를 보고 답하고, 시키면 등록까지 해요 (사장님 전용)</span>
+            <button class="btn sm ghost" onclick="aiClear()" style="float:right">대화 지우기</button></h2>
+          <div id="aiSuggest" style="flex:none; display:flex; gap:6px; flex-wrap:wrap; margin:8px 0">
+            <button class="btn sm ghost" onclick="aiAsk('이번주 예약 알려줘')">이번주 예약</button>
+            <button class="btn sm ghost" onclick="aiAsk('이번달 정산 어때?')">이번달 정산</button>
+            <button class="btn sm ghost" onclick="aiAsk('오늘 현황 브리핑해줘')">오늘 브리핑</button>
+            <button class="btn sm ghost" onclick="aiAsk('재고 상황 요약해줘')">재고 요약</button>
+          </div>
+          <div id="aiLog" style="flex:1; overflow-y:auto; padding:8px 4px; display:flex; flex-direction:column; gap:10px"></div>
+          <div style="flex:none; display:flex; gap:8px; margin-top:10px">
+            <input id="aiInput" style="flex:1" placeholder="예: 주방장한테 내일 육수 미리 준비하라고 해"
+              onkeydown="if(event.key==='Enter' && !event.isComposing) aiSend()">
+            <button class="btn" id="aiSendBtn" onclick="aiSend()">보내기</button>
+          </div>
+        </div>
+      </div>
+
       <!-- 입금 -->
       <div id="tab-dep" class="hidden">
         <div class="card">
@@ -901,8 +922,8 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 let TOKEN = localStorage.getItem('store_admin_token') || '';
 let ME = null, STAFF = [], ATT = [], WAGES = null, TASKS = [];
-const TABS = ['today','cal','staff','att','labor','tasks','board','manual','info','cash','sales','dep','exp','settle','inb','stock','price','logs','setup'];
-const TITLES = {today:'오늘', cal:'캘린더', staff:'직원', att:'근태', labor:'인건비표', tasks:'오더', board:'업무보드',
+const TABS = ['today','ai','cal','staff','att','labor','tasks','board','manual','info','cash','sales','dep','exp','settle','inb','stock','price','logs','setup'];
+const TITLES = {today:'오늘', ai:'AI 비서', cal:'캘린더', staff:'직원', att:'근태', labor:'인건비표', tasks:'오더', board:'업무보드',
   manual:'매뉴얼', info:'매장정보', cash:'자금', sales:'매출', dep:'입금', exp:'지출', settle:'월 정산', inb:'입고 명세서', stock:'재고', price:'단가 변동', logs:'시스템 로그', setup:'설정'};
 const IB_CATS = ['고기','야채','식자재','음료','주류','소모품','기타'];
 const EV_COLORS = {
@@ -987,6 +1008,7 @@ function tab(name){
   if(name==='price') loadPrice();
   if(name==='cash') loadCash();
   if(name==='dep') loadDep();
+  if(name==='ai'){ aiRender(); $('aiInput').focus(); }
   if(name==='logs') loadLogs();
   if(name==='setup') loadSetup();
 }
@@ -1014,6 +1036,7 @@ function boot(){
   $('navLabor').style.display = (ME && ME.role==='owner') ? '' : 'none';
   $('navLogs').style.display = (ME && ME.role==='owner') ? '' : 'none';
   $('navCash').style.display = (ME && ME.role==='owner') ? '' : 'none';
+  $('navAi').style.display = (ME && ME.role==='owner') ? '' : 'none';
   if(ME && ME.role==='viewer'){
     document.querySelectorAll('#tabbar .nav-item').forEach(n => {
       if(!['cal','settle'].includes(n.dataset.t)) n.style.display='none';
@@ -2263,6 +2286,53 @@ async function acDel(){
 async function csDel(id){
   if(!confirm('이 입출금 기록을 삭제할까요?')) return;
   try{ await api('cashDelete', TOKEN, id); loadCash(); }catch(e){ alert(e.message); }
+}
+
+/* ---------- AI 비서 ---------- */
+let AI_HIST = [];
+try{ AI_HIST = JSON.parse(localStorage.getItem('store_ai_hist')||'[]'); }catch(e){ AI_HIST = []; }
+const AI_TOOL_LABELS = { get_today:'오늘 현황', get_staff:'직원', get_sales:'매출', get_expenses:'지출', get_settle:'정산',
+  get_labor:'인건비', get_stock:'재고', get_deposits:'입금', get_reservations:'예약', get_cash:'자금',
+  add_task:'오더 등록', add_reservation:'예약 등록', add_sale:'매출 등록', add_expense:'지출 등록', add_notice:'공지 등록' };
+function aiRender(){
+  $('aiLog').innerHTML = AI_HIST.map(m => {
+    if(m.role === 'user') return '<div style="align-self:flex-end; max-width:85%; background:var(--brand, #F26522); color:#fff; padding:10px 14px; border-radius:16px 16px 4px 16px; white-space:pre-wrap">'+esc(m.content)+'</div>';
+    const acts = (m.actions||[]).map(a =>
+      '<span class="badge '+(a.ok?(a.name.startsWith('add_')?'g':''):'r')+'" style="margin-right:4px">'+(AI_TOOL_LABELS[a.name]||a.name)+(a.ok?'':' 실패')+'</span>').join('');
+    return '<div style="align-self:flex-start; max-width:85%; background:#F1F3F5; padding:10px 14px; border-radius:16px 16px 16px 4px; white-space:pre-wrap">'+esc(m.content)+(acts?'<div style="margin-top:6px">'+acts+'</div>':'')+'</div>';
+  }).join('') || '<div class="sub" style="text-align:center; margin-top:30px">무엇이든 물어보세요.<br>"이번주 예약 뭐야?" · "주방장한테 육수 준비하라고 해" · "어제 매출 카드 350만원 등록해줘"</div>';
+  $('aiLog').scrollTop = $('aiLog').scrollHeight;
+}
+function aiSaveHist(){
+  try{ localStorage.setItem('store_ai_hist', JSON.stringify(AI_HIST.slice(-20))); }catch(e){}
+}
+function aiClear(){ AI_HIST = []; aiSaveHist(); aiRender(); }
+function aiAsk(q){ $('aiInput').value = q; aiSend(); }
+async function aiSend(){
+  const q = $('aiInput').value.trim();
+  if(!q) return;
+  $('aiInput').value = '';
+  AI_HIST.push({role:'user', content:q});
+  aiRender();
+  $('aiSendBtn').disabled = true;
+  $('aiLog').innerHTML += '<div id="aiTyping" style="align-self:flex-start; background:#F1F3F5; padding:10px 14px; border-radius:16px" class="sub">생각하는 중...</div>';
+  $('aiLog').scrollTop = $('aiLog').scrollHeight;
+  try{
+    const res = await fetch(SUPABASE_URL + '/functions/v1/assistant', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'apikey':SUPABASE_ANON, 'Authorization':'Bearer '+SUPABASE_ANON },
+      body: JSON.stringify({ token: TOKEN, messages: AI_HIST.filter(m=>m.role==='user'||m.role==='assistant').map(m=>({role:m.role, content:m.content})) })
+    });
+    const data = await res.json();
+    if(!data || data.error) throw new Error((data && data.error) || 'AI 호출 실패 ('+res.status+')');
+    AI_HIST.push({role:'assistant', content:data.text, actions:data.actions||[]});
+  }catch(e){
+    AI_HIST.push({role:'assistant', content:'⚠ ' + e.message, actions:[]});
+  }
+  aiSaveHist();
+  $('aiSendBtn').disabled = false;
+  aiRender();
+  $('aiInput').focus();
 }
 
 /* ---------- 입금 ---------- */
