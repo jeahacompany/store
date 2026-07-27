@@ -242,7 +242,8 @@ async function saveOne(i){
       });
       if($('autoExp').checked){
         await api('expSave', TOKEN, { exp_date: r.in_date || localDate(), category: '재료비',
-          vendor: r.supplier || '', amount: saved.total, method: '이체', memo: '입고 대량업로드 자동등록' });
+          vendor: r.supplier || '', amount: saved.total, method: '이체', memo: '입고 대량업로드 자동등록',
+          ref_inbound: saved.id });
       }
     } else {
       const amounts = {};

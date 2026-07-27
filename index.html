@@ -454,7 +454,7 @@
             <div><label>날짜</label><input type="date" id="exDate" style="width:100%"></div>
             <div><label>분류</label><select id="exCat" style="width:100%"></select></div>
             <div><label>사용처 (거래처·가게 이름)</label><input id="exVendor" style="width:100%" placeholder="예: OO축산, 한전"></div>
-            <div><label>금액 (원)</label><input id="exAmt" type="number" style="width:100%" inputmode="numeric"></div>
+            <div><label>금액 (원)</label><input id="exAmt" type="text" style="width:100%" inputmode="numeric" oninput="mFmt(this)"></div>
             <div><label>결제수단</label><select id="exMethod" style="width:100%">
               <option>카드</option><option>현금</option><option>이체</option></select></div>
             <div><label>메모</label><input id="exMemo" style="width:100%"></div>
@@ -465,7 +465,8 @@
           </div>
         </div>
         <div class="card">
-          <h2>지출 내역 <input type="month" id="expYm" onchange="loadExp()" style="margin-left:8px"></h2>
+          <h2>지출 내역 <input type="month" id="expYm" onchange="loadExp()" style="margin-left:8px">
+            <select id="expVendorF" onchange="renderExpRows()" style="margin-left:8px; max-width:180px"><option value="">전체 업체</option></select></h2>
           <div id="expSummary" style="margin-bottom:10px"></div>
           <div class="table-scroll"><table><thead><tr><th>날짜</th><th>분류</th><th>사용처</th><th>금액</th><th></th></tr></thead>
           <tbody id="expBody"></tbody></table></div>
@@ -596,8 +597,8 @@
           <option value="viewer">투자자 (열람 전용)</option><option value="owner">사장</option></select></div>
         <div><label>급여 방식</label><select id="smPayType" style="width:100%">
           <option value="hourly">시급</option><option value="monthly">월급</option></select></div>
-        <div><label>시급 (원)</label><input id="smHourly" type="number" style="width:100%"></div>
-        <div><label>월급 (원)</label><input id="smMonthly" type="number" style="width:100%"></div>
+        <div><label>시급 (원)</label><input id="smHourly" type="text" inputmode="numeric" oninput="mFmt(this)" style="width:100%"></div>
+        <div><label>월급 (원)</label><input id="smMonthly" type="text" inputmode="numeric" oninput="mFmt(this)" style="width:100%"></div>
         <div><label>입사일</label><input id="smHired" type="date" style="width:100%"></div>
         <div><label>생년월일</label><input id="smBirth" type="date" style="width:100%"></div>
         <div><label>주민등록번호</label><input id="smRrn" style="width:100%"></div>
@@ -745,6 +746,10 @@ function fmtTime(iso){ return iso ? new Date(iso).toLocaleTimeString('ko-KR',{ho
 function fmtDate(d){ if(!d) return '-'; const x=new Date(d+'T00:00:00'); return (x.getMonth()+1)+'/'+x.getDate()+'('+['일','월','화','수','목','금','토'][x.getDay()]+')'; }
 function fmtMins(m){ if(m==null) return '-'; const h=Math.floor(m/60), mm=Math.round(m%60); return h+'시간 '+(mm<10?'0':'')+mm+'분'; }
 function fmtWon(n){ return n==null ? '-' : Math.round(n).toLocaleString('ko-KR')+'원'; }
+/* 돈 입력칸 콤마 표시: mFmt=입력하면서 콤마, mVal=콤마 떼고 숫자로, cm=숫자→콤마 문자열 */
+function cm(n){ return (n==null||n==='') ? '' : (+String(n).replace(/[^\d.-]/g,'')||0).toLocaleString('ko-KR'); }
+function mVal(v){ return +String(v).replace(/[^\d.-]/g,'') || 0; }
+function mFmt(el){ const d = String(el.value).replace(/[^\d]/g,''); el.value = d ? (+d).toLocaleString('ko-KR') : ''; }
 function localDate(){ const d=new Date(), p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
 function localYm(){ return localDate().slice(0,7); }
 function show(view){ ['loginView','mainView'].forEach(v => $(v).classList.toggle('hidden', v!==view)); }
@@ -938,7 +943,7 @@ async function openStaff(id){
   $('smTitle').textContent = s.name + (s.status==='pending' ? ' — 승인 대기중' : '');
   $('smName').value=s.name||''; $('smPhone').value=s.phone||''; $('smPos').value=s.position||'';
   $('smRole').value=s.role; $('smPayType').value=s.pay_type;
-  $('smHourly').value=s.hourly_wage==null?'':s.hourly_wage; $('smMonthly').value=s.monthly_wage==null?'':s.monthly_wage;
+  $('smHourly').value=s.hourly_wage==null?'':cm(s.hourly_wage); $('smMonthly').value=s.monthly_wage==null?'':cm(s.monthly_wage);
   $('smHired').value=s.hired_at||''; $('smBirth').value=s.birth||'';
   $('smRrn').value=s.rrn==null?'':s.rrn; $('smBank').value=s.bank_name==null?'':s.bank_name;
   $('smAcct').value=s.bank_acct==null?'':s.bank_acct; $('smAddr').value=s.address||''; $('smMemo').value=s.memo||'';
@@ -973,8 +978,8 @@ function staffPatch(){
   return {
     name:$('smName').value.trim(), phone:$('smPhone').value.trim(), position:$('smPos').value.trim(),
     role:$('smRole').value, pay_type:$('smPayType').value,
-    hourly_wage:$('smHourly').value===''?null:+$('smHourly').value,
-    monthly_wage:$('smMonthly').value===''?null:+$('smMonthly').value,
+    hourly_wage:$('smHourly').value===''?null:mVal($('smHourly').value),
+    monthly_wage:$('smMonthly').value===''?null:mVal($('smMonthly').value),
     hired_at:$('smHired').value, birth:$('smBirth').value,
     rrn:$('smRrn').value.trim(), bank_name:$('smBank').value.trim(), bank_acct:$('smAcct').value.trim(),
     address:$('smAddr').value.trim(), memo:$('smMemo').value
@@ -1429,7 +1434,7 @@ function renderSaleInputs(amounts){
   const keys = [...CHANNELS];
   if(amounts) Object.keys(amounts).forEach(k => { if(!keys.includes(k)) keys.push(k); });
   $('saleChannels').innerHTML = keys.map(c =>
-    '<div><label>'+esc(c)+' (원)</label><input type="number" inputmode="numeric" data-ch="'+esc(c)+'" style="width:100%" value="'+(amounts&&amounts[c]!=null?amounts[c]:'')+'"></div>'
+    '<div><label>'+esc(c)+' (원)</label><input type="text" inputmode="numeric" oninput="mFmt(this)" data-ch="'+esc(c)+'" style="width:100%" value="'+(amounts&&amounts[c]!=null?cm(amounts[c]):'')+'"></div>'
   ).join('');
 }
 document.addEventListener('DOMContentLoaded', () => {
@@ -1492,7 +1497,7 @@ function editSale(id){
 async function saveSale(){
   try{
     const amounts = {};
-    document.querySelectorAll('#saleChannels input[data-ch]').forEach(i => { if(i.value!=='') amounts[i.dataset.ch] = +i.value; });
+    document.querySelectorAll('#saleChannels input[data-ch]').forEach(i => { if(i.value!=='') amounts[i.dataset.ch] = mVal(i.value); });
     const r = await api('saleSave', TOKEN, { sale_date:$('saleDate').value, amounts, memo:$('saleMemo').value.trim(),
       photo_b64: SL_PHOTO || '', ai_parsed: !!SL_PHOTO });
     toast(fmtDate($('saleDate').value)+' 매출 '+fmtWon(r.total)+' 저장 완료');
@@ -1526,20 +1531,34 @@ async function loadExp(){
       '<span class="badge b" style="margin:2px">합계 '+fmtWon(r.total)+'</span> '
       + Object.entries(r.byCat||{}).sort((a,b)=>b[1]-a[1]).map(([k,v]) =>
         '<span class="badge a" style="margin:2px">'+esc(k)+' '+fmtWon(v)+'</span>').join(' ');
-    $('expBody').innerHTML = EXPS.map(x =>
-      '<tr><td>'+fmtDate(x.exp_date)+'</td><td><span class="badge">'+esc(x.category)+'</span></td>'
-      + '<td>'+esc(x.vendor||'-')+(x.memo?'<div class="sub">'+esc(x.memo)+'</div>':'')+'</td>'
-      + '<td class="name-cell">'+fmtWon(x.amount)+'</td>'
-      + '<td style="white-space:nowrap"><button class="btn sm ghost" onclick="editExp(\''+x.id+'\')">수정</button> '
-      + '<button class="btn sm red" onclick="delExp(\''+x.id+'\')">삭제</button></td></tr>'
-    ).join('') || '<tr><td colspan="5" class="sub">이 달 지출 기록이 아직 없어요.</td></tr>';
+    // 업체 필터 목록 (선택 유지)
+    const keep = $('expVendorF').value;
+    const vendors = [...new Set(EXPS.map(x=>x.vendor).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ko'));
+    $('expVendorF').innerHTML = '<option value="">전체 업체</option>'
+      + vendors.map(v=>'<option'+(v===keep?' selected':'')+'>'+esc(v)+'</option>').join('');
+    renderExpRows();
   }catch(e){ toast(e.message); }
+}
+function renderExpRows(){
+  const vf = $('expVendorF').value;
+  const list = vf ? EXPS.filter(x=>(x.vendor||'')===vf) : EXPS;
+  const sumBadge = vf ? '<tr><td colspan="5"><span class="badge b">'+esc(vf)+' 합계 '
+    + fmtWon(list.reduce((s,x)=>s+(+x.amount||0),0))+' · '+list.length+'건</span></td></tr>' : '';
+  $('expBody').innerHTML = sumBadge + list.map(x =>
+    '<tr><td>'+fmtDate(x.exp_date)+'</td><td><span class="badge">'+esc(x.category)+'</span></td>'
+    + '<td>'+esc(x.vendor||'-')+(x.memo?'<div class="sub">'+esc(x.memo)+'</div>':'')+'</td>'
+    + '<td class="name-cell">'+fmtWon(x.amount)+'</td>'
+    + '<td style="white-space:nowrap">'
+    + (x.has_photo ? '<button class="btn sm ghost" onclick="viewIbPhoto(\''+x.ref_inbound+'\')">📷 명세서</button> ' : '')
+    + '<button class="btn sm ghost" onclick="editExp(\''+x.id+'\')">수정</button> '
+    + '<button class="btn sm red" onclick="delExp(\''+x.id+'\')">삭제</button></td></tr>'
+  ).join('') || '<tr><td colspan="5" class="sub">이 달 지출 기록이 아직 없어요.</td></tr>';
 }
 function editExp(id){
   const x = EXPS.find(e=>e.id===id); if(!x) return;
   $('exId').value=x.id; $('exDate').value=x.exp_date;
   if(![...$('exCat').options].some(o=>o.value===x.category)) $('exCat').innerHTML += '<option>'+esc(x.category)+'</option>';
-  $('exCat').value=x.category; $('exVendor').value=x.vendor||''; $('exAmt').value=x.amount;
+  $('exCat').value=x.category; $('exVendor').value=x.vendor||''; $('exAmt').value=cm(x.amount);
   $('exMethod').value=x.method||'카드'; $('exMemo').value=x.memo||'';
   window.scrollTo({top:0, behavior:'smooth'});
 }
@@ -1547,7 +1566,7 @@ function resetExp(){ $('exId').value=''; $('exVendor').value=''; $('exAmt').valu
 async function saveExp(){
   try{
     await api('expSave', TOKEN, { id:$('exId').value, exp_date:$('exDate').value, category:$('exCat').value,
-      vendor:$('exVendor').value.trim(), amount:+$('exAmt').value||0, method:$('exMethod').value, memo:$('exMemo').value.trim() });
+      vendor:$('exVendor').value.trim(), amount:mVal($('exAmt').value), method:$('exMethod').value, memo:$('exMemo').value.trim() });
     resetExp(); toast('지출을 기록했어요');
     $('expYm').value = $('exDate').value.slice(0,7);
     loadExp();
@@ -1662,11 +1681,11 @@ document.addEventListener('DOMContentLoaded', () => {
 function renderIbItems(){
   $('ibItemsBody').innerHTML = IB_ITEMS.map((x,i) =>
     '<tr>'
-    + '<td><input style="width:130px" value="'+esc(x.name)+'" oninput="ibU('+i+',\'name\',this.value)"></td>'
+    + '<td style="width:30%"><input style="width:100%; min-width:180px" value="'+esc(x.name)+'" oninput="ibU('+i+',\'name\',this.value)"></td>'
     + '<td><input type="number" style="width:64px" value="'+x.qty+'" oninput="ibU('+i+',\'qty\',this.value)"></td>'
     + '<td><input style="width:56px" value="'+esc(x.unit)+'" oninput="ibU('+i+',\'unit\',this.value)"></td>'
-    + '<td><input type="number" style="width:88px" value="'+x.unit_price+'" oninput="ibU('+i+',\'unit_price\',this.value)"></td>'
-    + '<td><input type="number" style="width:96px" value="'+x.amount+'" oninput="ibU('+i+',\'amount\',this.value)"></td>'
+    + '<td><input type="text" inputmode="numeric" style="width:96px" value="'+cm(x.unit_price)+'" oninput="mFmt(this); ibU('+i+',\'unit_price\',this.value)"></td>'
+    + '<td><input type="text" inputmode="numeric" style="width:110px" value="'+cm(x.amount)+'" oninput="mFmt(this); ibU('+i+',\'amount\',this.value)"></td>'
     + '<td><select onchange="ibU('+i+',\'category\',this.value)">'
       + IB_CATS.map(c=>'<option'+(c===x.category?' selected':'')+'>'+c+'</option>').join('')+'</select></td>'
     + '<td><button class="btn sm red" onclick="IB_ITEMS.splice('+i+',1); renderIbItems()">✕</button></td>'
@@ -1675,10 +1694,10 @@ function renderIbItems(){
   ibTotal();
 }
 function ibU(i, k, v){
-  IB_ITEMS[i][k] = (k==='qty'||k==='unit_price'||k==='amount') ? (+v||0) : v;
+  IB_ITEMS[i][k] = (k==='qty') ? (+v||0) : (k==='unit_price'||k==='amount') ? mVal(v) : v;
   if(k==='qty'||k==='unit_price'){ IB_ITEMS[i].amount = Math.round(IB_ITEMS[i].qty * IB_ITEMS[i].unit_price);
     const inp = $('ibItemsBody').rows[i] && $('ibItemsBody').rows[i].cells[4].firstChild;
-    if(inp) inp.value = IB_ITEMS[i].amount; }
+    if(inp) inp.value = cm(IB_ITEMS[i].amount); }
   ibTotal();
 }
 function ibTotal(){
@@ -1706,7 +1725,8 @@ async function saveInbound(){
     });
     if(isNew && $('ibAutoExp').checked){
       await api('expSave', TOKEN, { exp_date: $('ibDate').value, category: '재료비',
-        vendor: $('ibSupplier').value.trim(), amount: r.total, method: '이체', memo: '입고 명세서 자동등록' });
+        vendor: $('ibSupplier').value.trim(), amount: r.total, method: '이체', memo: '입고 명세서 자동등록',
+        ref_inbound: r.id });
     }
     toast('입고 '+fmtWon(r.total)+' 저장 완료'+($('ibAutoExp').checked && isNew ? ' (지출에도 등록됨)' : ''));
     resetInbound();
