@@ -555,7 +555,7 @@
       <!-- 재고 -->
       <div id="tab-stock" class="hidden">
         <div class="card">
-          <h2>재고 조정 <span class="sub">— 실사로 추가하거나, 출고·폐기만큼 빼세요 (빼려면 음수, 예: -3)</span></h2>
+          <h2>재고 조정 <span class="sub">— 실사로 추가하거나, 출고·폐기만큼 빼세요 (빼려면 음수, 예: -3 · 고기처럼 중량으로 관리되는 품목은 kg 기준)</span></h2>
           <div class="grid2">
             <div><label>품목명</label><input id="adjName" style="width:100%" placeholder="예: 참이슬"></div>
             <div><label>수량 (± )</label><input id="adjQty" type="number" step="any" style="width:100%" placeholder="-3 = 3개 빼기"></div>
@@ -2146,16 +2146,21 @@ async function loadStock(){
   try{
     const [list, adjs] = await Promise.all([api('stockSummary', TOKEN), api('stockAdjList', TOKEN)]);
     STOCK = list;
-    $('stockBody').innerHTML = list.map((x,i) =>
-      '<tr><td>'+(x.category?'<span class="badge">'+esc(x.category)+'</span>':'-')+'</td><td class="name-cell">'+esc(x.name)+'</td>'
-      + '<td><b>'+(+x.stock_qty).toLocaleString('ko-KR')+'</b> '+esc(x.unit||'')
+    $('stockBody').innerHTML = list.map((x,i) => {
+      // 중량이 있는 품목(고기 등)은 명세서 그대로 중량(kg) 기준 재고, 수량(박스)은 참고 표시
+      const hasW = +x.in_weight > 0;
+      const stockNum = hasW ? (+x.in_weight + +x.adj_qty) : +x.stock_qty;
+      const unitTxt = hasW ? 'kg' : esc(x.unit||'');
+      const refTxt = hasW ? '<span class="sub"> · 수량 '+(+x.in_qty).toLocaleString('ko-KR')+'</span>' : '';
+      return '<tr><td>'+(x.category?'<span class="badge">'+esc(x.category)+'</span>':'-')+'</td><td class="name-cell">'+esc(x.name)+'</td>'
+      + '<td><b>'+stockNum.toLocaleString('ko-KR')+'</b> '+unitTxt+refTxt
         + (+x.adj_qty !== 0 ? ' <span class="sub">(조정 '+(x.adj_qty>0?'+':'')+(+x.adj_qty).toLocaleString('ko-KR')+')</span>' : '')+'</td>'
-      + '<td>'+(+x.in_weight > 0 ? (+x.in_weight).toLocaleString('ko-KR')+'kg' : '-')+'</td>'
+      + '<td>'+(hasW ? (+x.in_weight).toLocaleString('ko-KR')+'kg' : '-')+'</td>'
       + '<td>'+x.buy_count+'회</td><td>'+fmtWon(x.last_price)+'</td>'
       + '<td>'+fmtWon(x.total_amount)+'</td>'
       + '<td class="sub">'+(x.last_date?fmtDate(x.last_date):'-')+(x.last_supplier?' · '+esc(x.last_supplier):'')+'</td>'
-      + '<td><button class="btn sm ghost" onclick="adjPrefill('+i+')">조정</button></td></tr>'
-    ).join('') || '<tr><td colspan="9" class="sub">입고 명세서를 등록하면 여기 재고가 쌓여요.</td></tr>';
+      + '<td><button class="btn sm ghost" onclick="adjPrefill('+i+')">조정</button></td></tr>';
+    }).join('') || '<tr><td colspan="9" class="sub">입고 명세서를 등록하면 여기 재고가 쌓여요.</td></tr>';
     $('adjList').innerHTML = adjs.map(a =>
       '<div class="row"><span><span class="badge '+(a.qty<0?'r':'g')+'">'+(a.qty>0?'+':'')+(+a.qty).toLocaleString('ko-KR')+' '+esc(a.unit||'')+'</span> '
       + '<b>'+esc(a.name)+'</b> <span class="sub">'+fmtDate(a.adj_date)+(a.memo?' · '+esc(a.memo):'')+' · '+esc(a.created_by||'')+'</span></span>'
