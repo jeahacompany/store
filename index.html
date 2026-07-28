@@ -643,19 +643,29 @@
       <!-- AI 비서 -->
       <div id="tab-ai" class="hidden">
         <div class="card" style="display:flex; flex-direction:column; height:calc(100vh - 140px); min-height:420px">
-          <h2 style="flex:none">AI 비서 <span class="sub">— 매장 데이터를 보고 답하고, 시키면 등록까지 해요 (사장님 전용)</span>
-            <button class="btn sm ghost" onclick="aiClear()" style="float:right">대화 지우기</button></h2>
-          <div id="aiSuggest" style="flex:none; display:flex; gap:6px; flex-wrap:wrap; margin:8px 0">
-            <button class="btn sm ghost" onclick="aiAsk('이번주 예약 알려줘')">이번주 예약</button>
-            <button class="btn sm ghost" onclick="aiAsk('이번달 정산 어때?')">이번달 정산</button>
-            <button class="btn sm ghost" onclick="aiAsk('오늘 현황 브리핑해줘')">오늘 브리핑</button>
-            <button class="btn sm ghost" onclick="aiAsk('재고 상황 요약해줘')">재고 요약</button>
+          <h2 style="flex:none">AI 비서
+            <span style="margin-left:8px">
+              <button class="btn sm ai-view active" onclick="aiView('chat',this)">💬 대화</button>
+              <button class="btn sm ghost ai-view" onclick="aiView('hist',this)">📜 기록</button>
+            </span>
+            <button class="btn sm ghost" onclick="aiClear()" id="aiClearBtn" style="float:right">대화 지우기</button></h2>
+          <div id="aiChatWrap" style="flex:1; display:flex; flex-direction:column; min-height:0">
+            <div id="aiSuggest" style="flex:none; display:flex; gap:6px; flex-wrap:wrap; margin:8px 0">
+              <button class="btn sm ghost" onclick="aiAsk('이번주 예약 알려줘')">이번주 예약</button>
+              <button class="btn sm ghost" onclick="aiAsk('이번달 정산 어때?')">이번달 정산</button>
+              <button class="btn sm ghost" onclick="aiAsk('오늘 현황 브리핑해줘')">오늘 브리핑</button>
+              <button class="btn sm ghost" onclick="aiAsk('재고 상황 요약해줘')">재고 요약</button>
+            </div>
+            <div id="aiLog" style="flex:1; overflow-y:auto; padding:8px 4px; display:flex; flex-direction:column; gap:10px"></div>
+            <div style="flex:none; display:flex; gap:8px; margin-top:10px">
+              <input id="aiInput" style="flex:1" placeholder="예: 주방장한테 내일 육수 미리 준비하라고 해"
+                onkeydown="if(event.key==='Enter' && !event.isComposing) aiSend()">
+              <button class="btn" id="aiSendBtn" onclick="aiSend()">보내기</button>
+            </div>
           </div>
-          <div id="aiLog" style="flex:1; overflow-y:auto; padding:8px 4px; display:flex; flex-direction:column; gap:10px"></div>
-          <div style="flex:none; display:flex; gap:8px; margin-top:10px">
-            <input id="aiInput" style="flex:1" placeholder="예: 주방장한테 내일 육수 미리 준비하라고 해"
-              onkeydown="if(event.key==='Enter' && !event.isComposing) aiSend()">
-            <button class="btn" id="aiSendBtn" onclick="aiSend()">보내기</button>
+          <div id="aiHistWrap" class="hidden" style="flex:1; overflow-y:auto; min-height:0; padding:8px 4px">
+            <div class="sub" style="margin-bottom:10px">서버에 영구 저장된 기록이에요 — 폰을 바꿔도, 대화를 지워도 여기엔 남아요. (최근 30일 200건)</div>
+            <div id="aiHistList"></div>
           </div>
         </div>
       </div>
@@ -2308,6 +2318,30 @@ function aiSaveHist(){
 }
 function aiClear(){ AI_HIST = []; aiSaveHist(); aiRender(); }
 function aiAsk(q){ $('aiInput').value = q; aiSend(); }
+function aiView(v, btn){
+  document.querySelectorAll('.ai-view').forEach(b => { b.classList.toggle('active', b===btn); b.classList.toggle('ghost', b!==btn); });
+  $('aiChatWrap').classList.toggle('hidden', v!=='chat');
+  $('aiHistWrap').classList.toggle('hidden', v!=='hist');
+  $('aiClearBtn').style.display = v==='chat' ? '' : 'none';
+  if(v==='hist') loadAiHist();
+}
+async function loadAiHist(){
+  $('aiHistList').innerHTML = '<div class="sub">불러오는 중...</div>';
+  try{
+    const rows = await api('aiLogList', TOKEN, 30);
+    $('aiHistList').innerHTML = rows.map(x => {
+      const acts = (x.actions||[]).map(a =>
+        '<span class="badge '+(a.ok?(String(a.name).startsWith('add_')?'g':''):'r')+'" style="margin-right:4px">'
+        + (AI_TOOL_LABELS[a.name]||a.name)+(a.ok?'':' 실패')+'</span>').join('');
+      return '<div style="border-bottom:1px solid var(--line, #E9ECEF); padding:12px 4px">'
+        + '<div class="sub" style="margin-bottom:4px">'+fmtDT(x.created_at)+'</div>'
+        + '<div style="font-weight:600; margin-bottom:6px">🙋 '+esc(x.question)+'</div>'
+        + '<div style="white-space:pre-wrap; color:#495057">'+esc(x.answer)+'</div>'
+        + (acts ? '<div style="margin-top:6px">'+acts+'</div>' : '')
+        + '</div>';
+    }).join('') || '<div class="sub">아직 기록이 없어요. 대화를 시작하면 자동으로 쌓여요.</div>';
+  }catch(e){ $('aiHistList').innerHTML = '<div class="sub">'+esc(e.message)+'</div>'; }
+}
 async function aiSend(){
   const q = $('aiInput').value.trim();
   if(!q) return;
