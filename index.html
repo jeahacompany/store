@@ -184,6 +184,7 @@
         <div class="nav-item" data-t="manual" onclick="tab('manual')"><span class="ico">📖</span>매뉴얼</div>
         <div class="nav-item" data-t="info" onclick="tab('info')"><span class="ico">ℹ️</span>매장정보</div>
         <div class="nav-label">매출 · 정산</div>
+        <div class="nav-item" data-t="cust" onclick="tab('cust')"><span class="ico">🧑‍🤝‍🧑</span>고객·포인트</div>
         <div class="nav-item" data-t="cash" id="navCash" onclick="tab('cash')"><span class="ico">💼</span>자금</div>
         <div class="nav-item" data-t="sales" onclick="tab('sales')"><span class="ico">💰</span>매출</div>
         <div class="nav-item" data-t="dep" onclick="tab('dep')"><span class="ico">📥</span>입금</div>
@@ -545,10 +546,53 @@
           </div>
         </div>
         <div class="card">
-          <h2>입고 내역 <input type="month" id="ibYm" onchange="loadInbound()" style="margin-left:8px"></h2>
+          <h2>입고 내역
+            <span style="margin-left:8px">
+              <button class="btn sm ghost ib-per" data-p="1" onclick="ibPeriod(1,this)">이번 달</button>
+              <button class="btn sm ghost ib-per active" data-p="3" onclick="ibPeriod(3,this)">최근 3개월</button>
+              <button class="btn sm ghost ib-per" data-p="12" onclick="ibPeriod(12,this)">1년</button>
+              <button class="btn sm ghost ib-per" data-p="0" onclick="ibPeriod(0,this)">전체</button>
+            </span>
+          </h2>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:8px 0">
+            <select id="ibVendorF" onchange="loadInbound()" style="max-width:200px"><option value="">전체 업체</option></select>
+            <select id="ibPaidF" onchange="loadInbound()" style="max-width:150px">
+              <option value="all">전체</option><option value="unpaid">미결제만</option><option value="paid">결제완료만</option></select>
+            <span id="ibUnpaidKpi" class="sub"></span>
+          </div>
           <div id="ibSummary" style="margin-bottom:10px"></div>
-          <div class="table-scroll"><table><thead><tr><th>날짜</th><th>거래처</th><th>품목</th><th>합계</th><th></th></tr></thead>
+          <div class="table-scroll"><table><thead><tr><th>날짜</th><th>거래처</th><th>품목</th><th>합계</th><th>결제</th><th></th></tr></thead>
           <tbody id="ibListBody"></tbody></table></div>
+        </div>
+        <div class="card">
+          <h2>거래처 관리 <span class="sub">— 명세서를 저장하면 업체가 자동으로 여기 등록돼요. 연락처·계좌를 채워두면 발주·송금할 때 편해요.</span>
+            <button class="btn sm ghost" onclick="openVendor()" style="float:right">+ 거래처 추가</button></h2>
+          <div class="table-scroll"><table><thead><tr><th>업체명</th><th>분류</th><th>연락처</th><th>계좌</th><th>결제주기</th><th>거래</th><th>미결제</th><th></th></tr></thead>
+          <tbody id="vdBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- 거래처 모달 -->
+      <div class="modal-bg hidden" id="vdModal">
+        <div class="modal">
+          <h2>거래처 정보</h2>
+          <input type="hidden" id="vdId">
+          <div class="grid2">
+            <div><label>업체명</label><input id="vdName" style="width:100%"></div>
+            <div><label>분류</label><select id="vdCat" style="width:100%">
+              <option>고기</option><option>야채</option><option>식자재</option><option>음료</option>
+              <option>주류</option><option>소모품</option><option>기타</option></select></div>
+            <div><label>연락처</label><input id="vdPhone" style="width:100%" placeholder="061-000-0000"></div>
+            <div><label>담당자</label><input id="vdManager" style="width:100%"></div>
+            <div><label>은행</label><input id="vdBank" style="width:100%" placeholder="우리은행"></div>
+            <div><label>계좌번호</label><input id="vdAcct" style="width:100%"></div>
+            <div><label>결제주기</label><select id="vdCycle" style="width:100%">
+              <option>즉시</option><option>주간</option><option>월말</option><option>기타</option></select></div>
+            <div><label>메모</label><input id="vdMemo" style="width:100%"></div>
+          </div>
+          <div style="margin-top:14px"><button class="btn" onclick="vdSave()">저장</button>
+            <button class="btn red hidden" id="vdDelBtn" onclick="vdDel()">삭제</button>
+            <button class="btn ghost" onclick="closeModal('vdModal')">닫기</button></div>
         </div>
       </div>
 
@@ -585,6 +629,103 @@
           <div class="sub" style="margin-bottom:10px">입고 명세서를 등록할 때마다 단가가 지난번과 달라진 품목이 여기 자동으로 쌓여요. 문제없으면 아무것도 안 쌓입니다.</div>
           <div class="table-scroll"><table><thead><tr><th>날짜</th><th>품목</th><th>분류</th><th>거래처</th><th>지난 단가</th><th>새 단가</th><th>변동</th></tr></thead>
           <tbody id="phBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- 고객·포인트 -->
+      <div id="tab-cust" class="hidden">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:16px">
+          <div class="card" style="margin:0"><div class="sub">전체 고객</div><div id="cuTotal" style="font-size:24px; font-weight:700">-</div></div>
+          <div class="card" style="margin:0"><div class="sub">최근 30일 신규</div><div id="cuNew" style="font-size:24px; font-weight:700">-</div></div>
+          <div class="card" style="margin:0"><div class="sub">재방문 고객</div><div id="cuRepeat" style="font-size:24px; font-weight:700">-</div></div>
+          <div class="card" style="margin:0"><div class="sub">30일 이상 안 온 분</div><div id="cuDormant" style="font-size:24px; font-weight:700; color:var(--red, #E03131)">-</div></div>
+          <div class="card" style="margin:0"><div class="sub">마케팅 동의</div><div id="cuMkt" style="font-size:24px; font-weight:700">-</div></div>
+          <div class="card" style="margin:0"><div class="sub">미사용 포인트</div><div id="cuLiab" style="font-size:20px; font-weight:700">-</div></div>
+        </div>
+
+        <div class="card" style="border-color:#FFD8A8">
+          <h2>⭐ 포인트 적립 <span class="sub">— 계산할 때 전화번호와 결제금액만 넣으면 끝 (없는 번호면 그 자리에서 가입)</span></h2>
+          <div class="grid2">
+            <div><label>전화번호</label><input id="cePhone" inputmode="numeric" style="width:100%" placeholder="01012345678"></div>
+            <div><label>결제금액 (원)</label><input id="ceAmt" type="text" inputmode="numeric" oninput="mFmt(this)" style="width:100%"></div>
+          </div>
+          <label style="display:flex; align-items:center; gap:6px; margin-top:10px">
+            <input type="checkbox" id="ceConsent" style="width:17px;height:17px">
+            <span>신규 고객: <b>개인정보 수집·이용 동의</b>를 받았어요 (적립·조회 목적, 필수)</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; margin-top:4px">
+            <input type="checkbox" id="ceMkt" style="width:17px;height:17px">
+            <span>마케팅 문자·혜택 안내 수신에도 동의했어요 (선택 — 거부해도 적립돼요)</span>
+          </label>
+          <div style="margin-top:12px"><button class="btn" onclick="ceEarn()">적립하기</button></div>
+          <div id="ceResult" style="margin-top:12px"></div>
+        </div>
+
+        <div class="card">
+          <h2>고객 목록
+            <span style="margin-left:8px">
+              <button class="btn sm ghost cu-f active" data-f="all" onclick="cuFilter('all',this)">전체</button>
+              <button class="btn sm ghost cu-f" data-f="new" onclick="cuFilter('new',this)">신규 30일</button>
+              <button class="btn sm ghost cu-f" data-f="dormant" onclick="cuFilter('dormant',this)">휴면 30일+</button>
+              <button class="btn sm ghost cu-f" data-f="mkt" onclick="cuFilter('mkt',this)">마케팅 동의</button>
+            </span></h2>
+          <div style="display:flex; gap:8px; margin:8px 0">
+            <input id="cuQ" placeholder="이름 또는 전화번호 뒷자리 검색" style="flex:1" onkeydown="if(event.key==='Enter') loadCust()">
+            <button class="btn ghost" onclick="loadCust()">검색</button>
+          </div>
+          <div class="table-scroll"><table><thead><tr><th>이름</th><th>연락처</th><th>포인트</th><th>방문</th><th>누적 결제</th><th>최근 방문</th><th>동의</th></tr></thead>
+          <tbody id="cuBody"></tbody></table></div>
+        </div>
+
+        <div class="card">
+          <h2>가입 QR · 포인트 설정 <span class="sub">(사장님 전용)</span></h2>
+          <div class="sub" style="margin-bottom:10px">아래 주소를 QR로 만들어 계산대에 두면, 손님이 폰으로 스캔해 직접 가입해요.</div>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:14px">
+            <input id="cuJoinUrl" readonly style="flex:1; min-width:260px; background:#F8F9FA">
+            <button class="btn sm ghost" onclick="cuCopyUrl()">주소 복사</button>
+            <button class="btn sm ghost" onclick="window.open($('cuJoinUrl').value,'_blank')">미리보기</button>
+          </div>
+          <div class="grid2">
+            <div><label>적립률 (%)</label><input id="cuRate" type="number" step="1" style="width:100%"></div>
+            <div><label>최소 사용 포인트</label><input id="cuMinUse" type="text" inputmode="numeric" oninput="mFmt(this)" style="width:100%"></div>
+            <div><label>신규 가입 보너스 포인트</label><input id="cuBonus" type="text" inputmode="numeric" oninput="mFmt(this)" style="width:100%"></div>
+            <div><label>카카오 채널 추가 링크</label><input id="cuKakao" style="width:100%" placeholder="http://pf.kakao.com/_xxxxx"></div>
+          </div>
+          <div style="margin-top:12px"><button class="btn" onclick="cuSaveSettings()">설정 저장</button></div>
+        </div>
+      </div>
+
+      <!-- 고객 상세 모달 -->
+      <div class="modal-bg hidden" id="cuModal">
+        <div class="modal">
+          <h2 id="cuTitle">고객</h2>
+          <input type="hidden" id="cuId">
+          <div id="cuInfo" class="sub" style="margin-bottom:10px"></div>
+          <div class="grid2">
+            <div><label>이름</label><input id="cuName" style="width:100%"></div>
+            <div><label>생일 (MMDD)</label><input id="cuBirth" style="width:100%" placeholder="0315"></div>
+          </div>
+          <label>메모</label><input id="cuMemo" style="width:100%" placeholder="예: 아기의자 필요, 매운맛 선호">
+          <label style="display:flex; align-items:center; gap:6px; margin-top:8px">
+            <input type="checkbox" id="cuKakaoFriend" style="width:17px;height:17px"> 카카오 채널 친구 추가함
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; margin-top:4px">
+            <input type="checkbox" id="cuMktChk" style="width:17px;height:17px"> 마케팅 수신 동의
+          </label>
+          <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+            <input id="cuPts" type="text" inputmode="numeric" oninput="mFmt(this)" placeholder="포인트" style="width:120px">
+            <button class="btn sm" onclick="cuUse()">사용 처리</button>
+            <button class="btn sm ghost" onclick="cuAdjust()">수기 조정 (음수 가능)</button>
+          </div>
+          <h2 style="margin-top:16px; font-size:15px">포인트 내역</h2>
+          <div class="table-scroll" style="max-height:34vh; overflow:auto"><table><thead><tr><th>일시</th><th>구분</th><th>포인트</th><th>결제금액</th><th>메모</th></tr></thead>
+          <tbody id="cuLogs"></tbody></table></div>
+          <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap">
+            <button class="btn" onclick="cuSave()">저장</button>
+            <button class="btn ghost" id="cuPhoneBtn" onclick="cuShowPhone()">전체 번호 보기</button>
+            <button class="btn red" onclick="cuDelete()">개인정보 파기</button>
+            <button class="btn ghost" onclick="closeModal('cuModal')">닫기</button>
+          </div>
         </div>
       </div>
 
@@ -932,9 +1073,9 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 let TOKEN = localStorage.getItem('store_admin_token') || '';
 let ME = null, STAFF = [], ATT = [], WAGES = null, TASKS = [];
-const TABS = ['today','ai','cal','staff','att','labor','tasks','board','manual','info','cash','sales','dep','exp','settle','inb','stock','price','logs','setup'];
+const TABS = ['today','ai','cal','staff','att','labor','tasks','board','manual','info','cust','cash','sales','dep','exp','settle','inb','stock','price','logs','setup'];
 const TITLES = {today:'오늘', ai:'AI 비서', cal:'캘린더', staff:'직원', att:'근태', labor:'인건비표', tasks:'오더', board:'업무보드',
-  manual:'매뉴얼', info:'매장정보', cash:'자금', sales:'매출', dep:'입금', exp:'지출', settle:'월 정산', inb:'입고 명세서', stock:'재고', price:'단가 변동', logs:'시스템 로그', setup:'설정'};
+  manual:'매뉴얼', info:'매장정보', cust:'고객·포인트', cash:'자금', sales:'매출', dep:'입금', exp:'지출', settle:'월 정산', inb:'입고 명세서', stock:'재고', price:'단가 변동', logs:'시스템 로그', setup:'설정'};
 const IB_CATS = ['고기','야채','식자재','음료','주류','소모품','기타'];
 const EV_COLORS = {
   '공사·인테리어':['#FFF4E6','#E8590C'], '행정·계약':['#E7F5FF','#1971C2'], '발주·입고':['#F3F0FF','#7048E8'],
@@ -974,7 +1115,7 @@ function fmtWon(n){ return n==null ? '-' : Math.round(n).toLocaleString('ko-KR')
 function cm(n){ return (n==null||n==='') ? '' : (+String(n).replace(/[^\d.-]/g,'')||0).toLocaleString('ko-KR'); }
 function mVal(v){ return +String(v).replace(/[^\d.-]/g,'') || 0; }
 function mFmt(el){ const d = String(el.value).replace(/[^\d]/g,''); el.value = d ? (+d).toLocaleString('ko-KR') : ''; }
-function localDate(){ const d=new Date(), p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+function localDate(dt){ const d=dt||new Date(), p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
 function localYm(){ return localDate().slice(0,7); }
 function show(view){ ['loginView','mainView'].forEach(v => $(v).classList.toggle('hidden', v!==view)); }
 function closeModal(id){ $(id).classList.add('hidden'); }
@@ -1017,6 +1158,7 @@ function tab(name){
   if(name==='stock') loadStock();
   if(name==='price') loadPrice();
   if(name==='cash') loadCash();
+  if(name==='cust') loadCust();
   if(name==='dep') loadDep();
   if(name==='ai'){ aiRender(); $('aiInput').focus(); }
   if(name==='logs') loadLogs();
@@ -2094,28 +2236,102 @@ async function saveInbound(){
     }
     toast('입고 '+fmtWon(r.total)+' 저장 완료'+($('ibAutoExp').checked && isNew ? ' (지출에도 등록됨)' : ''));
     resetInbound();
-    $('ibYm').value = $('ibDate').value ? $('ibDate').value.slice(0,7) : localYm();
     loadInbound();
   }catch(e){ alert(e.message); }
 }
+let IB_MONTHS = 3, VENDORS = [];
+function ibPeriod(m, btn){
+  IB_MONTHS = m;
+  document.querySelectorAll('.ib-per').forEach(b=>b.classList.toggle('active', b===btn));
+  loadInbound();
+}
 async function loadInbound(){
   if(!$('ibDate').value) resetInbound();
-  if(!$('ibYm').value) $('ibYm').value = localYm();
   try{
-    const r = await api('inboundMonth', TOKEN, $('ibYm').value);
-    IB_LIST = r.rows;
-    $('ibSummary').innerHTML = '<span class="badge b">이 달 입고 합계 '+fmtWon(r.total)+'</span>';
+    let from = '';
+    if(IB_MONTHS > 0){
+      const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - (IB_MONTHS - 1));
+      from = localDate(d);
+    }
+    const [r, vs] = await Promise.all([
+      api('inboundList', TOKEN, { from, to:'', vendor:$('ibVendorF').value, paid:$('ibPaidF').value }),
+      api('vendorList', TOKEN)
+    ]);
+    IB_LIST = r.rows; VENDORS = vs;
+    const keep = $('ibVendorF').value;
+    $('ibVendorF').innerHTML = '<option value="">전체 업체</option>'
+      + VENDORS.map(v=>'<option'+(v.name===keep?' selected':'')+'>'+esc(v.name)+'</option>').join('');
+    $('ibUnpaidKpi').innerHTML = r.unpaidCount > 0
+      ? '<span class="badge r">미결제 '+r.unpaidCount+'건 · '+fmtWon(r.unpaidTotal)+'</span>'
+      : '<span class="badge g">미결제 없음 ✓</span>';
+    $('ibSummary').innerHTML = '<span class="badge b">조회 합계 '+fmtWon(r.total)+' · '+IB_LIST.length+'건</span> '
+      + (r.byVendor||[]).slice(0,6).map(v=>'<span class="badge">'+esc(v.vendor||'-')+' '+fmtWon(v.amt)+'</span>').join(' ');
     $('ibListBody').innerHTML = IB_LIST.map(x =>
       '<tr><td>'+fmtDate(x.in_date)+'</td><td class="name-cell">'+esc(x.supplier||'-')
       + (x.ai_parsed?' <span class="badge b">AI</span>':'')+'</td>'
       + '<td class="sub">'+x.items.slice(0,3).map(t=>esc(t.name)).join(', ')+(x.items.length>3?' 외 '+(x.items.length-3)+'건':'')+'</td>'
       + '<td class="name-cell">'+fmtWon(x.total)+'</td>'
+      + '<td>'+(x.paid
+          ? '<span class="badge g" onclick="ibPay(\''+x.id+'\',false)" style="cursor:pointer">✔ 결제'+(x.paid_at?' '+fmtDate(x.paid_at):'')+'</span>'
+          : '<button class="btn sm red" onclick="ibPay(\''+x.id+'\',true)">미결제</button>')+'</td>'
       + '<td style="white-space:nowrap">'
-      + (x.has_photo?'<button class="btn sm ghost" onclick="viewIbPhoto(\''+x.id+'\')">사진</button> ':'')
+      + (x.has_photo?'<button class="btn sm ghost" onclick="viewIbPhoto(\''+x.id+'\')">📷</button> ':'')
       + '<button class="btn sm ghost" onclick="editInbound(\''+x.id+'\')">수정</button> '
       + '<button class="btn sm red" onclick="delInbound(\''+x.id+'\')">삭제</button></td></tr>'
-    ).join('') || '<tr><td colspan="5" class="sub">이 달 입고 기록이 아직 없어요.</td></tr>';
+    ).join('') || '<tr><td colspan="6" class="sub">조건에 맞는 입고 기록이 없어요.</td></tr>';
+    renderVendors();
   }catch(e){ toast(e.message); }
+}
+async function ibPay(id, paid){
+  if(paid && !confirm('이 명세서를 결제 완료로 표시할까요?')) return;
+  try{ await api('inboundPay', TOKEN, { id, paid, pay_method:'이체' }); loadInbound(); }
+  catch(e){ alert(e.message); }
+}
+function renderVendors(){
+  $('vdBody').innerHTML = VENDORS.map(v =>
+    '<tr><td><a class="link" onclick="vdEdit(\''+v.id+'\')"><b>'+esc(v.name)+'</b></a></td>'
+    + '<td><span class="badge">'+esc(v.category||'기타')+'</span></td>'
+    + '<td class="sub">'+esc(v.phone||'-')+'</td>'
+    + '<td class="sub">'+(v.bank_name?esc(v.bank_name)+' '+esc(v.bank_acct||''):'-')+'</td>'
+    + '<td>'+esc(v.pay_cycle||'-')+'</td>'
+    + '<td class="sub">'+v.buy_count+'회 · '+fmtWon(v.total_amount)+'</td>'
+    + '<td>'+(+v.unpaid > 0 ? '<span class="badge r">'+fmtWon(v.unpaid)+'</span>' : '-')+'</td>'
+    + '<td><button class="btn sm ghost" onclick="vdFilter(\''+v.id+'\')">내역</button></td></tr>'
+  ).join('') || '<tr><td colspan="8" class="sub">명세서를 저장하면 거래처가 자동으로 등록돼요.</td></tr>';
+}
+function vdFilter(id){
+  const v = VENDORS.find(x=>x.id===id); if(!v) return;
+  $('ibVendorF').value = v.name; loadInbound();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function openVendor(){
+  $('vdId').value=''; $('vdName').value=''; $('vdPhone').value=''; $('vdBank').value='';
+  $('vdAcct').value=''; $('vdManager').value=''; $('vdMemo').value='';
+  $('vdCat').value='기타'; $('vdCycle').value='월말';
+  $('vdDelBtn').classList.add('hidden');
+  $('vdModal').classList.remove('hidden');
+}
+function vdEdit(id){
+  const v = VENDORS.find(x=>x.id===id); if(!v) return;
+  $('vdId').value=v.id; $('vdName').value=v.name; $('vdPhone').value=v.phone||'';
+  $('vdBank').value=v.bank_name||''; $('vdAcct').value=v.bank_acct||''; $('vdManager').value=v.manager||'';
+  $('vdMemo').value=v.memo||''; $('vdCat').value=v.category||'기타'; $('vdCycle').value=v.pay_cycle||'월말';
+  $('vdDelBtn').classList.remove('hidden');
+  $('vdModal').classList.remove('hidden');
+}
+async function vdSave(){
+  try{
+    await api('vendorSave', TOKEN, { id:$('vdId').value, name:$('vdName').value.trim(),
+      phone:$('vdPhone').value.trim(), bank_name:$('vdBank').value.trim(), bank_acct:$('vdAcct').value.trim(),
+      manager:$('vdManager').value.trim(), category:$('vdCat').value, pay_cycle:$('vdCycle').value,
+      memo:$('vdMemo').value.trim() });
+    toast('거래처를 저장했어요'); closeModal('vdModal'); loadInbound();
+  }catch(e){ alert(e.message); }
+}
+async function vdDel(){
+  if(!confirm('이 거래처를 목록에서 삭제할까요? (입고 기록은 그대로 남아요)')) return;
+  try{ await api('vendorDelete', TOKEN, $('vdId').value); closeModal('vdModal'); loadInbound(); }
+  catch(e){ alert(e.message); }
 }
 function editInbound(id){
   const x = IB_LIST.find(r=>r.id===id); if(!x) return;
@@ -2212,6 +2428,134 @@ function renderPrice(){
     + '<td><b>'+cm(x.unit_price)+'원</b></td>'
     + '<td><span class="badge '+(x.pct>0?'r':'g')+'">'+(x.pct>0?'▲ +':'▼ ')+x.pct+'%</span></td></tr>'
   ).join('') || '<tr><td colspan="7" class="sub">아직 단가 변동이 없어요. 입고를 등록하다가 단가가 바뀌면 자동으로 쌓입니다.</td></tr>';
+}
+
+/* ---------- 고객·포인트 ---------- */
+let CUSTS = [], CU_FILTER = 'all', CU_SET = {};
+function cuFilter(f, btn){
+  CU_FILTER = f;
+  document.querySelectorAll('.cu-f').forEach(b=>b.classList.toggle('active', b===btn));
+  loadCust();
+}
+async function loadCust(){
+  try{
+    const r = await api('custList', TOKEN, { q:$('cuQ').value.trim(), filter:CU_FILTER });
+    CUSTS = r.rows; CU_SET = r.settings || {};
+    const s = r.stats || {};
+    $('cuTotal').textContent = (s.total||0)+'명';
+    $('cuNew').textContent = (s.new30||0)+'명';
+    $('cuRepeat').textContent = (s.repeat||0)+'명';
+    $('cuDormant').textContent = (s.dormant||0)+'명';
+    $('cuMkt').textContent = (s.mkt||0)+'명';
+    $('cuLiab').textContent = (s.liability||0).toLocaleString('ko-KR')+'P';
+    $('cuJoinUrl').value = location.origin + location.pathname.replace(/[^/]*$/,'') + 'my.html?s=' + (CU_SET.store_id||'');
+    if(document.activeElement !== $('cuRate')){
+      $('cuRate').value = CU_SET.point_rate ?? 3;
+      $('cuMinUse').value = cm(CU_SET.point_min_use ?? 1000);
+      $('cuBonus').value = cm(CU_SET.join_bonus ?? 500);
+      $('cuKakao').value = CU_SET.kakao_url || '';
+    }
+    $('cuBody').innerHTML = CUSTS.map(x =>
+      '<tr><td><a class="link" onclick="cuOpen(\''+x.id+'\')"><b>'+esc(x.name||'(이름없음)')+'</b></a></td>'
+      + '<td class="sub">'+esc(x.phone_masked)+'</td>'
+      + '<td class="name-cell">'+(+x.balance).toLocaleString('ko-KR')+'P</td>'
+      + '<td>'+x.visits+'회</td>'
+      + '<td class="sub">'+fmtWon(x.spent)+'</td>'
+      + '<td class="sub">'+(x.last_visit?fmtDate(x.last_visit):'-')+'</td>'
+      + '<td>'+(x.consent_mkt?'<span class="badge g">마케팅</span>':'')
+        +(x.kakao_friend?' <span class="badge b">채널</span>':'')+'</td></tr>'
+    ).join('') || '<tr><td colspan="7" class="sub">아직 고객이 없어요. 위에서 적립하거나 QR로 가입받으면 쌓여요.</td></tr>';
+  }catch(e){ toast(e.message); }
+}
+function cuCopyUrl(){
+  navigator.clipboard.writeText($('cuJoinUrl').value).then(()=>toast('주소를 복사했어요 — QR 만들 때 붙여넣으세요'));
+}
+async function cuSaveSettings(){
+  try{
+    await api('custSettings', TOKEN, { point_rate:+$('cuRate').value||0, point_min_use:mVal($('cuMinUse').value),
+      join_bonus:mVal($('cuBonus').value), kakao_url:$('cuKakao').value.trim() });
+    toast('설정을 저장했어요'); loadCust();
+  }catch(e){ alert(e.message); }
+}
+async function ceEarn(){
+  const phone = $('cePhone').value.trim();
+  if(!phone){ alert('전화번호를 입력해주세요.'); return; }
+  try{
+    const r = await api('custEarn', TOKEN, { phone, amount:mVal($('ceAmt').value),
+      consent_basic:$('ceConsent').checked, consent_mkt:$('ceMkt').checked });
+    $('ceResult').innerHTML = '<div class="card" style="margin:0; background:#F8F9FA">'
+      + (r.is_new ? '<b>🎉 신규 가입!</b> 가입 보너스 '+(+r.join_bonus).toLocaleString('ko-KR')+'P 지급<br>' : '')
+      + '<b>'+esc(r.name||r.phone_masked)+'</b> 님 · '+r.visits+'번째 방문<br>'
+      + '이번 적립 <b style="color:var(--brand,#F26522)">'+(+r.earned).toLocaleString('ko-KR')+'P</b> · '
+      + '총 보유 <b>'+(+r.balance).toLocaleString('ko-KR')+'P</b>'
+      + (r.kakao_url ? '<br><a class="link" href="'+esc(r.kakao_url)+'" target="_blank">카카오 채널 추가 안내하기 →</a>' : '')
+      + '</div>';
+    $('cePhone').value=''; $('ceAmt').value=''; $('ceConsent').checked=false; $('ceMkt').checked=false;
+    loadCust();
+  }catch(e){ alert(e.message); }
+}
+async function cuOpen(id){
+  try{
+    const d = await api('custDetail', TOKEN, id);
+    $('cuId').value = d.id;
+    $('cuTitle').textContent = (d.name||'고객') + ' — ' + d.phone_masked;
+    $('cuInfo').innerHTML = '보유 <b>'+(+d.balance).toLocaleString('ko-KR')+'P</b> · 가입 '+fmtDate(d.created_at)
+      + ' ('+esc(d.source||'')+')<br>동의: 필수 '+(d.consent_basic?'✔':'✖')
+      + ' / 마케팅 '+(d.consent_mkt?'✔ '+(d.consent_mkt_at?fmtDate(d.consent_mkt_at):''):'✖');
+    $('cuName').value = d.name||''; $('cuBirth').value = d.birth||''; $('cuMemo').value = d.memo||'';
+    $('cuKakaoFriend').checked = !!d.kakao_friend; $('cuMktChk').checked = !!d.consent_mkt;
+    $('cuPts').value = '';
+    $('cuPhoneBtn').style.display = (ME && ME.role==='owner') ? '' : 'none';
+    $('cuLogs').innerHTML = (d.logs||[]).map(l =>
+      '<tr><td class="sub">'+fmtDT(l.created_at)+'</td>'
+      + '<td><span class="badge '+(l.points>0?'g':'r')+'">'+esc(l.kind)+'</span></td>'
+      + '<td class="name-cell">'+(l.points>0?'+':'')+(+l.points).toLocaleString('ko-KR')+'P</td>'
+      + '<td class="sub">'+(l.amount?fmtWon(l.amount):'-')+'</td>'
+      + '<td class="sub">'+esc(l.memo||'')+'</td></tr>'
+    ).join('') || '<tr><td colspan="5" class="sub">내역이 없어요.</td></tr>';
+    $('cuModal').classList.remove('hidden');
+  }catch(e){ alert(e.message); }
+}
+async function cuSave(){
+  try{
+    await api('custSave', TOKEN, { id:$('cuId').value, name:$('cuName').value.trim(),
+      birth:$('cuBirth').value.trim(), memo:$('cuMemo').value.trim(),
+      kakao_friend:$('cuKakaoFriend').checked, consent_mkt:$('cuMktChk').checked });
+    toast('저장했어요'); closeModal('cuModal'); loadCust();
+  }catch(e){ alert(e.message); }
+}
+async function cuUse(){
+  const p = mVal($('cuPts').value);
+  if(!p){ alert('사용할 포인트를 입력해주세요.'); return; }
+  if(!confirm(p.toLocaleString('ko-KR')+'P를 사용 처리할까요?')) return;
+  try{
+    const r = await api('custUse', TOKEN, { id:$('cuId').value, points:p, memo:'매장 사용' });
+    toast('사용 완료 — 남은 포인트 '+(+r.balance).toLocaleString('ko-KR')+'P');
+    cuOpen($('cuId').value); loadCust();
+  }catch(e){ alert(e.message); }
+}
+async function cuAdjust(){
+  const raw = prompt('조정할 포인트를 입력하세요. (빼려면 -1000 처럼 음수)');
+  if(raw === null) return;
+  const p = parseInt(String(raw).replace(/[^0-9-]/g,''), 10);
+  if(!p){ alert('숫자를 입력해주세요.'); return; }
+  const memo = prompt('사유를 적어주세요. (기록에 남아요)') || '수기 조정';
+  try{
+    await api('custAdjust', TOKEN, { id:$('cuId').value, points:p, memo });
+    toast('조정했어요'); cuOpen($('cuId').value); loadCust();
+  }catch(e){ alert(e.message); }
+}
+async function cuShowPhone(){
+  if(!confirm('전체 전화번호를 볼까요? 열람 기록이 시스템 로그에 남아요.')) return;
+  try{
+    const r = await api('custPhone', TOKEN, $('cuId').value);
+    alert(r.name ? r.name+' — '+r.phone : r.phone);
+  }catch(e){ alert(e.message); }
+}
+async function cuDelete(){
+  if(!confirm('이 고객의 개인정보를 파기할까요?\n전화번호·이름이 삭제되고 되돌릴 수 없어요. (포인트 내역은 익명으로 보존)')) return;
+  try{ await api('custDelete', TOKEN, $('cuId').value); toast('파기했어요'); closeModal('cuModal'); loadCust(); }
+  catch(e){ alert(e.message); }
 }
 
 /* ---------- 자금 ---------- */

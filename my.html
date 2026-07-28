@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>포인트 적립 회원가입</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<style>
+:root{ --brand:#F26522; --ink:#20242E; --line:#E9ECEF; --sub:#868E96; --green:#2F9E44; --red:#E03131; }
+*{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent }
+body{ font-family:Pretendard,-apple-system,sans-serif; background:#F8F9FA; color:var(--ink); font-size:17px; line-height:1.55;
+  padding:18px 16px 40px; max-width:520px; margin:0 auto }
+h1{ font-size:23px; margin-bottom:4px }
+.sub{ color:var(--sub); font-size:14.5px }
+.card{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:20px 18px; margin-top:14px }
+label{ display:block; font-size:14.5px; color:var(--sub); margin:12px 0 6px; font-weight:600 }
+input[type=text],input[type=tel]{ width:100%; padding:14px; border:1px solid var(--line); border-radius:12px;
+  font-size:17px; font-family:inherit; background:#fff }
+input:focus{ outline:none; border-color:var(--brand) }
+.btn{ display:block; width:100%; padding:16px; border:none; border-radius:12px; background:var(--brand); color:#fff;
+  font-size:17px; font-weight:700; font-family:inherit; cursor:pointer; margin-top:18px }
+.btn:disabled{ opacity:.5 }
+.btn.ghost{ background:#fff; color:var(--ink); border:1px solid var(--line) }
+.chk{ display:flex; gap:10px; align-items:flex-start; margin-top:12px; font-size:15px }
+.chk input{ width:22px; height:22px; margin-top:2px; flex:none; accent-color:var(--brand) }
+.hero{ background:linear-gradient(135deg,#F26522,#FF922B); color:#fff; border-radius:18px; padding:22px 18px }
+.hero b{ font-size:30px }
+.hidden{ display:none }
+.err{ color:var(--red); font-size:14.5px; margin-top:10px }
+.done{ text-align:center; padding:10px 0 }
+.done .big{ font-size:44px }
+.pts{ font-size:34px; font-weight:800; color:var(--brand) }
+details{ margin-top:14px; font-size:14px; color:var(--sub) }
+details summary{ cursor:pointer; font-weight:600 }
+details p{ margin-top:8px; line-height:1.6 }
+a.kakao{ display:block; text-align:center; background:#FEE500; color:#191919; padding:16px; border-radius:12px;
+  font-weight:700; text-decoration:none; margin-top:12px }
+</style>
+</head>
+<body>
+
+<div id="loading" class="sub" style="text-align:center; padding:40px 0">불러오는 중...</div>
+
+<div id="joinView" class="hidden">
+  <div class="hero">
+    <div style="font-size:15px; opacity:.95" id="hStore">매장</div>
+    <div style="margin-top:6px">결제하실 때마다 <b id="hRate">3</b><span style="font-size:20px; font-weight:700">% 적립</span></div>
+    <div style="font-size:14.5px; opacity:.95; margin-top:6px" id="hBonus"></div>
+  </div>
+
+  <div class="card">
+    <h1>포인트 회원가입</h1>
+    <div class="sub">전화번호만 있으면 돼요. 다음 방문부터 번호만 말씀하시면 적립·사용됩니다.</div>
+
+    <label>전화번호 <span style="color:var(--red)">*</span></label>
+    <input type="tel" id="phone" inputmode="numeric" placeholder="010 1234 5678" autocomplete="tel">
+
+    <label>이름 (선택)</label>
+    <input type="text" id="name" placeholder="김순창" autocomplete="name">
+
+    <label>생일 (선택 · 월일 4자리)</label>
+    <input type="text" id="birth" inputmode="numeric" placeholder="0315" maxlength="4">
+
+    <label class="chk"><input type="checkbox" id="c1">
+      <span><b>[필수]</b> 개인정보 수집·이용 동의<br>
+        <span class="sub">전화번호를 포인트 적립·조회 목적으로만 사용하며, 마지막 방문 후 3년이 지나면 파기합니다.</span></span></label>
+
+    <label class="chk"><input type="checkbox" id="c2">
+      <span><b>[선택]</b> 혜택·이벤트 안내 수신 동의<br>
+        <span class="sub">동의하지 않아도 적립은 정상적으로 됩니다.</span></span></label>
+
+    <button class="btn" id="btnJoin" onclick="join()">가입하고 포인트 받기</button>
+    <div class="err hidden" id="err"></div>
+
+    <details>
+      <summary>개인정보 처리방침 보기</summary>
+      <p>
+        <b>1. 수집 항목</b> — 전화번호(필수), 이름·생일(선택)<br>
+        <b>2. 이용 목적</b> — 포인트 적립·사용·조회, 동의한 경우에 한해 혜택 안내<br>
+        <b>3. 보유 기간</b> — 마지막 방문일로부터 3년, 이후 지체 없이 파기<br>
+        <b>4. 파기·철회</b> — 매장에 말씀하시면 즉시 삭제하거나 수신 동의를 철회할 수 있습니다<br>
+        <b>5. 안전조치</b> — 접근 권한을 최소화하고, 화면에는 뒷자리만 표시하며 전체 번호 열람은 기록으로 남깁니다<br>
+        <b>6. 제3자 제공</b> — 제공하지 않습니다
+      </p>
+    </details>
+  </div>
+</div>
+
+<div id="doneView" class="hidden">
+  <div class="card done">
+    <div class="big" id="dIcon">🎉</div>
+    <h1 id="dTitle">가입 완료!</h1>
+    <div class="sub" id="dMsg"></div>
+    <div style="margin:18px 0 6px" class="sub">현재 포인트</div>
+    <div class="pts"><span id="dPts">0</span>P</div>
+    <div class="sub" style="margin-top:10px" id="dUse"></div>
+    <a class="kakao hidden" id="dKakao" href="#" target="_blank">💬 카카오 채널 추가하고 혜택 받기</a>
+    <button class="btn ghost" onclick="location.reload()">다른 번호로 가입</button>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://zcjvriedzememkiltqfa.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjanZyaWVkemVtZW1raWx0cWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMjg2MTIsImV4cCI6MjA5OTYwNDYxMn0.2nZh82xFUNORqcKObAHUnz8K5EjjL-Nym0T4YkDHxMk';
+const STORE = new URLSearchParams(location.search).get('s') || '';
+const $ = id => document.getElementById(id);
+const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+async function api(fn, ...args){
+  const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/store_api', {
+    method:'POST', headers:{ 'Content-Type':'application/json', 'apikey':SUPABASE_ANON, 'Authorization':'Bearer '+SUPABASE_ANON },
+    body: JSON.stringify({ p_fn: fn, p_args: args })
+  });
+  const data = await res.json();
+  if(!data || data.ok === false) throw new Error((data && data.error) || '서버 오류');
+  return data.result;
+}
+function show(v){ ['loading','joinView','doneView'].forEach(x => $(x).classList.toggle('hidden', x!==v)); }
+
+// 전화번호 자동 하이픈
+$('phone').addEventListener('input', e => {
+  let v = e.target.value.replace(/[^0-9]/g,'').slice(0,11);
+  if(v.length > 7) v = v.slice(0,3)+'-'+v.slice(3,7)+'-'+v.slice(7);
+  else if(v.length > 3) v = v.slice(0,3)+'-'+v.slice(3);
+  e.target.value = v;
+});
+
+let INFO = null;
+(async () => {
+  if(!STORE){ $('loading').textContent = '잘못된 주소예요. 매장의 QR을 다시 스캔해주세요.'; return; }
+  try{
+    INFO = await api('custStoreInfo', STORE);
+    $('hStore').textContent = INFO.name || '매장';
+    $('hRate').textContent = INFO.rate ?? 3;
+    document.title = (INFO.name||'매장') + ' 포인트 적립';
+    $('hBonus').textContent = INFO.join_bonus > 0
+      ? '지금 가입하면 ' + (+INFO.join_bonus).toLocaleString('ko-KR') + 'P 바로 지급!' : '';
+    show('joinView');
+  }catch(e){ $('loading').textContent = e.message; }
+})();
+
+async function join(){
+  $('err').classList.add('hidden');
+  const phone = $('phone').value.replace(/[^0-9]/g,'');
+  if(phone.length < 10){ fail('전화번호를 정확히 입력해주세요.'); return; }
+  if(!$('c1').checked){ fail('필수 동의에 체크해주세요.'); return; }
+  $('btnJoin').disabled = true;
+  try{
+    const r = await api('custJoin', STORE, { phone, name:$('name').value.trim(), birth:$('birth').value.trim(),
+      consent_basic:true, consent_mkt:$('c2').checked });
+    $('dIcon').textContent = r.is_new ? '🎉' : '👋';
+    $('dTitle').textContent = r.is_new ? '가입 완료!' : '이미 가입되어 있어요';
+    $('dMsg').textContent = r.is_new
+      ? (r.bonus > 0 ? '가입 축하 ' + (+r.bonus).toLocaleString('ko-KR') + 'P를 드렸어요!' : '이제부터 적립됩니다.')
+      : (r.name ? r.name + '님, 반갑습니다!' : '기존 회원이시네요!');
+    $('dPts').textContent = (+r.balance).toLocaleString('ko-KR');
+    $('dUse').textContent = (+r.min_use).toLocaleString('ko-KR') + 'P부터 매장에서 현금처럼 쓸 수 있어요.';
+    if(r.kakao_url){ $('dKakao').href = r.kakao_url; $('dKakao').classList.remove('hidden'); }
+    show('doneView');
+  }catch(e){ fail(e.message); $('btnJoin').disabled = false; }
+}
+function fail(m){ $('err').textContent = m; $('err').classList.remove('hidden'); }
+</script>
+</body>
+</html>

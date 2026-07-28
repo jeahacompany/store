@@ -83,6 +83,7 @@ label{display:block; font-size:14px; color:var(--sub); margin:10px 0 4px}
     <span class="store" id="hdStore">우리매장</span>
     <span class="date" id="hdDate"></span>
     <span class="clock" id="hdClock">--:--</span>
+    <button class="btn sm" onclick="openEarn()" style="font-size:16px">⭐ 포인트 적립</button>
     <a onclick="loadAll()">↻</a>
     <a onclick="doLogout()">로그아웃</a>
   </div>
@@ -139,6 +140,26 @@ label{display:block; font-size:14px; color:var(--sub); margin:10px 0 4px}
     <div style="margin-top:16px; display:flex; gap:8px">
       <button class="btn" style="flex:1" onclick="saveResv()">저장</button>
       <button class="btn ghost" onclick="closeResv()">닫기</button>
+    </div>
+  </div>
+</div>
+<!-- 포인트 적립 모달 -->
+<div class="modal-bg hidden" id="earnModal">
+  <div class="modal" style="max-width:520px">
+    <h2>⭐ 포인트 적립</h2>
+    <div class="sub" style="margin-bottom:8px">손님 전화번호와 결제금액을 넣으세요. 처음이면 그 자리에서 가입돼요.</div>
+    <div class="grid2">
+      <div><label>전화번호</label><input id="emPhone" inputmode="numeric" style="width:100%; font-size:22px" placeholder="01012345678"></div>
+      <div><label>결제금액</label><input id="emAmt" inputmode="numeric" style="width:100%; font-size:22px" placeholder="45000"></div>
+    </div>
+    <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:15px">
+      <input type="checkbox" id="emC1" style="width:20px;height:20px"> <b>[필수]</b> 개인정보 수집·이용 동의를 받았어요 (신규 고객만)</label>
+    <label style="display:flex; align-items:center; gap:8px; margin-top:6px; font-size:15px">
+      <input type="checkbox" id="emC2" style="width:20px;height:20px"> [선택] 혜택 안내 문자 수신도 동의</label>
+    <div id="emResult" style="margin-top:12px"></div>
+    <div style="margin-top:16px; display:flex; gap:8px">
+      <button class="btn" style="flex:1" onclick="doEarn()">적립하기</button>
+      <button class="btn ghost" onclick="$('earnModal').classList.add('hidden')">닫기</button>
     </div>
   </div>
 </div>
@@ -228,6 +249,30 @@ function editResv(id){
   $('resvModal').classList.remove('hidden');
 }
 function closeResv(){ $('resvModal').classList.add('hidden'); }
+
+/* ---------- 포인트 적립 ---------- */
+function openEarn(){
+  $('emPhone').value=''; $('emAmt').value=''; $('emC1').checked=false; $('emC2').checked=false;
+  $('emResult').innerHTML='';
+  $('earnModal').classList.remove('hidden');
+  setTimeout(()=>$('emPhone').focus(), 100);
+}
+async function doEarn(){
+  const phone = $('emPhone').value.replace(/[^0-9]/g,'');
+  if(phone.length < 10){ toast('전화번호를 정확히 입력해주세요'); return; }
+  try{
+    const r = await api('custEarn', TOKEN, { phone, amount: +$('emAmt').value.replace(/[^0-9]/g,'') || 0,
+      consent_basic: $('emC1').checked, consent_mkt: $('emC2').checked });
+    $('emResult').innerHTML = '<div style="background:#F8F9FA; border-radius:12px; padding:14px; font-size:17px">'
+      + (r.is_new ? '<b style="color:var(--brand)">🎉 신규 가입! 보너스 '+(+r.join_bonus).toLocaleString('ko-KR')+'P</b><br>' : '')
+      + '<b>'+(r.name || r.phone_masked)+'</b> 님 · '+r.visits+'번째 방문<br>'
+      + '적립 <b style="color:var(--brand); font-size:22px">+'+(+r.earned).toLocaleString('ko-KR')+'P</b> · '
+      + '보유 <b>'+(+r.balance).toLocaleString('ko-KR')+'P</b>'
+      + (r.kakao_url ? '<br><span class="sub">카카오 채널 추가 안내드리세요!</span>' : '') + '</div>';
+    $('emPhone').value=''; $('emAmt').value=''; $('emC1').checked=false; $('emC2').checked=false;
+    toast('적립 완료');
+  }catch(e){ toast(e.message); }
+}
 async function saveResv(){
   try{
     if(!$('rmName').value.trim()){ alert('이름을 입력해주세요.'); return; }
