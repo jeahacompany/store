@@ -243,7 +243,12 @@ async function loadReqs(){
         : x.status==='조리중' ? '<span class="badge g">준비 중 · 약 '+(x.eta_min||'?')+'분</span>'
         : '<span class="badge">✔ 완료</span>')
       + (x.urgent ? ' <span class="badge r">급함</span>' : '')
-      + '<div class="sub">'+(x.items||[]).map(i => esc(i.name)+' '+(+i.qty)+esc(i.unit||'')).join(', ')+'</div>'
+      + (x.total_cnt > 1 && x.left_cnt > 0 ? ' <span class="sub">'+(x.total_cnt-x.left_cnt)+'/'+x.total_cnt+' 나옴</span>' : '')
+      + '<div style="margin-top:4px">'+(x.items||[]).map(i =>
+          i.status === '완료'
+            ? '<span class="badge g" style="margin:2px 3px 0 0">✔ '+esc(i.name)+' '+(+i.qty)+esc(i.unit||'')+'</span>'
+            : '<span class="badge" style="margin:2px 3px 0 0">'+esc(i.name)+' '+(+i.qty)+esc(i.unit||'')+'</span>'
+        ).join('')+'</div>'
       + '</span><span class="sub">'+x.wait_min+'분 전</span></div>'
     ).join('') || '<div class="sub">오늘 요청이 없어요</div>';
   }catch(e){}

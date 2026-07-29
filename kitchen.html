@@ -36,8 +36,13 @@ h2{font-size:19px; display:flex; align-items:center; gap:8px}
 .req .no{font-size:30px; font-weight:800; color:var(--brand)}
 .req .wait{margin-left:auto; font-size:15px; color:var(--sub)}
 .req .items{margin:10px 0}
-.req .it{display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed var(--line); font-size:19px}
+.req .it{display:flex; justify-content:space-between; align-items:center; gap:8px;
+  padding:9px 0; border-bottom:1px dashed var(--line); font-size:19px}
 .req .it b{font-size:22px}
+.req .it.done{opacity:.45}
+.req .it.done span:first-child{text-decoration:line-through}
+.req .okmark{color:var(--green); font-weight:700; font-size:15px; white-space:nowrap}
+.btn.sm{padding:8px 16px; font-size:16px}
 .req .acts{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px}
 .login{max-width:340px; margin:80px auto; background:#fff; padding:26px; border-radius:16px}
 .login input{width:100%; padding:13px; border:1px solid var(--line); border-radius:10px; font-size:17px; margin-top:8px; font-family:inherit}
@@ -224,17 +229,24 @@ async function loadReqs(){
         + (x.urgent ? '<span class="badge r">급함</span>' : '')
         + (x.status==='조리중' ? '<span class="badge g">조리중 '+(x.eta_min||'')+'분</span>' : '<span class="badge a">새 요청</span>')
         + '<span class="wait">'+x.wait_min+'분 전</span></div>'
-      + '<div class="items">' + (x.items||[]).map(i =>
-          '<div class="it"><span>'+esc(i.name)+'</span><b>'+(+i.qty)+esc(i.unit||'')+'</b></div>').join('') + '</div>'
+      + '<div class="items">' + (x.items||[]).map(i => {
+          const ok = i.status === '완료';
+          return '<div class="it'+(ok?' done':'')+'">'
+            + '<span>'+esc(i.name)+' <b>'+(+i.qty)+esc(i.unit||'')+'</b></span>'
+            + (ok ? '<span class="okmark">✔ 나감</span>'
+                  : '<button class="btn green sm" onclick="itemDone(\''+i.id+'\')">완료</button>')
+            + '</div>';
+        }).join('') + '</div>'
       + (x.memo ? '<div class="sub">'+esc(x.memo)+'</div>' : '')
-      + '<div class="sub">요청: '+esc(x.requested_by||'')+'</div>'
+      + '<div class="sub">요청: '+esc(x.requested_by||'')
+        + (x.total_cnt > 1 ? ' · <b>'+(x.total_cnt - x.left_cnt)+'/'+x.total_cnt+' 나감</b>' : '')+'</div>'
       + '<div class="acts">'
         + (x.status==='요청'
             ? '<button class="btn" onclick="accept(\''+x.id+'\',5)">5분</button>'
               + '<button class="btn" onclick="accept(\''+x.id+'\',10)">10분</button>'
               + '<button class="btn" onclick="accept(\''+x.id+'\',15)">15분</button>'
-              + '<button class="btn green" onclick="done(\''+x.id+'\')">바로 완료</button>'
-            : '<button class="btn green big" onclick="done(\''+x.id+'\')">✔ 완료</button>')
+              + '<button class="btn green" onclick="done(\''+x.id+'\')">전부 완료</button>'
+            : '<button class="btn green" onclick="done(\''+x.id+'\')">✔ 남은 것 전부 완료</button>')
       + '</div></div>'
     ).join('');
 
@@ -249,9 +261,16 @@ async function loadReqs(){
 async function accept(id, min){
   try{ await api('barReqAccept', TOKEN, id, min); loadReqs(); }catch(e){ alert(e.message); }
 }
+async function itemDone(itemId){
+  try{
+    const r = await api('barItemDone', TOKEN, itemId);
+    if(r.left === 0) beep(1);           // 이 요청이 다 끝났다는 신호
+    loadReqs();
+  }catch(e){ alert(e.message); }
+}
 async function done(id){
   try{
-    const r = await api('barReqDone', TOKEN, id);
+    await api('barReqDone', TOKEN, id);
     loadReqs();
   }catch(e){ alert(e.message); }
 }
