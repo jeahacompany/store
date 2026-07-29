@@ -135,6 +135,10 @@ a.link{color:var(--brand); text-decoration:none; font-size:13.5px; cursor:pointe
 
     <!-- 근무 -->
     <div id="tab-work" class="hidden">
+      <div class="card" style="border-color:#FFD8A8">
+        <h2>🗓️ 내 근무 일정 <span class="sub">— 언제 나가는지</span></h2>
+        <div id="myShifts"><div class="sub">불러오는 중...</div></div>
+      </div>
       <div class="card">
         <h2>이번 달 근무 <span class="sub" id="mmYm"></span></h2>
         <div class="row"><span>근무 시간</span><b id="mmHours">-</b></div>
@@ -407,7 +411,28 @@ async function doClock(){
 }
 
 /* ---------- 근무 (내 기록 · 예상급여 · 일지) ---------- */
+async function loadMyShifts(){
+  try{
+    const r = await api('myShifts', TOKEN);
+    const DW = ['일','월','화','수','목','금','토'];
+    const today = r.today;
+    const rows = (r.rows||[]).filter(x => x.work_date >= today);
+    $('myShifts').innerHTML = rows.length ? rows.slice(0,14).map(x => {
+      const d = new Date(x.work_date + 'T00:00:00');
+      const isToday = x.work_date === today;
+      const dd = new Date(today + 'T00:00:00');
+      const diff = Math.round((d - dd) / 86400000);
+      const when = isToday ? '오늘' : diff === 1 ? '내일' : diff === 2 ? '모레' : diff + '일 뒤';
+      return '<div class="row"'+(isToday?' style="background:#FFF4E6; border-radius:10px; padding:8px"':'')+'>'
+        + '<span><b>'+(d.getMonth()+1)+'/'+d.getDate()+' ('+DW[d.getDay()]+')</b> '
+        + '<span class="badge'+(isToday?' a':'')+'">'+when+'</span>'
+        + (x.memo ? '<div class="sub">'+esc(x.memo)+'</div>' : '')+'</span>'
+        + '<b style="font-size:17px">'+x.start_time.slice(0,5)+' ~ '+x.end_time.slice(0,5)+'</b></div>';
+    }).join('') : '<div class="sub">아직 배정된 일정이 없어요. 사장님이 근무표를 올리면 여기 보여요.</div>';
+  }catch(e){ $('myShifts').innerHTML = '<div class="sub">'+esc(e.message)+'</div>'; }
+}
 async function loadWork(){
+  loadMyShifts();
   const d = new Date(), p = n=>String(n).padStart(2,'0');
   const ym = d.getFullYear()+'-'+p(d.getMonth()+1);
   $('mmYm').textContent = ym;
