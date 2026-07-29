@@ -11,7 +11,8 @@
 body{font-family:Pretendard,-apple-system,sans-serif; background:#F8F9FA; color:var(--ink); font-size:17px}
 .topbar{display:flex; align-items:center; gap:14px; padding:14px 20px; background:var(--side); color:#fff; position:sticky; top:0; z-index:10}
 .topbar .store{font-size:20px; font-weight:700}
-.topbar .clock{font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; margin-left:auto}
+.topbar .hddate{margin-left:auto; font-size:15px; color:#AEB4C0}
+.topbar .clock{font-size:24px; font-weight:800; font-variant-numeric:tabular-nums}
 .topbar a{color:#8A90A0; font-size:14px; cursor:pointer; text-decoration:none}
 .wrap{padding:16px 20px 120px}
 .card{background:#fff; border:1px solid var(--line); border-radius:16px; padding:18px; margin-bottom:14px}
@@ -73,6 +74,7 @@ h2{font-size:19px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
 <div id="mainView" class="hidden">
   <div class="topbar">
     <span class="store" id="hdStore">셀프바</span>
+    <span class="hddate" id="hdDate"></span>
     <span class="clock" id="hdClock">--:--</span>
     <a onclick="loadAll()">↻</a>
     <a onclick="doLogout()">로그아웃</a>
@@ -134,19 +136,37 @@ async function doLogin(){
 }
 function doLogout(){ localStorage.removeItem('store_bar_token'); TOKEN=''; show('loginView'); }
 
+/* 맑은 종소리 한 번 (주방 화면과 같은 소리) */
+let AC = null;
 function beep(){
   try{
-    const ctx = new (window.AudioContext||window.webkitAudioContext)();
-    const o = ctx.createOscillator(), g = ctx.createGain();
-    o.connect(g); g.connect(ctx.destination); o.frequency.value = 660;
-    g.gain.setValueAtTime(0.0001, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
-    o.start(); o.stop(ctx.currentTime + 0.42);
+    if(!AC) AC = new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state === 'suspended') AC.resume();
+    const t0 = AC.currentTime;
+    [[1318.5, 0], [1760.0, 0.13]].forEach(([f, delay]) => {
+      [[f, 0.25], [f*2, 0.06]].forEach(([freq, vol]) => {
+        const o = AC.createOscillator(), g = AC.createGain();
+        o.connect(g); g.connect(AC.destination);
+        o.frequency.value = freq; o.type = 'sine';
+        const t = t0 + delay;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vol, t + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 1.0);
+        o.start(t); o.stop(t + 1.05);
+      });
+    });
   }catch(e){}
 }
-function tick(){ const d=new Date(), p=n=>String(n).padStart(2,'0');
-  $('hdClock').textContent = p(d.getHours())+':'+p(d.getMinutes()); }
+['click','touchstart'].forEach(ev => document.addEventListener(ev, () => {
+  try{ if(!AC) AC = new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==='suspended') AC.resume(); }catch(e){}
+}, { passive:true }));
+const DOWK = ['일','월','화','수','목','금','토'];
+function tick(){
+  const d = new Date(), p = n => String(n).padStart(2,'0');
+  const dt = $('hdDate');
+  if(dt) dt.textContent = d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+DOWK[d.getDay()]+')';
+  $('hdClock').textContent = p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
+}
 setInterval(tick, 1000); tick();
 
 /* 배치도 — 셀프바가 실제로 생긴 대로 그린다 */
