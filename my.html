@@ -71,6 +71,7 @@ a.kakao{ display:block; text-align:center; background:#FEE500; color:#191919; pa
         <span class="sub">동의하지 않아도 적립은 정상적으로 됩니다.</span></span></label>
 
     <button class="btn" id="btnJoin" onclick="join()">가입하고 포인트 받기</button>
+    <button class="btn ghost" onclick="lookup()">이미 회원이에요 — 포인트 조회</button>
     <div class="err hidden" id="err"></div>
 
     <details>
@@ -161,6 +162,26 @@ async function join(){
   }catch(e){ fail(e.message); $('btnJoin').disabled = false; }
 }
 function fail(m){ $('err').textContent = m; $('err').classList.remove('hidden'); }
+
+async function lookup(){
+  $('err').classList.add('hidden');
+  const phone = $('phone').value.replace(/[^0-9]/g,'');
+  if(phone.length < 10){ fail('전화번호를 입력하면 포인트를 알려드려요.'); return; }
+  try{
+    const r = await api('custLookup', STORE, { phone });
+    if(!r.found){
+      fail('아직 가입되지 않은 번호예요. 위에서 가입하시면 ' + (+r.join_bonus).toLocaleString('ko-KR') + 'P를 드려요!');
+      return;
+    }
+    $('dIcon').textContent = '⭐';
+    $('dTitle').textContent = '내 포인트';
+    $('dMsg').textContent = r.last_visit ? '최근 방문 ' + r.last_visit : '';
+    $('dPts').textContent = (+r.balance).toLocaleString('ko-KR');
+    $('dUse').textContent = (+r.min_use).toLocaleString('ko-KR') + 'P부터 매장에서 현금처럼 쓸 수 있어요. (적립 ' + r.rate + '%)';
+    if(r.kakao_url){ $('dKakao').href = r.kakao_url; $('dKakao').classList.remove('hidden'); }
+    show('doneView');
+  }catch(e){ fail(e.message); }
+}
 </script>
 </body>
 </html>

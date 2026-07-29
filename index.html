@@ -669,9 +669,10 @@
               <button class="btn sm ghost cu-f" data-f="dormant" onclick="cuFilter('dormant',this)">휴면 30일+</button>
               <button class="btn sm ghost cu-f" data-f="mkt" onclick="cuFilter('mkt',this)">마케팅 동의</button>
             </span></h2>
-          <div style="display:flex; gap:8px; margin:8px 0">
-            <input id="cuQ" placeholder="이름 또는 전화번호 뒷자리 검색" style="flex:1" onkeydown="if(event.key==='Enter') loadCust()">
+          <div style="display:flex; gap:8px; margin:8px 0; flex-wrap:wrap">
+            <input id="cuQ" placeholder="이름 또는 전화번호 뒷자리 검색" style="flex:1; min-width:200px" onkeydown="if(event.key==='Enter') loadCust()">
             <button class="btn ghost" onclick="loadCust()">검색</button>
+            <button class="btn ghost" id="btnExport" onclick="cuExport()">📤 번호 내보내기</button>
           </div>
           <div class="table-scroll"><table><thead><tr><th>이름</th><th>연락처</th><th>포인트</th><th>방문</th><th>누적 결제</th><th>최근 방문</th><th>동의</th></tr></thead>
           <tbody id="cuBody"></tbody></table></div>
@@ -692,6 +693,35 @@
             <div><label>카카오 채널 추가 링크</label><input id="cuKakao" style="width:100%" placeholder="http://pf.kakao.com/_xxxxx"></div>
           </div>
           <div style="margin-top:12px"><button class="btn" onclick="cuSaveSettings()">설정 저장</button></div>
+        </div>
+      </div>
+
+      <!-- 번호 내보내기 모달 -->
+      <div class="modal-bg hidden" id="exModal">
+        <div class="modal">
+          <h2>고객 번호 내보내기 <span class="sub">(사장님 전용)</span></h2>
+          <div class="card" style="margin:8px 0; background:#FFF9DB; border-color:#FFE066">
+            <b>⚠ 광고 문자 보내실 때 꼭 지켜주세요</b>
+            <div class="sub" style="margin-top:4px">
+              ① <b>마케팅 수신 동의한 분께만</b> 광고를 보낼 수 있어요<br>
+              ② 문자 맨 앞에 <b>(광고)</b> 표시, 맨 뒤에 <b>무료수신거부</b> 번호 안내<br>
+              ③ <b>밤 9시~아침 8시</b>에는 광고 발송 금지<br>
+              ④ 여기서 번호를 꺼낸 기록은 시스템 로그에 남아요
+            </div>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px">
+            <button class="btn sm ex-f active" onclick="cuExportLoad('mkt',this)">마케팅 동의자</button>
+            <button class="btn sm ghost ex-f" onclick="cuExportLoad('dormant',this)">휴면 30일+</button>
+            <button class="btn sm ghost ex-f" onclick="cuExportLoad('all',this)">전체 고객</button>
+          </div>
+          <div id="exInfo" class="sub" style="margin-bottom:8px"></div>
+          <textarea id="exBox" readonly style="width:100%; height:180px; font-family:monospace; font-size:13px;
+            border:1px solid var(--line,#E9ECEF); border-radius:10px; padding:10px"></textarea>
+          <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
+            <button class="btn" onclick="exCopyPhones()">번호만 복사</button>
+            <button class="btn ghost" onclick="exDownloadCsv()">엑셀(CSV) 저장</button>
+            <button class="btn ghost" onclick="closeModal('exModal')">닫기</button>
+          </div>
         </div>
       </div>
 
@@ -2449,6 +2479,7 @@ async function loadCust(){
     $('cuMkt').textContent = (s.mkt||0)+'명';
     $('cuLiab').textContent = (s.liability||0).toLocaleString('ko-KR')+'P';
     $('cuJoinUrl').value = location.origin + location.pathname.replace(/[^/]*$/,'') + 'my.html?s=' + (CU_SET.store_id||'');
+    $('btnExport').style.display = (ME && ME.role==='owner') ? '' : 'none';
     if(document.activeElement !== $('cuRate')){
       $('cuRate').value = CU_SET.point_rate ?? 3;
       $('cuMinUse').value = cm(CU_SET.point_min_use ?? 1000);
@@ -2544,6 +2575,45 @@ async function cuAdjust(){
     await api('custAdjust', TOKEN, { id:$('cuId').value, points:p, memo });
     toast('조정했어요'); cuOpen($('cuId').value); loadCust();
   }catch(e){ alert(e.message); }
+}
+let EX_ROWS = [];
+function cuExport(){
+  if(!(ME && ME.role==='owner')){ alert('사장님만 볼 수 있어요.'); return; }
+  $('exModal').classList.remove('hidden');
+  cuExportLoad('mkt', document.querySelector('.ex-f'));
+}
+async function cuExportLoad(f, btn){
+  document.querySelectorAll('.ex-f').forEach(b=>{ b.classList.toggle('active', b===btn); b.classList.toggle('ghost', b!==btn); });
+  $('exInfo').textContent = '불러오는 중...';
+  try{
+    const r = await api('custExport', TOKEN, { filter:f });
+    EX_ROWS = r.rows || [];
+    $('exInfo').innerHTML = '<b>'+r.count+'명</b> · '
+      + (f==='mkt' ? '마케팅 수신에 동의한 고객이에요. 광고 문자를 보낼 수 있어요.'
+        : f==='dormant' ? '30일 넘게 안 오신 분들. 광고 문자는 <b>동의한 분께만</b> 보내세요.'
+        : '전체 고객. 광고성 문자는 <b>동의자에게만</b> 가능해요.');
+    $('exBox').value = EX_ROWS.map(x =>
+      [x.phone, x.name||'', (+x.balance).toLocaleString('ko-KR')+'P', (x.visits||0)+'회',
+       x.last_visit||'', x.consent_mkt?'동의':'미동의'].join('\t')).join('\n')
+      || '해당하는 고객이 없어요.';
+  }catch(e){ $('exInfo').textContent = e.message; }
+}
+function exCopyPhones(){
+  const t = EX_ROWS.map(x=>x.phone).join(', ');
+  if(!t){ alert('복사할 번호가 없어요.'); return; }
+  navigator.clipboard.writeText(t).then(()=>toast(EX_ROWS.length+'개 번호를 복사했어요 — 문자 발송 사이트에 붙여넣으세요'));
+}
+function exDownloadCsv(){
+  if(!EX_ROWS.length){ alert('저장할 내용이 없어요.'); return; }
+  const head = '전화번호,이름,포인트,방문횟수,최근방문,마케팅동의\n';
+  const body = EX_ROWS.map(x => [x.phone, (x.name||'').replace(/,/g,' '), x.balance, x.visits,
+    x.last_visit||'', x.consent_mkt?'동의':'미동의'].join(',')).join('\n');
+  const blob = new Blob(['﻿'+head+body], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '고객명단_'+localDate()+'.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  toast('저장했어요 — 개인정보 파일이니 사용 후 삭제하세요');
 }
 async function cuShowPhone(){
   if(!confirm('전체 전화번호를 볼까요? 열람 기록이 시스템 로그에 남아요.')) return;
