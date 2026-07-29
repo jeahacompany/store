@@ -88,7 +88,9 @@ label{display:block; font-size:14px; color:var(--sub); margin:10px 0 4px}
     <span class="store" id="hdStore">우리매장</span>
     <span class="date" id="hdDate"></span>
     <span class="clock" id="hdClock">--:--</span>
-    <button class="btn sm" onclick="openEarn()" style="font-size:16px">⭐ 포인트 적립</button>
+    <button class="btn sm" onclick="openPay()" style="font-size:16px; position:relative">💳 결제 적립
+      <span id="payBadge" class="hidden" style="background:#fff; color:var(--brand); border-radius:11px; padding:1px 7px; margin-left:5px; font-size:13px"></span></button>
+    <button class="btn sm ghost" onclick="openEarn()" style="font-size:16px">⭐ 직접 적립</button>
     <a onclick="loadAll()">↻</a>
     <a onclick="doLogout()">로그아웃</a>
   </div>
@@ -197,6 +199,30 @@ label{display:block; font-size:14px; color:var(--sub); margin:10px 0 4px}
     </div>
   </div>
 </div>
+<!-- 카드결제 → 적립 팝업 -->
+<div class="modal-bg hidden" id="payModal" style="z-index:60">
+  <div class="modal" style="max-width:520px; text-align:center">
+    <div class="sub" id="pmWhen">방금 결제</div>
+    <div style="font-size:46px; font-weight:800; color:var(--brand); margin:6px 0" id="pmAmt">0원</div>
+    <div class="sub" id="pmInfo"></div>
+    <div style="margin-top:16px; text-align:left">
+      <label>고객 전화번호</label>
+      <input id="pmPhone" inputmode="numeric" style="width:100%; font-size:26px; text-align:center; letter-spacing:1px"
+        placeholder="01012345678">
+      <div id="pmEarn" class="sub" style="margin-top:6px; text-align:center"></div>
+      <label style="display:flex; align-items:center; gap:8px; margin-top:10px; font-size:15px">
+        <input type="checkbox" id="pmC1" style="width:20px;height:20px"> <b>[필수]</b> 신규 고객 개인정보 수집·이용 동의를 받았어요</label>
+      <label style="display:flex; align-items:center; gap:8px; margin-top:4px; font-size:15px">
+        <input type="checkbox" id="pmC2" style="width:20px;height:20px"> [선택] 혜택 안내 문자 수신도 동의</label>
+    </div>
+    <div id="pmResult" style="margin-top:12px"></div>
+    <div style="margin-top:16px; display:flex; gap:8px">
+      <button class="btn" style="flex:1; font-size:19px" onclick="pmSave()">적립하기</button>
+      <button class="btn ghost" onclick="pmSkip()">적립 안 함</button>
+    </div>
+  </div>
+</div>
+
 <!-- 대기 등록 모달 -->
 <div class="modal-bg hidden" id="waitModal">
   <div class="modal" style="max-width:460px">
@@ -280,7 +306,58 @@ async function doLogout(){ try{ await api('logout', TOKEN); }catch(e){} localSto
 
 async function loadAll(){
   $('hdDate').textContent = new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'});
-  loadWait(); loadResv(); loadNotices(); loadSold(); loadTasksB(); loadWork(); loadSn();
+  loadWait(); loadResv(); loadNotices(); loadSold(); loadTasksB(); loadWork(); loadSn(); loadPay();
+}
+setInterval(() => { if(TOKEN) loadPay(); }, 8000);   // 결제는 더 자주 확인 (계산대에서 바로 떠야 하니까)
+
+/* ---------- 카드결제 → 적립 (포스 연동) ---------- */
+let PAYS = [], PM_CUR = null, PM_SEEN = new Set();
+async function loadPay(){
+  try{
+    const r = await api('payPending', TOKEN);
+    PAYS = r.rows || [];
+    const b = $('payBadge');
+    if(b){ b.textContent = PAYS.length || ''; b.classList.toggle('hidden', !PAYS.length); }
+    // 새 결제가 들어오면 자동으로 팝업 (이미 보여준 건 다시 안 띄운다)
+    const fresh = PAYS.find(p => !PM_SEEN.has(p.id));
+    if(fresh && $('payModal').classList.contains('hidden')) openPay(fresh.id);
+  }catch(e){}
+}
+function openPay(id){
+  const p = PAYS.find(x => x.id === id) || PAYS[0];
+  if(!p) { toast('적립할 결제가 없어요'); return; }
+  PM_CUR = p; PM_SEEN.add(p.id);
+  $('pmAmt').textContent = (+p.amount).toLocaleString('ko-KR') + '원';
+  $('pmWhen').textContent = tmOf(p.approved_at) + ' 결제' + (PAYS.length > 1 ? ' (대기 '+PAYS.length+'건)' : '');
+  $('pmInfo').textContent = [p.method, p.card_name, p.approval_no ? '승인 '+p.approval_no : '', p.pos_name]
+    .filter(Boolean).join(' · ');
+  $('pmPhone').value = ''; $('pmC1').checked = false; $('pmC2').checked = false;
+  $('pmResult').innerHTML = '';
+  $('pmEarn').textContent = '적립 예정 ' + Math.floor(p.amount * 3 / 100).toLocaleString('ko-KR') + 'P';
+  $('payModal').classList.remove('hidden');
+  setTimeout(()=>$('pmPhone').focus(), 150);
+}
+async function pmSave(){
+  const phone = $('pmPhone').value.replace(/[^0-9]/g,'');
+  if(phone.length < 10){ toast('전화번호를 정확히 입력해주세요'); return; }
+  try{
+    const r = await api('payMatch', TOKEN, { payment_id: PM_CUR ? PM_CUR.id : '',
+      phone, consent_basic:$('pmC1').checked, consent_mkt:$('pmC2').checked });
+    $('pmResult').innerHTML = '<div style="background:#F8F9FA; border-radius:12px; padding:14px; font-size:17px">'
+      + (r.is_new ? '<b style="color:var(--brand)">🎉 신규 가입! 보너스 '+(+r.join_bonus).toLocaleString('ko-KR')+'P</b><br>' : '')
+      + '<b>'+(r.name || r.phone_masked)+'</b> 님 · '+r.visits+'번째 방문<br>'
+      + '적립 <b style="color:var(--brand); font-size:22px">+'+(+r.earned).toLocaleString('ko-KR')+'P</b> · '
+      + '보유 <b>'+(+r.balance).toLocaleString('ko-KR')+'P</b></div>';
+    toast('적립 완료');
+    setTimeout(() => { $('payModal').classList.add('hidden'); loadPay(); }, 2500);
+  }catch(e){ toast(e.message); }
+}
+async function pmSkip(){
+  try{
+    if(PM_CUR) await api('paySkip', TOKEN, PM_CUR.id);
+    $('payModal').classList.add('hidden');
+    loadPay();
+  }catch(e){ toast(e.message); }
 }
 
 /* ---------- 화면 전환 (태블릿 상단 탭) ---------- */
