@@ -33,6 +33,21 @@ h2{font-size:19px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
 .item .nm{font-size:17px; font-weight:700}
 .item .qty{font-size:26px; font-weight:800; color:var(--brand); margin-top:4px}
 .item .pg{font-size:12px; color:var(--sub)}
+/* 배치도 — 실제 셀프바 생긴 대로 */
+.zone{margin-top:16px}
+.zone .zname{font-size:16px; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:8px}
+.zone .zname:before{content:''; width:4px; height:18px; background:var(--brand); border-radius:2px}
+.grid{display:grid; gap:8px; background:#EDF0F3; padding:10px; border-radius:14px}
+.slot{background:#fff; border:2px solid var(--line); border-radius:12px; padding:14px 8px; text-align:center;
+  min-height:88px; display:flex; flex-direction:column; justify-content:center; cursor:pointer; position:relative}
+.slot.on{border-color:var(--brand); background:#FFF4E6}
+.slot .nm{font-size:16px; font-weight:700; line-height:1.25}
+.slot .un{font-size:12px; color:var(--sub); margin-top:2px}
+.slot .q{position:absolute; top:-8px; right:-8px; background:var(--brand); color:#fff; border-radius:99px;
+  min-width:30px; height:30px; display:flex; align-items:center; justify-content:center;
+  font-size:16px; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.slot.empty{background:transparent; border-style:dashed; border-color:#DEE2E6; cursor:default}
+.vmode.active{background:var(--brand); color:#fff}
 /* 하단 고정 바 */
 .bottom{position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid var(--line);
   padding:14px 20px; display:flex; gap:10px; align-items:center; box-shadow:0 -4px 16px rgba(0,0,0,.06)}
@@ -64,8 +79,13 @@ h2{font-size:19px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
   </div>
   <div class="wrap">
     <div class="card">
-      <h2>🍽 부족한 걸 눌러주세요 <span class="sub">— 누를 때마다 1판씩 올라가요</span></h2>
-      <div id="itemBox"></div>
+      <h2>🍽 부족한 걸 눌러주세요 <span class="sub">— 누를 때마다 1개씩, 길게 누르면 취소</span>
+        <span style="margin-left:auto; display:flex; gap:6px">
+          <button class="btn sm vmode active" onclick="setView('map',this)">🗺 배치도</button>
+          <button class="btn sm ghost vmode" onclick="setView('list',this)">☰ 목록</button>
+        </span></h2>
+      <div id="mapBox"></div>
+      <div id="itemBox" class="hidden"></div>
     </div>
 
     <div class="card">
@@ -129,6 +149,50 @@ function tick(){ const d=new Date(), p=n=>String(n).padStart(2,'0');
   $('hdClock').textContent = p(d.getHours())+':'+p(d.getMinutes()); }
 setInterval(tick, 1000); tick();
 
+/* 배치도 — 셀프바가 실제로 생긴 대로 그린다 */
+let ZONES = [], VIEW = 'map';
+function setView(v, btn){
+  VIEW = v;
+  document.querySelectorAll('.vmode').forEach(b => { b.classList.toggle('active', b===btn); b.classList.toggle('ghost', b!==btn); });
+  $('mapBox').classList.toggle('hidden', v !== 'map');
+  $('itemBox').classList.toggle('hidden', v !== 'list');
+}
+function renderMap(){
+  const placed = ITEMS.filter(i => i.zone && i.gx && i.gy);
+  $('mapBox').innerHTML = ZONES.map(z => {
+    const mine = placed.filter(i => i.zone === z.name);
+    const maxY = Math.max(z.rows || 1, ...mine.map(i => i.gy));
+    const cells = [];
+    for(let y = 1; y <= maxY; y++){
+      for(let x = 1; x <= z.cols; x++){
+        const it = mine.find(i => i.gx === x && i.gy === y);
+        if(!it){ cells.push('<div class="slot empty"></div>'); continue; }
+        const q = SEL[it.id] || 0;
+        cells.push('<div class="slot'+(q?' on':'')+'" onclick="pick(\''+it.id+'\')" '
+          + 'oncontextmenu="event.preventDefault(); unpick(\''+it.id+'\')">'
+          + (q ? '<span class="q">'+q+'</span>' : '')
+          + '<div class="nm">'+esc(it.name)+'</div>'
+          + '<div class="un">'+(it.portion_g>0 ? (+it.portion_g)+'g/'+esc(it.unit) : esc(it.unit))+'</div>'
+          + '</div>');
+      }
+    }
+    return '<div class="zone"><div class="zname">'+esc(z.name)+'</div>'
+      + '<div class="grid" style="grid-template-columns:repeat('+z.cols+',1fr)">'+cells.join('')+'</div></div>';
+  }).join('') || '<div class="sub">배치도가 아직 없어요. 관리자 → 셀프바에서 구역과 자리를 잡아주세요.</div>';
+
+  // 배치 안 된 품목은 아래에 따로
+  const rest = ITEMS.filter(i => !(i.zone && i.gx && i.gy));
+  if(rest.length){
+    $('mapBox').innerHTML += '<div class="zone"><div class="zname">자리 미지정</div>'
+      + '<div class="grid" style="grid-template-columns:repeat(4,1fr)">'
+      + rest.map(it => { const q = SEL[it.id]||0;
+          return '<div class="slot'+(q?' on':'')+'" onclick="pick(\''+it.id+'\')" '
+            + 'oncontextmenu="event.preventDefault(); unpick(\''+it.id+'\')">'
+            + (q?'<span class="q">'+q+'</span>':'')
+            + '<div class="nm">'+esc(it.name)+'</div><div class="un">'+esc(it.unit)+'</div></div>';
+        }).join('') + '</div></div>';
+  }
+}
 function renderItems(){
   const cats = [...new Set(ITEMS.map(i => i.category))];
   $('itemBox').innerHTML = cats.map(c =>
@@ -147,9 +211,10 @@ function renderItems(){
     const it = ITEMS.find(x => x.id === id); return (it?it.name:'') + ' ' + q + (it?it.unit:'');
   }).join(', ') : '선택 없음';
 }
-function pick(id){ SEL[id] = (SEL[id]||0) + 1; renderItems(); }
-function unpick(id){ if(SEL[id]){ SEL[id]--; if(!SEL[id]) delete SEL[id]; renderItems(); } }
-function clearSel(){ SEL = {}; renderItems(); }
+function redraw(){ renderItems(); renderMap(); }
+function pick(id){ SEL[id] = (SEL[id]||0) + 1; redraw(); }
+function unpick(id){ if(SEL[id]){ SEL[id]--; if(!SEL[id]) delete SEL[id]; redraw(); } }
+function clearSel(){ SEL = {}; redraw(); }
 
 async function sendReq(){
   const items = Object.entries(SEL).map(([id,q]) => ({ item_id:id, qty:q }));
@@ -185,7 +250,12 @@ async function loadReqs(){
 }
 
 async function loadAll(){
-  try{ ITEMS = (await api('barItems', TOKEN)).filter(i => i.active !== false); renderItems(); }catch(e){}
+  try{
+    const [items, zones] = await Promise.all([api('barItems', TOKEN), api('barZones', TOKEN)]);
+    ITEMS = items.filter(i => i.active !== false);
+    ZONES = zones;
+    redraw();
+  }catch(e){}
   loadReqs();
 }
 async function start(){

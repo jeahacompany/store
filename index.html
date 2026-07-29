@@ -587,6 +587,13 @@
         </div>
 
         <div class="card">
+          <h2>🗺 셀프바 배치도 <span class="sub">— 실제 생긴 대로 놓으면, 바 담당이 눈으로 보고 그 자리를 눌러요</span>
+            <button class="btn sm ghost" onclick="openZone()" style="float:right">+ 구역 추가</button></h2>
+          <div class="sub" style="margin-bottom:10px">빈 칸을 누르면 품목을 놓고, 놓인 칸을 누르면 빼요. 구역 이름을 누르면 칸 수를 바꿀 수 있어요.</div>
+          <div id="zoneEditor"></div>
+        </div>
+
+        <div class="card">
           <h2>셀프바 품목 <span class="sub">— 정량(1판 = 몇 g)을 넣으면 소진량·원가가 자동 계산돼요</span>
             <button class="btn sm" onclick="openBarItem()" style="float:right">+ 품목 추가</button></h2>
           <div class="table-scroll"><table><thead><tr><th>분류</th><th>품목</th><th>단위</th><th>1단위 중량</th><th>재고 연결</th><th>상태</th><th></th></tr></thead>
@@ -608,6 +615,34 @@
         </div>
       </div>
 
+      <!-- 구역 모달 -->
+      <div class="modal-bg hidden" id="zoneModal">
+        <div class="modal" style="max-width:420px">
+          <h2>셀프바 구역</h2>
+          <input type="hidden" id="zId">
+          <label>구역 이름 <span class="sub">(예: 고기 냉장고, 야채 바, 보리밥 코너)</span></label>
+          <input id="zName" style="width:100%">
+          <div class="grid2">
+            <div><label>가로 칸 수</label><input id="zCols" type="number" min="1" max="12" value="4" style="width:100%"></div>
+            <div><label>세로 칸 수</label><input id="zRows" type="number" min="1" max="8" value="2" style="width:100%"></div>
+          </div>
+          <label>순서</label><input id="zSort" type="number" value="0" style="width:100%">
+          <div style="margin-top:14px"><button class="btn" onclick="zoneSave()">저장</button>
+            <button class="btn red hidden" id="zDel" onclick="zoneDelete()">구역 삭제</button>
+            <button class="btn ghost" onclick="closeModal('zoneModal')">닫기</button></div>
+        </div>
+      </div>
+
+      <!-- 칸에 놓을 품목 고르기 -->
+      <div class="modal-bg hidden" id="placeModal">
+        <div class="modal" style="max-width:520px">
+          <h2 id="plTitle">이 칸에 놓을 품목</h2>
+          <div class="sub" id="plWhere" style="margin-bottom:10px"></div>
+          <div id="plList" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; max-height:50vh; overflow:auto"></div>
+          <div style="margin-top:14px"><button class="btn ghost" onclick="closeModal('placeModal')">닫기</button></div>
+        </div>
+      </div>
+
       <!-- 셀프바 품목 모달 -->
       <div class="modal-bg hidden" id="barItemModal">
         <div class="modal" style="max-width:460px">
@@ -616,7 +651,8 @@
           <div class="grid2">
             <div><label>품목명</label><input id="biName" style="width:100%" placeholder="예: 우삼겹"></div>
             <div><label>분류</label><select id="biCat" style="width:100%">
-              <option>고기</option><option>야채</option><option>사리</option><option>소스</option><option>기타</option></select></div>
+              <option>고기류</option><option>야채</option><option>사리</option>
+              <option>보리밥 코너</option><option>디저트</option><option>과일</option><option>기타</option></select></div>
             <div><label>단위</label><input id="biUnit" style="width:100%" placeholder="판" value="판"></div>
             <div><label>1단위 중량 (g)</label><input id="biPortion" type="number" style="width:100%" placeholder="500"></div>
           </div>
@@ -2858,7 +2894,88 @@ function qrDownload(){
 }
 
 /* ---------- 셀프바 ---------- */
-let BAR_ITEMS = [];
+let BAR_ITEMS = [], BAR_ZONES = [], PL_CUR = null;
+
+/* 배치도 편집 — 빈 칸 누르면 놓고, 놓인 칸 누르면 뺀다 */
+function renderZoneEditor(){
+  const placed = BAR_ITEMS.filter(i => i.zone && i.gx && i.gy);
+  $('zoneEditor').innerHTML = BAR_ZONES.map(z => {
+    const mine = placed.filter(i => i.zone === z.name);
+    const maxY = Math.max(z.rows || 1, ...mine.map(i => i.gy), 1);
+    let cells = '';
+    for(let y = 1; y <= maxY; y++){
+      for(let x = 1; x <= z.cols; x++){
+        const it = mine.find(i => i.gx === x && i.gy === y);
+        cells += it
+          ? '<div onclick="unplace(\''+it.id+'\')" style="background:#FFF4E6; border:2px solid var(--brand,#F26522);'
+            + ' border-radius:10px; padding:10px 6px; text-align:center; cursor:pointer; min-height:66px;'
+            + ' display:flex; flex-direction:column; justify-content:center">'
+            + '<b style="font-size:14px">'+esc(it.name)+'</b>'
+            + '<span class="sub" style="font-size:11px">'+(it.portion_g>0?(+it.portion_g)+'g':esc(it.unit))+'</span></div>'
+          : '<div onclick="openPlace(\''+esc(z.name)+'\','+x+','+y+')" style="background:#fff; border:2px dashed #DEE2E6;'
+            + ' border-radius:10px; min-height:66px; display:flex; align-items:center; justify-content:center;'
+            + ' color:#ADB5BD; font-size:22px; cursor:pointer">+</div>';
+      }
+    }
+    return '<div style="margin-bottom:16px">'
+      + '<div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">'
+        + '<a class="link" onclick="openZone(\''+z.id+'\')"><b>'+esc(z.name)+'</b></a>'
+        + '<span class="sub">'+z.cols+'×'+maxY+' 칸 · '+mine.length+'개 배치</span></div>'
+      + '<div style="display:grid; gap:8px; grid-template-columns:repeat('+z.cols+',1fr); background:#F1F3F5; padding:10px; border-radius:12px">'
+      + cells + '</div></div>';
+  }).join('') || '<div class="sub">구역이 없어요. [+ 구역 추가]로 셀프바 덩어리를 하나씩 만들어주세요.</div>';
+
+  const rest = BAR_ITEMS.filter(i => !(i.zone && i.gx && i.gy));
+  if(rest.length) $('zoneEditor').innerHTML +=
+    '<div class="sub" style="margin-top:10px">아직 자리 없는 품목 '+rest.length+'개: '
+    + rest.map(i => esc(i.name)).join(', ') + ' — 위 빈 칸(+)을 눌러 놓아주세요.</div>';
+}
+function openZone(id){
+  const z = id ? BAR_ZONES.find(x => x.id === id) : null;
+  $('zId').value = id || '';
+  $('zName').value = z ? z.name : ''; $('zCols').value = z ? z.cols : 4;
+  $('zRows').value = z ? z.rows : 2;  $('zSort').value = z ? z.sort : (BAR_ZONES.length + 1);
+  $('zDel').classList.toggle('hidden', !id);
+  $('zoneModal').classList.remove('hidden');
+}
+async function zoneSave(){
+  try{
+    await api('barZoneSave', TOKEN, { id:$('zId').value, name:$('zName').value.trim(),
+      cols:+$('zCols').value||4, rows:+$('zRows').value||2, sort:+$('zSort').value||0 });
+    closeModal('zoneModal'); loadBar();
+  }catch(e){ alert(e.message); }
+}
+async function zoneDelete(){
+  if(!confirm('이 구역을 지울까요? 안에 있던 품목은 「자리 없음」으로 빠져요.')) return;
+  try{ await api('barZoneDelete', TOKEN, $('zId').value); closeModal('zoneModal'); loadBar(); }
+  catch(e){ alert(e.message); }
+}
+function openPlace(zone, gx, gy){
+  PL_CUR = { zone, gx, gy };
+  $('plWhere').textContent = zone + ' · 가로 ' + gx + ', 세로 ' + gy + ' 자리';
+  const free = BAR_ITEMS.filter(i => !(i.zone && i.gx && i.gy));
+  const used = BAR_ITEMS.filter(i => i.zone && i.gx && i.gy);
+  $('plList').innerHTML =
+    (free.length ? '' : '<div class="sub" style="grid-column:1/-1">놓을 품목이 없어요. 아래 「셀프바 품목」에서 먼저 추가하거나, 이미 놓인 걸 옮기세요.</div>')
+    + free.map(i => '<button class="btn ghost" style="padding:14px 8px" onclick="place(\''+i.id+'\')">'
+        + esc(i.name)+'<div class="sub" style="font-size:11px">'+esc(i.category)+'</div></button>').join('')
+    + (used.length ? '<div class="sub" style="grid-column:1/-1; margin-top:10px">— 다른 자리에서 옮겨오기 —</div>'
+        + used.map(i => '<button class="btn ghost" style="padding:14px 8px; opacity:.7" onclick="place(\''+i.id+'\')">'
+            + esc(i.name)+'<div class="sub" style="font-size:11px">'+esc(i.zone)+'</div></button>').join('') : '');
+  $('placeModal').classList.remove('hidden');
+}
+async function place(id){
+  try{
+    await api('barPlace', TOKEN, { id, zone:PL_CUR.zone, gx:PL_CUR.gx, gy:PL_CUR.gy });
+    closeModal('placeModal'); loadBar();
+  }catch(e){ alert(e.message); }
+}
+async function unplace(id){
+  const it = BAR_ITEMS.find(i => i.id === id);
+  if(!confirm((it?it.name:'이 품목')+'을(를) 이 자리에서 뺄까요?')) return;
+  try{ await api('barPlace', TOKEN, { id, zone:'', gx:'', gy:'' }); loadBar(); }
+  catch(e){ alert(e.message); }
+}
 async function loadBar(){
   const base = location.origin + location.pathname.replace(/[^/]*$/,'');
   $('barUrl').value = base + 'bar.html';
@@ -2868,7 +2985,9 @@ async function loadBar(){
     $('barFrom').value = localDate(d); $('barTo').value = localDate();
   }
   try{
-    BAR_ITEMS = await api('barItems', TOKEN);
+    const [items, zones] = await Promise.all([api('barItems', TOKEN), api('barZones', TOKEN)]);
+    BAR_ITEMS = items; BAR_ZONES = zones;
+    renderZoneEditor();
     $('barItemBody').innerHTML = BAR_ITEMS.map(x =>
       '<tr><td><span class="badge">'+esc(x.category)+'</span></td>'
       + '<td><a class="link" onclick="openBarItem(\''+x.id+'\')"><b>'+esc(x.name)+'</b></a></td>'
