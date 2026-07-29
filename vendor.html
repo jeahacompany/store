@@ -56,15 +56,10 @@ textarea{ min-height:70px; resize:vertical }
   <div class="card">
     <h2>사업자 정보</h2>
     <label>상호 (사업자등록증상) <span class="req">*</span></label>
-    <input id="f_name" placeholder="예: 부성미트(주)">
+    <input id="f_name" placeholder="예: OO식자재(주)">
     <div class="grid2">
       <div><label>사업자등록번호 <span class="req">*</span></label><input id="f_biz" inputmode="numeric" placeholder="000-00-00000"></div>
       <div><label>대표자명</label><input id="f_ceo"></div>
-    </div>
-    <label>사업장 주소</label><input id="f_addr">
-    <div class="grid2">
-      <div><label>업태</label><input id="f_type" placeholder="도소매"></div>
-      <div><label>종목</label><input id="f_item" placeholder="축산물"></div>
     </div>
     <label>취급 품목 분류</label>
     <select id="f_cat">
@@ -80,7 +75,7 @@ textarea{ min-height:70px; resize:vertical }
       <div><label>은행</label><input id="f_bank" placeholder="우리은행"></div>
       <div><label>예금주</label><input id="f_holder"></div>
     </div>
-    <label>계좌번호 <span class="req">*</span></label><input id="f_acct" inputmode="numeric" placeholder="1005-304-404442">
+    <label>계좌번호 <span class="req">*</span></label><input id="f_acct" inputmode="numeric" placeholder="000-000-000000">
   </div>
 
   <div class="card">
@@ -97,25 +92,6 @@ textarea{ min-height:70px; resize:vertical }
       <div><label>영업 담당자</label><input id="f_sales"></div>
       <div><label>영업 담당자 휴대폰</label><input id="f_salesp" inputmode="tel"></div>
     </div>
-  </div>
-
-  <div class="card">
-    <h2>거래 조건</h2>
-    <div class="grid2">
-      <div><label>결제 주기</label><select id="f_cycle">
-        <option>즉시</option><option>주간</option><option selected>월말</option><option>익월말</option><option>기타</option></select></div>
-      <div><label>마감일</label><input id="f_close" placeholder="예: 매월 말일"></div>
-    </div>
-    <div class="grid2">
-      <div><label>주문 방법</label><input id="f_omethod" placeholder="전화 / 카톡 / 앱"></div>
-      <div><label>주문 마감시간</label><input id="f_odead" placeholder="예: 전날 오후 5시"></div>
-    </div>
-    <div class="grid2">
-      <div><label>배송 요일</label><input id="f_days" placeholder="화, 금"></div>
-      <div><label>최소 주문금액</label><input id="f_min" inputmode="numeric" placeholder="100000"></div>
-    </div>
-    <label>반품·교환 기준</label>
-    <textarea id="f_return" placeholder="예: 당일 검수 후 연락 주시면 다음 배송 시 교환"></textarea>
   </div>
 
   <div class="card">
@@ -178,6 +154,24 @@ $('f_biz').addEventListener('input', e => {
   e.target.value = v;
 });
 
+// 전화번호 자동 하이픈 (휴대폰·지역번호 모두)
+function hyphenPhone(raw){
+  const d = raw.replace(/[^0-9]/g,'').slice(0,11);
+  if(d.startsWith('02')){
+    if(d.length <= 2) return d;
+    if(d.length <= 5) return d.slice(0,2)+'-'+d.slice(2);
+    if(d.length <= 9) return d.slice(0,2)+'-'+d.slice(2,5)+'-'+d.slice(5);
+    return d.slice(0,2)+'-'+d.slice(2,6)+'-'+d.slice(6,10);
+  }
+  if(d.length <= 3) return d;
+  if(d.length <= 7) return d.slice(0,3)+'-'+d.slice(3);
+  if(d.length <= 10) return d.slice(0,3)+'-'+d.slice(3,6)+'-'+d.slice(6);
+  return d.slice(0,3)+'-'+d.slice(3,7)+'-'+d.slice(7,11);
+}
+['f_phone','f_mgrp','f_salesp'].forEach(id => {
+  $(id).addEventListener('input', e => { e.target.value = hyphenPhone(e.target.value); });
+});
+
 function compress(file, max, q){
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -225,16 +219,12 @@ async function submitForm(){
   $('btnSubmit').disabled = true;
   try{
     const r = await api('vendorSelfSubmit', STORE, {
-      name:$('f_name').value.trim(), biz_no:biz, ceo:$('f_ceo').value.trim(), addr:$('f_addr').value.trim(),
-      biz_type:$('f_type').value.trim(), biz_item:$('f_item').value.trim(), category:$('f_cat').value,
+      name:$('f_name').value.trim(), biz_no:biz, ceo:$('f_ceo').value.trim(),
+      category:$('f_cat').value,
       bank_name:$('f_bank').value.trim(), bank_acct:$('f_acct').value.trim(), bank_holder:$('f_holder').value.trim(),
       phone:$('f_phone').value.trim(), tax_email:$('f_tax').value.trim(),
       manager:$('f_mgr').value.trim(), mgr_phone:$('f_mgrp').value.trim(),
       sales_rep:$('f_sales').value.trim(), sales_phone:$('f_salesp').value.trim(),
-      pay_cycle:$('f_cycle').value, close_day:$('f_close').value.trim(),
-      order_method:$('f_omethod').value.trim(), order_deadline:$('f_odead').value.trim(),
-      delivery_days:$('f_days').value.trim(), min_order:+($('f_min').value.replace(/[^0-9]/g,'')||0),
-      return_policy:$('f_return').value.trim(),
       doc_bizreg:DOC1, doc_bankbook:DOC2 });
     $('dMsg').textContent = r.name + ' 정보가 등록되었습니다.';
     show('doneView');

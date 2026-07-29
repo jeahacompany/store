@@ -2371,13 +2371,13 @@ function renderVendors(){
   const noInfo = VENDORS.filter(v => !v.biz_no).length;
   if($('vdPending')) $('vdPending').innerHTML =
     (pending ? '<span class="badge a">확인 대기 '+pending+'</span> ' : '')
-    + (noInfo ? '<span class="badge r">정보 미제출 '+noInfo+'</span>' : '');
+    + (noInfo ? '<span class="badge r">상세정보 미입력 '+noInfo+'</span>' : '');
   const cnt = $('cntVendor');
   if(cnt){ cnt.textContent = pending || ''; cnt.classList.toggle('hidden', !pending); }
   $('vdBody').innerHTML = VENDORS.map(v => {
     const st = v.status === '승인' ? '<span class="badge g">확인완료</span>'
              : v.status === '제출완료' ? '<span class="badge a">제출됨 · 확인필요</span>'
-             : (v.biz_no ? '<span class="badge">등록</span>' : '<span class="badge r">정보 없음</span>');
+             : (v.biz_no ? '<span class="badge">등록</span>' : '<span class="badge r">상세정보 미입력</span>');
     return '<tr><td><a class="link" onclick="vdOpen(\''+v.id+'\')"><b>'+esc(v.name)+'</b></a>'
       + (v.doc_cnt > 0 ? ' <span class="sub">📎'+v.doc_cnt+'</span>' : '')+'</td>'
       + '<td>'+st+'</td>'
@@ -2423,7 +2423,8 @@ async function vdOpen(id){
       + row('주문', [d.order_method, d.order_deadline].filter(Boolean).join(' · '))
       + row('배송', [d.delivery_days, +d.min_order>0?'최소 '+fmtWon(d.min_order):''].filter(Boolean).join(' · '))
       + row('반품·교환', d.return_policy) + row('메모', d.memo)
-      || '<div class="sub">아직 등록된 정보가 없어요. 등록 링크를 보내보세요.</div>';
+      || '<div class="card" style="margin:0; background:#FFF5F5; border-color:#FFC9C9"><b style="color:var(--red,#E03131)">상세정보 미입력</b>'
+         + '<div class="sub" style="margin-top:4px">명세서로 자동 등록된 거래처예요. 위 <b>등록 링크</b>를 보내면 사업자등록증·계좌·담당자 정보가 채워집니다.</div></div>';
     const DK = { bizreg:'사업자등록증', bankbook:'통장사본', other:'기타' };
     $('vdDocs').innerHTML = (d.docs||[]).length
       ? '<b style="font-size:14px">첨부 서류</b><div style="margin-top:6px">'
