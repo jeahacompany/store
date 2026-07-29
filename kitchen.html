@@ -43,6 +43,11 @@ h2{font-size:19px; display:flex; align-items:center; gap:8px}
 .login input{width:100%; padding:13px; border:1px solid var(--line); border-radius:10px; font-size:17px; margin-top:8px; font-family:inherit}
 .empty{text-align:center; padding:60px 0; color:var(--sub)}
 .empty .big{font-size:56px}
+/* 소리를 못 들어도 눈에 띄게 — 화면 전체가 번쩍인다 */
+#flashLayer{position:fixed; inset:0; background:var(--brand); z-index:9999; pointer-events:none; opacity:0}
+@keyframes flashAnim{0%{opacity:0} 12%{opacity:.75} 30%{opacity:0} 45%{opacity:.75} 62%{opacity:0} 78%{opacity:.6} 100%{opacity:0}}
+.soundoff{background:#FFF3BF; border:1px solid #FFE066; border-radius:12px; padding:14px; margin-bottom:14px;
+  font-size:17px; font-weight:700; text-align:center; cursor:pointer}
 </style>
 </head>
 <body>
@@ -58,6 +63,8 @@ h2{font-size:19px; display:flex; align-items:center; gap:8px}
   <div id="liErr" style="color:var(--red); margin-top:8px; font-size:14px"></div>
 </div>
 
+<div id="flashLayer" class="hidden"></div>
+
 <div id="mainView" class="hidden">
   <div class="topbar">
     <span class="store" id="hdStore">주방</span>
@@ -68,6 +75,9 @@ h2{font-size:19px; display:flex; align-items:center; gap:8px}
     <a onclick="doLogout()">로그아웃</a>
   </div>
   <div class="wrap">
+    <div id="soundHint" class="soundoff hidden" onclick="unlockAudio(); beep(2); this.classList.add('hidden')">
+      🔔 화면을 한 번 눌러 <b>알람 소리를 켜주세요</b> (브라우저 보안 때문에 첫 터치가 필요해요)
+    </div>
     <div id="reqList" class="reqs"></div>
     <div id="emptyBox" class="empty hidden">
       <div class="big">👨‍🍳</div>
@@ -87,7 +97,9 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const $ = id => document.getElementById(id);
 const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let TOKEN = localStorage.getItem('store_kitchen_token') || '';
-let SEEN = new Set(), SOUND = true, REQS = [];
+let SEEN = new Set(), SOUND = true, REQS = [], PENDING_NEW = [];
+// 확인 안 한 요청이 남아 있으면 25초마다 다시 알린다
+setInterval(() => { if(PENDING_NEW.length) alarm(PENDING_NEW.some(x => x.urgent)); }, 25000);
 
 async function api(fn, ...args){
   const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/store_api', {
@@ -114,27 +126,72 @@ async function doLogin(){
 }
 function doLogout(){ localStorage.removeItem('store_kitchen_token'); TOKEN=''; show('loginView'); }
 
-/* 알림음 — 파일 없이 브라우저가 직접 소리를 만든다 */
-function beep(times){
+/* ---------- 알람 ----------
+   주방은 시끄럽다. 그래서 ①크고 길게 ②안 누르면 계속 반복 ③화면도 같이 번쩍
+   브라우저는 사용자가 화면을 한 번 만지기 전엔 소리를 못 내서, 첫 터치에 잠금을 푼다. */
+let AC = null, AUDIO_OK = false;
+function unlockAudio(){
+  try{
+    if(!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if(AC.state === 'suspended') AC.resume();
+    AUDIO_OK = true;
+    const b = $('sndBtn'); if(b && SOUND) b.textContent = '🔔 소리 켬';
+  }catch(e){}
+}
+['click','touchstart','keydown'].forEach(ev =>
+  document.addEventListener(ev, unlockAudio, { once:false, passive:true }));
+
+function beep(times, loud){
   if(!SOUND) return;
   try{
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    for(let i = 0; i < (times||2); i++){
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.connect(g); g.connect(ctx.destination);
-      o.frequency.value = 880; o.type = 'sine';
-      const t = ctx.currentTime + i * 0.35;
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.35, t + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
-      o.start(t); o.stop(t + 0.3);
+    if(!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if(AC.state === 'suspended') AC.resume();
+    const vol = loud ? 0.9 : 0.6;
+    for(let i = 0; i < (times||3); i++){
+      // 두 음을 겹쳐 울려야 소음 속에서 들린다
+      [880, 1320].forEach(f => {
+        const o = AC.createOscillator(), g = AC.createGain();
+        o.connect(g); g.connect(AC.destination);
+        o.frequency.value = f; o.type = 'square';
+        const t = AC.currentTime + i * 0.45;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+        g.gain.setValueAtTime(vol, t + 0.25);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
+        o.start(t); o.stop(t + 0.4);
+      });
     }
   }catch(e){}
 }
+/* 화면 번쩍임 — 소리를 못 들어도 눈에 띄게 */
+function flash(){
+  const el = $('flashLayer'); if(!el) return;
+  el.classList.remove('hidden'); el.style.animation = 'none';
+  void el.offsetWidth;
+  el.style.animation = 'flashAnim 1.4s ease-out';
+  setTimeout(() => el.classList.add('hidden'), 1400);
+}
+function alarm(urgent){ beep(urgent ? 5 : 3, urgent); flash(); if(navigator.vibrate) navigator.vibrate([300,120,300,120,300]); }
+
 function toggleSound(){
   SOUND = !SOUND;
   $('sndBtn').textContent = SOUND ? '🔔 소리 켬' : '🔕 소리 끔';
-  if(SOUND) beep(1);
+  if(SOUND){ unlockAudio(); beep(1); }
+}
+
+/* 화면이 꺼지면 알람도 못 듣는다 — 태블릿 화면을 계속 켜둔다 */
+let WAKE = null;
+async function keepAwake(){
+  try{
+    if('wakeLock' in navigator){
+      WAKE = await navigator.wakeLock.request('screen');
+      document.addEventListener('visibilitychange', async () => {
+        if(document.visibilityState === 'visible' && 'wakeLock' in navigator){
+          try{ WAKE = await navigator.wakeLock.request('screen'); }catch(e){}
+        }
+      });
+    }
+  }catch(e){}
 }
 
 function tick(){
@@ -152,10 +209,13 @@ async function loadReqs(){
     $('hdPending').textContent = '대기 ' + live.length;
     $('hdPending').className = 'badge ' + (live.length ? 'r' : 'g');
 
-    // 새 요청이 들어오면 소리
+    // 새 요청이 들어오면 소리 + 화면 번쩍
     const fresh = live.filter(x => x.status === '요청' && !SEEN.has(x.id));
-    if(fresh.length){ beep(fresh.some(f => f.urgent) ? 4 : 2); }
+    if(fresh.length){ alarm(fresh.some(f => f.urgent)); }
     live.forEach(x => SEEN.add(x.id));
+    // 아직 아무도 안 누른 요청이 남아 있으면 계속 다시 울린다 (놓치면 안 되니까)
+    PENDING_NEW = live.filter(x => x.status === '요청');
+    if(!AUDIO_OK && PENDING_NEW.length) $('soundHint').classList.remove('hidden');
 
     $('emptyBox').classList.toggle('hidden', live.length > 0);
     $('reqList').innerHTML = live.map(x =>
@@ -198,6 +258,8 @@ async function done(id){
 
 async function start(){
   show('mainView');
+  keepAwake();                       // 태블릿 화면이 꺼지지 않게
+  if(!AUDIO_OK) $('soundHint').classList.remove('hidden');
   try{ const b = await api('boot', TOKEN); $('hdStore').textContent = (b.store && b.store.name ? b.store.name : '주방') + ' 주방'; }catch(e){}
   loadReqs();
   setInterval(loadReqs, 5000);   // 5초마다 — 주방은 빨라야 한다

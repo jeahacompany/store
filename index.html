@@ -618,9 +618,14 @@
             <div><label>단위</label><input id="biUnit" style="width:100%" placeholder="판" value="판"></div>
             <div><label>1단위 중량 (g)</label><input id="biPortion" type="number" style="width:100%" placeholder="500"></div>
           </div>
-          <label>재고 품목 연결 <span class="sub">(입고 명세서의 품목명과 똑같이 — 비우면 재고 차감 안 함)</span></label>
-          <input id="biStock" list="stockNames" style="width:100%" placeholder="예: 우삼겹">
+          <label>재고 자동 차감 <span class="sub">— 고기처럼 kg으로 딱 떨어지는 것만 연결하세요</span></label>
+          <input id="biStock" list="stockNames" style="width:100%" placeholder="비워두면 차감 안 함 (판 수만 집계)">
           <datalist id="stockNames"></datalist>
+          <div class="sub" style="margin-top:6px; background:#FFF9DB; border:1px solid #FFE066; border-radius:10px; padding:10px">
+            <b>고기</b>는 연결하세요 — 입고 kg에서 자동으로 빠져서 재고가 정확해져요.<br>
+            <b>식자재·사리·소스</b>는 <b>비워두는 걸 권합니다.</b> 봉지·박스 단위라 kg 매칭이 안 맞아서 재고가 오히려 틀어져요.
+            연결 안 해도 <b>몇 판 나갔는지는 그대로 집계</b>되니 발주엔 문제없어요.
+          </div>
           <label>표시 순서</label><input id="biSort" type="number" value="0" style="width:100%">
           <div style="margin-top:14px"><button class="btn" onclick="biSave()">저장</button>
             <button class="btn red hidden" id="biDel" onclick="biDelete()">삭제</button>
@@ -2759,7 +2764,7 @@ async function loadBar(){
       + '<td><a class="link" onclick="openBarItem(\''+x.id+'\')"><b>'+esc(x.name)+'</b></a></td>'
       + '<td>'+esc(x.unit)+'</td>'
       + '<td>'+(+x.portion_g > 0 ? (+x.portion_g)+'g' : '<span class="sub">-</span>')+'</td>'
-      + '<td class="sub">'+(x.stock_name ? esc(x.stock_name) : '<span style="color:#ADB5BD">연결 안 함</span>')+'</td>'
+      + '<td class="sub">'+(x.stock_name ? '<span class="badge g">'+esc(x.stock_name)+' 차감</span>' : '<span style="color:#ADB5BD">판 수만 집계</span>')+'</td>'
       + '<td>'+(x.active === false ? '<span class="badge r">숨김</span>' : '<span class="badge g">사용</span>')+'</td>'
       + '<td><button class="btn sm ghost" onclick="openBarItem(\''+x.id+'\')">수정</button></td></tr>'
     ).join('') || '<tr><td colspan="7" class="sub">품목을 추가하면 셀프바 태블릿에 버튼으로 나타나요.</td></tr>';
