@@ -46,6 +46,18 @@ h2{font-size:19px; display:flex; align-items:center; gap:8px}
 .req .okmark{color:var(--green); font-weight:700; font-size:20px}
 .btn.sm{padding:8px 16px; font-size:16px}
 .req .acts{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px}
+.ktabs{display:flex; gap:0; background:#fff; border-radius:14px; overflow:hidden; margin-bottom:16px; border:1px solid var(--line)}
+.ktabs .kt{flex:1; padding:16px 8px; font-size:19px; font-weight:700; background:none; border:none;
+  color:#868E96; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; position:relative}
+.ktabs .kt.active{color:#fff; background:var(--brand)}
+.ktabs .kt .n{background:#E9ECEF; color:#495057; border-radius:20px; padding:2px 11px; font-size:16px}
+.ktabs .kt.active .n{background:rgba(255,255,255,.25); color:#fff}
+.ktabs .kt.alert{animation:ktblink .8s infinite}
+@keyframes ktblink{0%,100%{background:#FFF0E6}50%{background:#FFD8BF}}
+.drow{display:flex; align-items:center; gap:10px; padding:11px 2px; border-bottom:1px solid var(--line); font-size:16px}
+.drow .dno{font-weight:800; min-width:44px}
+.drow .dwhat{flex:1}
+.drow .dt{color:#868E96; font-size:14px; white-space:nowrap}
 .btn.full{width:100%; margin-top:8px}
 .login{max-width:340px; margin:80px auto; background:#fff; padding:26px; border-radius:16px}
 .login input{width:100%; padding:13px; border:1px solid var(--line); border-radius:10px; font-size:17px; margin-top:8px; font-family:inherit}
@@ -87,15 +99,29 @@ h2{font-size:19px; display:flex; align-items:center; gap:8px}
     <div id="soundHint" class="soundoff hidden" onclick="unlockAudio(); beep(2); this.classList.add('hidden')">
       🔔 화면을 한 번 눌러 <b>알람 소리를 켜주세요</b> (브라우저 보안 때문에 첫 터치가 필요해요)
     </div>
-    <div id="reqList" class="reqs"></div>
-    <div id="emptyBox" class="empty hidden">
-      <div class="big">👨‍🍳</div>
-      <div style="font-size:20px; font-weight:700; margin-top:8px">들어온 요청이 없어요</div>
-      <div class="sub" style="margin-top:6px">셀프바에서 요청하면 여기에 바로 뜨고 소리가 울려요</div>
+    <div class="ktabs">
+      <button class="kt active" id="ktNew" onclick="ktab('new')">🔥 신규 주문 <span class="n" id="cntNew">0</span></button>
+      <button class="kt" id="ktDone" onclick="ktab('done')">✔ 오늘 완료 <span class="n" id="cntDone">0</span></button>
     </div>
-    <div class="card" style="margin-top:20px">
-      <h2>오늘 완료 <span class="sub" id="doneCnt"></span></h2>
-      <div id="doneList" class="sub">-</div>
+
+    <div id="pane-new">
+      <div id="reqList" class="reqs"></div>
+      <div id="emptyBox" class="empty hidden">
+        <div class="big">👨‍🍳</div>
+        <div style="font-size:20px; font-weight:700; margin-top:8px">들어온 요청이 없어요</div>
+        <div class="sub" style="margin-top:6px">셀프바에서 요청하면 여기에 바로 뜨고 소리가 울려요</div>
+      </div>
+    </div>
+
+    <div id="pane-done" class="hidden">
+      <div class="card">
+        <h2>⏱ 오늘 약속 지킨 기록 <span class="sub">— 몇 분이라고 했고, 실제로 몇 분 걸렸나</span></h2>
+        <div id="tSum" style="display:flex; gap:20px; flex-wrap:wrap; font-size:15px"></div>
+      </div>
+      <div class="card">
+        <h2>✔ 오늘 완료 <span class="sub" id="doneCnt"></span></h2>
+        <div id="doneList"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -213,6 +239,16 @@ function tick(){
 }
 setInterval(tick, 1000); tick();
 
+let KTAB = 'new';
+function ktab(name){
+  KTAB = name;
+  $('pane-new').classList.toggle('hidden', name !== 'new');
+  $('pane-done').classList.toggle('hidden', name !== 'done');
+  $('ktNew').classList.toggle('active', name === 'new');
+  $('ktDone').classList.toggle('active', name === 'done');
+  if(name === 'new') $('ktNew').classList.remove('alert');
+}
+
 // 약속 시간 대비 지금 상태 — 남았으면 초록, 넘겼으면 빨강
 function etaBadge(x){
   if(!x.eta_min) return '<span class="badge g">조리중</span>';
@@ -231,10 +267,17 @@ async function loadReqs(){
     $('hdPending').textContent = '대기 ' + live.length;
     $('hdPending').className = 'badge ' + (live.length ? 'r' : 'g');
 
+    $('cntNew').textContent = live.length;
+    $('cntDone').textContent = done.length;
+
     // 새 요청이 들어오면 소리 한 번 + 화면 한 번 번쩍 (여러 개가 한꺼번에 와도 한 번만)
     const fresh = live.filter(x => x.status === '요청' && !SEEN.has(x.id));
-    if(fresh.length) alarm();
+    if(fresh.length){
+      alarm();
+      if(KTAB !== 'new') ktab('new');     // 완료탭 보고 있어도 신규로 바로 넘어감
+    }
     live.forEach(x => SEEN.add(x.id));
+    $('ktNew').classList.toggle('alert', KTAB !== 'new' && live.some(x => x.status === '요청'));
     PENDING_NEW = live.filter(x => x.status === '요청');
     if(!AUDIO_OK && SOUND && PENDING_NEW.length) $('soundHint').classList.remove('hidden');
 
@@ -265,12 +308,34 @@ async function loadReqs(){
       + '</div>'
     ).join('');
 
+    // 완료 목록 — 하나하나, 약속 대비 결과까지
     $('doneCnt').textContent = done.length + '건';
-    $('doneList').innerHTML = done.slice(0,10).map(x =>
-      '<div style="padding:6px 0; border-bottom:1px solid var(--line)">'
-      + '<b>'+x.req_no+'번</b> · ' + (x.items||[]).map(i => esc(i.name)+' '+(+i.qty)+esc(i.unit||'')).join(', ')
-      + ' <span class="sub">('+(x.done_at ? new Date(x.done_at).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '')+')</span></div>'
-    ).join('') || '<div class="sub">아직 없어요</div>';
+    $('doneList').innerHTML = done.map(x => {
+      let verdict;
+      if(x.eta_min == null) verdict = '<span class="badge">즉시</span>';
+      else if(x.over_min == null) verdict = '';
+      else if(+x.over_min <= 0) verdict = '<span class="badge g">'+x.eta_min+'분 → '+x.cook_min+'분 · 지킴</span>';
+      else verdict = '<span class="badge r">'+x.eta_min+'분 → '+x.cook_min+'분 · '+(+x.over_min).toFixed(1)+'분 초과</span>';
+      return '<div class="drow"><span class="dno">'+x.req_no+'번</span>'
+        + '<span class="dwhat">' + (x.items||[]).map(i => esc(i.name)+' '+(+i.qty)+esc(i.unit||'')).join(', ')
+        + ' ' + verdict + '</span>'
+        + '<span class="dt">'+(x.done_hm||'')+' · '+esc(x.accepted_by||'')+'</span></div>';
+    }).join('') || '<div class="sub">아직 없어요</div>';
+
+    // 오늘 누적 성적
+    const prom = done.filter(x => x.over_min != null);
+    const kept = prom.filter(x => +x.over_min <= 0);
+    const avgOver = prom.length ? (prom.reduce((a,x)=>a+ +x.over_min,0)/prom.length) : null;
+    const avgReal = done.filter(x=>x.cook_min!=null).length
+      ? done.filter(x=>x.cook_min!=null).reduce((a,x)=>a+ +x.cook_min,0)/done.filter(x=>x.cook_min!=null).length : null;
+    $('tSum').innerHTML =
+      '<div><div class="sub">완료</div><b style="font-size:22px">'+done.length+'건</b></div>'
+      + '<div><div class="sub">약속 지킴</div><b style="font-size:22px">'
+        + (prom.length ? Math.round(100*kept.length/prom.length)+'%' : '-')
+        + '</b> <span class="sub">('+kept.length+'/'+prom.length+')</span></div>'
+      + '<div><div class="sub">평균 소요</div><b style="font-size:22px">'+(avgReal!=null?avgReal.toFixed(1)+'분':'-')+'</b></div>'
+      + '<div><div class="sub">평균 차이</div><b style="font-size:22px; color:'+((avgOver>0)?'#E03131':'#2B8A3E')+'">'
+        + (avgOver!=null ? (avgOver>0?'+':'')+avgOver.toFixed(1)+'분' : '-') + '</b></div>';
   }catch(e){ /* 잠시 실패해도 다음 갱신 때 다시 */ }
 }
 async function accept(id, min){
