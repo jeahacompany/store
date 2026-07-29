@@ -3464,8 +3464,9 @@ function bkCsv(){
   BK_SEC.forEach(sec => {
     rows.push(['','▶ '+sec,'', ...M.map(()=>'')].join(','));
     (BOOK.rows||[]).filter(r => r.section === sec).forEach(r => {
-      rows.push([r.name, ...M.map(m => (r.vals||{})[m] || 0)].join(','));
-      (r.details||[]).forEach(d => rows.push(['  └ '+d.detail, ...M.map(m => (d.vals||{})[m] || 0)].join(',')));
+      rows.push([r.code||'', r.name, r.cost_type||'', ...M.map(m => (r.vals||{})[m] || 0)].join(','));
+      (r.details||[]).forEach(d => rows.push([r.code||'', '  └ '+d.detail,
+        d.cost_type||r.cost_type||'', ...M.map(m => (d.vals||{})[m] || 0)].join(',')));
     });
   });
   const blob = new Blob(['﻿' + rows.join('\n')], {type:'text/csv;charset=utf-8'});
