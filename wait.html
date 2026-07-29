@@ -83,14 +83,19 @@ details summary{ cursor:pointer; font-weight:600 }
   </div>
 
   <div class="card" style="background:#FFF9DB; border-color:#FFE066; text-align:center">
-    <div style="font-size:19px; font-weight:700">기다리시는 시간, 그냥 보내지 않으실 거예요 🎁</div>
-    <div style="margin-top:8px; font-size:16.5px" id="couponNotice">
+    <div style="font-size:19px; font-weight:700; line-height:1.5">기다려 주셔서 감사합니다 🙏</div>
+    <div style="margin-top:10px; font-size:16px; line-height:1.75">
+      <b>고객님의 시간은 그 무엇보다 소중합니다.</b><br>
+      기다리시게 해서 죄송한 마음에,<br>
+      큰 건 아니지만 작은 마음을 담아 준비했어요.
+    </div>
+    <div style="margin-top:14px; padding:12px; background:#fff; border-radius:12px" id="couponNotice">
       <b>30분마다 500원</b> 할인쿠폰을 드려요
     </div>
-    <div class="sub" style="margin-top:6px" id="couponSub">계산하실 때 보여주시면 바로 할인됩니다 (당일 사용)</div>
-    <div style="margin-top:12px; padding-top:12px; border-top:1px dashed #FFE066; font-size:15px; line-height:1.6">
-      바쁘신 중에 찾아와 주셔서 감사합니다 🙏<br>
-      <span class="sub">최대한 빨리 모실 수 있도록 준비하겠습니다</span>
+    <div class="sub" style="margin-top:8px" id="couponSub">계산하실 때 보여주시면 바로 할인됩니다 (당일 사용)</div>
+    <div style="margin-top:14px; padding-top:14px; border-top:1px dashed #FFE066; font-size:15.5px; line-height:1.75">
+      기다리신 시간이 아깝지 않도록,<br>
+      <b>정성껏 준비해서 모시겠습니다.</b>
     </div>
   </div>
 
@@ -137,9 +142,12 @@ details summary{ cursor:pointer; font-weight:600 }
   </div>
 
   <div id="callBox" class="callbox hidden">
-    <div style="font-size:15px; opacity:.95">오래 기다리셨습니다 🙏</div>
+    <div style="font-size:15.5px; opacity:.95">오래 기다리셨습니다 🙏</div>
     <div class="big">입장해 주세요! 🎉</div>
-    <div style="font-size:14.5px; opacity:.95">카운터에 번호를 말씀해 주세요<br>기다려주신 만큼 할인쿠폰도 준비했어요</div>
+    <div style="font-size:15px; opacity:.97; line-height:1.7">
+      카운터에 번호를 말씀해 주세요<br>
+      <b>기다려주신 마음, 잊지 않겠습니다</b>
+    </div>
   </div>
 
   <div id="waitBox" class="card">
@@ -169,26 +177,32 @@ details summary{ cursor:pointer; font-weight:600 }
     <div id="cpNow" style="text-align:center; font-size:17px; margin-top:10px"></div>
     <div class="bar"><div class="fill" id="cpBar" style="width:0%"></div></div>
     <div class="sub" style="text-align:center; margin-top:6px" id="cpNext"></div>
-    <div style="text-align:center; margin-top:14px; padding-top:12px; border-top:1px dashed #FFE066; font-size:15px; line-height:1.6">
-      귀한 시간 내주셔서 <b>정말 감사합니다</b> 🙏<br>
-      <span class="sub">자리가 준비되는 대로 바로 모실게요</span>
+    <div style="text-align:center; margin-top:14px; padding-top:14px; border-top:1px dashed #FFE066; font-size:15.5px; line-height:1.75">
+      기다려 주시는 이 시간,<br>
+      <b>결코 당연하게 생각하지 않겠습니다.</b> 🙏<br>
+      <span class="sub" id="cpCheer">자리가 준비되는 대로 가장 먼저 모실게요</span>
     </div>
   </div>
 
   <!-- 입장 후: 확정된 쿠폰 -->
   <div id="cpBox" class="card hidden" style="text-align:center; background:linear-gradient(180deg,#FFF4E6,#fff); border-color:#FFD8A8">
     <div style="font-size:44px">🎁</div>
-    <div style="font-size:19px; font-weight:700; margin-top:4px" id="cpThanks">기다려주셔서 감사합니다</div>
-    <div class="sub" style="margin-top:4px">기다려주신 마음에 작은 감사를 담았어요</div>
-    <div style="border-top:1px dashed #FFD8A8; margin:16px 0 12px"></div>
+    <div style="font-size:20px; font-weight:700; margin-top:6px; line-height:1.5" id="cpThanks">기다려주셔서 감사합니다</div>
+    <div style="margin-top:10px; font-size:15.5px; line-height:1.75">
+      그 시간, 다른 곳에서 쓰실 수도 있었을 텐데<br>
+      <b>저희를 기다려 주셨습니다.</b><br>
+      <span class="sub">그 마음에 작은 감사를 담았어요</span>
+    </div>
+    <div style="border-top:1px dashed #FFD8A8; margin:18px 0 14px"></div>
     <div style="font-size:44px; font-weight:800; color:var(--brand); line-height:1.1" id="cpAmt">0원</div>
     <div class="sub" style="margin-top:2px">할인쿠폰</div>
     <div style="font-size:36px; font-weight:800; letter-spacing:5px; font-variant-numeric:tabular-nums; margin-top:10px" id="cpCode">------</div>
-    <div style="margin-top:10px; background:#F8F9FA; border-radius:12px; padding:12px; font-size:15px; line-height:1.6">
+    <div style="margin-top:12px; background:#F8F9FA; border-radius:12px; padding:12px; font-size:15px; line-height:1.6">
       계산하실 때 <b>이 번호를 보여주세요</b><br>
       <span class="sub">오늘 하루 사용 가능해요</span>
     </div>
-    <div style="margin-top:14px; font-size:15px; line-height:1.6">
+    <div style="margin-top:16px; font-size:15.5px; line-height:1.75">
+      기다리신 만큼 <b>더 정성껏 준비했습니다.</b><br>
       맛있게 드시고 <b>또 뵙겠습니다</b> 😊
     </div>
     <div id="cpUsed" class="hidden" style="margin-top:12px; padding:12px; background:#E9ECEF; border-radius:10px; font-weight:700">
@@ -277,11 +291,21 @@ function tickElapsed(){
 
   if(amt >= CP.max){
     $('cpBar').style.width = '100%';
-    $('cpNext').innerHTML = '최대 혜택까지 받으셨어요! 정말 오래 기다려주셨습니다 🙏';
+    $('cpNext').innerHTML = '드릴 수 있는 혜택은 다 담았어요. 정말 오래 기다려주셨습니다 🙏';
   } else {
     const into = min % 30, left = 30 - into;
     $('cpBar').style.width = Math.round(into/30*100) + '%';
     $('cpNext').innerHTML = '<b>' + left + '분</b> 뒤 ' + w(amt + CP.per30) + '원으로 올라가요';
+  }
+
+  // 오래 기다리실수록 더 미안한 마음을 담아
+  const cheer = $('cpCheer');
+  if(cheer){
+    cheer.textContent =
+      min >= 60 ? '이렇게 오래 기다리게 해드려 정말 죄송합니다. 곧 모실게요'
+    : min >= 30 ? '많이 기다리셨죠… 최대한 서두르고 있어요'
+    : min >= 10 ? '준비하고 있어요. 조금만 더 기다려 주세요'
+                : '자리가 준비되는 대로 가장 먼저 모실게요';
   }
 }
 setInterval(() => { tickClock(); tickElapsed(); }, 1000);
@@ -387,7 +411,11 @@ function render(r){
 
   $('cpBox').classList.toggle('hidden', !(amt > 0 && !live));
   if(amt > 0 && !live){
-    $('cpThanks').textContent = (r.waited_min || 0) + '분이나 기다려주셨네요 🙏';
+    const wm = +r.waited_min || 0;
+    $('cpThanks').innerHTML =
+      wm >= 60 ? '<b>1시간 넘게</b> 기다려주셨습니다 🙏<br>정말 죄송하고, 정말 감사합니다'
+    : wm >= 30 ? '<b>' + wm + '분</b>이나 기다려주셨네요 🙏<br>오래 기다리게 해드려 죄송합니다'
+               : wm + '분 기다려주셔서 감사합니다 🙏';
     $('cpAmt').textContent = amt.toLocaleString('ko-KR') + '원';
     $('cpCode').textContent = r.coupon_code || '------';
     $('cpUsed').classList.toggle('hidden', !r.coupon_used);
