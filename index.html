@@ -94,6 +94,10 @@
   table.book .qm:hover { background:var(--brand) }
   table.book .cnt { display:inline-block; background:#E9ECEF; color:#495057; border-radius:10px;
     padding:0 7px; font-size:11px; margin-left:5px; cursor:pointer }
+  table.book .code { display:inline-block; background:#F1F3F5; color:#868E96; border-radius:4px;
+    padding:1px 5px; font-size:11px; margin-right:6px; font-weight:600; font-variant-numeric:tabular-nums }
+  table.book .ct { display:inline-block; border-radius:4px; padding:1px 6px; font-size:11px;
+    font-weight:700; margin-left:5px }
   table.book input.cell { width:110px; text-align:right; border:2px solid var(--brand); border-radius:6px;
     padding:3px 6px; font-size:14px; font-variant-numeric:tabular-nums }
   table.book .up { color:#E03131; font-size:11px } table.book .dn { color:#1971C2; font-size:11px }
@@ -701,6 +705,18 @@
           </div>
           <div id="qkHint" class="sub" style="margin-top:8px"></div>
         </div>
+        <!-- 비용 성격 요약 + 손익분기점 -->
+        <div class="card">
+          <h2>📐 비용 성격 <span class="sub" style="font-weight:400">— 고정비는 손님이 없어도 나가는 돈. 이게 손익분기점을 정합니다</span></h2>
+          <div class="table-scroll"><table><thead><tr id="bhHead"></tr></thead><tbody id="bhBody"></tbody></table></div>
+          <div class="sub" style="margin-top:10px; background:#F8F9FA; border-radius:10px; padding:10px">
+            <b>고정</b> 매출과 상관없이 매달 같음 (월세·정직원 급여·보험) ·
+            <b>변동</b> 매출에 비례 (식자재·알바·카드수수료) ·
+            <b>준변동</b> 기본요금 + 사용량 (전기·가스·복리후생) ·
+            <b>일시</b> 그 달에만 (수리·광고·세금)
+          </div>
+        </div>
+
         <div class="card" style="padding:0; overflow:auto">
           <table id="bkTable" class="book"><tbody id="bkBody"></tbody></table>
         </div>
@@ -3197,6 +3213,7 @@ function renderBook(){
       + (pct?' ('+pct+')':'') + '</span></td>';
   };
 
+  renderBehavior();
   const rowsBySec = sec => (BOOK.rows||[]).filter(r => r.section === sec);
   const secTotal = (sec, m) => rowsBySec(sec).reduce((a,r) => a + (+(r.vals||{})[m] || 0), 0);
 
@@ -3217,7 +3234,9 @@ function renderBook(){
       const nDet = (r.details||[]).length;
       H.push('<tr><td class="nm">'
         + (r.hint ? '<span class="qm" title="'+esc(r.hint)+'">?</span>' : '')
+        + (r.code ? '<span class="code">'+esc(r.code)+'</span>' : '')
         + esc(r.name)
+        + (sec !== '매출' ? ' ' + ctBadge(r.cost_type||'일시') : '')
         + (nDet ? ' <span class="cnt" onclick="bkToggleDetail()" title="세부 '+nDet+'개">'+nDet+'</span>' : '')
         + '<span class="addi" title="이 계정에 항목 추가" onclick="bkAddDetail(\''+r.id+'\',\''+esc(r.name)+'\')">+ 항목</span>'
         + '<span class="dlt" title="계정 삭제" onclick="bkDelAccount(\''+r.id+'\',\''+esc(r.name)+'\')">✕</span></td>'
@@ -3225,6 +3244,10 @@ function renderBook(){
         + diff((r.vals||{})[M[0]], (r.vals||{})[M[1]]) + '</tr>');
       if(showDet) (r.details||[]).forEach(d => {
         H.push('<tr class="det"><td class="nm">└ '+esc(d.detail)
+          + (sec !== '매출' ? ' <span onclick="bkSetCostType(\''+r.id+'\',\''
+              + encodeURIComponent(d.detail)+'\',\''+(d.cost_type||r.cost_type||'일시')+'\')"'
+              + ' title="눌러서 성격 바꾸기" style="cursor:pointer">'
+              + ctBadge(d.cost_type || r.cost_type || '일시') + '</span>' : '')
           + '<span class="dlt" title="이 항목 지우기" onclick="bkDelDetail(\''+r.id+'\',\''
             + encodeURIComponent(d.detail)+'\')">✕</span></td>'
           + M.map(m => cell(r.id, d.detail, m, (d.vals||{})[m], true)).join('')
@@ -3244,6 +3267,70 @@ function renderBook(){
     + secTotal('영업외수익', m) - secTotal('영업외비용', m)));
 
   $('bkBody').innerHTML = H.join('');
+}
+
+/* --- 비용 성격 요약 + 손익분기점 --- */
+const CT_COLOR = { '고정':'#E03131', '변동':'#1971C2', '준변동':'#F08C00', '일시':'#868E96' };
+function ctBadge(ct){
+  return '<span class="ct" style="background:'+(CT_COLOR[ct]||'#868E96')+'22; color:'
+    + (CT_COLOR[ct]||'#868E96') + '">' + ct + '</span>';
+}
+function renderBehavior(){
+  const M = BOOK.months, B = BOOK.behavior || {}, T = BOOK.totals || {};
+  $('bhHead').innerHTML = '<th>구분</th>' + M.map(m =>
+    '<th style="text-align:right">'+m.slice(0,4)+'.'+m.slice(5)+'</th>').join('');
+  const line = (label, key, color) => '<tr><td><b style="color:'+color+'">'+label+'</b></td>'
+    + M.map(m => { const v = +(B[m]||{})[key] || 0, s = +(T[m]||{}).sales || 0;
+        return '<td style="text-align:right">'+bkN(v)
+          + (s ? '<div class="sub" style="font-size:11px">'+(v*100/s).toFixed(1)+'%</div>' : '')+'</td>';
+      }).join('') + '</tr>';
+  const rows = [
+    line('고정비', 'fixed', CT_COLOR['고정']),
+    line('변동비', 'variable', CT_COLOR['변동']),
+    line('준변동비', 'semi', CT_COLOR['준변동']),
+    line('일시성 비용', 'onetime', CT_COLOR['일시'])
+  ];
+  // 손익분기점: 준변동은 절반을 고정으로 보는 실무 관행
+  rows.push('<tr style="border-top:2px solid var(--brand)"><td><b>공헌이익률</b>'
+    + '<div class="sub" style="font-size:11px">매출에서 변동비 빼고 남는 비율</div></td>'
+    + M.map(m => { const b = B[m]||{}, s = +(T[m]||{}).sales || 0;
+        if(!s) return '<td style="text-align:right" class="sub">-</td>';
+        const varc = (+b.variable||0) + (+b.semi||0)/2;
+        return '<td style="text-align:right"><b>'+((s-varc)*100/s).toFixed(1)+'%</b></td>';
+      }).join('') + '</tr>');
+  rows.push('<tr><td><b>손익분기 매출</b>'
+    + '<div class="sub" style="font-size:11px">이만큼 팔아야 본전 (일시성 제외)</div></td>'
+    + M.map(m => { const b = B[m]||{}, s = +(T[m]||{}).sales || 0;
+        if(!s) return '<td style="text-align:right" class="sub">-</td>';
+        const varc = (+b.variable||0) + (+b.semi||0)/2;
+        const cmr = (s - varc) / s;
+        if(cmr <= 0) return '<td style="text-align:right; color:#E03131">계산 불가</td>';
+        const fx = (+b.fixed||0) + (+b.semi||0)/2;
+        const bep = Math.round(fx / cmr);
+        const ok = s >= bep;
+        return '<td style="text-align:right"><b style="color:'+(ok?'#2B8A3E':'#E03131')+'">'+bkN(bep)+'</b>'
+          + '<div class="sub" style="font-size:11px">'+(ok?'✔ 넘김 +':'✕ 부족 −')
+          + bkN(Math.abs(s-bep))+'</div></td>';
+      }).join('') + '</tr>');
+  rows.push('<tr><td><b>하루 손익분기</b>'
+    + '<div class="sub" style="font-size:11px">30일 기준 하루 목표</div></td>'
+    + M.map(m => { const b = B[m]||{}, s = +(T[m]||{}).sales || 0;
+        if(!s) return '<td style="text-align:right" class="sub">-</td>';
+        const varc = (+b.variable||0) + (+b.semi||0)/2;
+        const cmr = (s - varc) / s;
+        if(cmr <= 0) return '<td style="text-align:right" class="sub">-</td>';
+        return '<td style="text-align:right">'+bkN(Math.round(((+b.fixed||0)+(+b.semi||0)/2)/cmr/30))+'</td>';
+      }).join('') + '</tr>');
+  $('bhBody').innerHTML = rows.join('');
+}
+async function bkSetCostType(accId, detailEnc, cur){
+  const detail = decodeURIComponent(detailEnc);
+  const order = ['고정','변동','준변동','일시'];
+  const next = order[(order.indexOf(cur) + 1) % order.length];
+  try{
+    await api('pnlEntryCostType', TOKEN, { account_id:accId, detail:detail, cost_type:next });
+    loadBook();
+  }catch(e){ alert(e.message); }
 }
 
 /* --- 빠른 입력: 이름 → 계정과목 자동 판별 --- */
@@ -3373,9 +3460,9 @@ async function bkImport(){
 function bkCsv(){
   if(!BOOK) return;
   const rows = [], M = BOOK.months;
-  rows.push(['계정과목', ...M].join(','));
+  rows.push(['코드','계정과목','성격', ...M].join(','));
   BK_SEC.forEach(sec => {
-    rows.push(['▶ '+sec, ...M.map(()=>'')].join(','));
+    rows.push(['','▶ '+sec,'', ...M.map(()=>'')].join(','));
     (BOOK.rows||[]).filter(r => r.section === sec).forEach(r => {
       rows.push([r.name, ...M.map(m => (r.vals||{})[m] || 0)].join(','));
       (r.details||[]).forEach(d => rows.push(['  └ '+d.detail, ...M.map(m => (d.vals||{})[m] || 0)].join(',')));
