@@ -82,8 +82,18 @@
   table.book tr.det > td { color:#6C757D; font-size:13px }
   table.book tr.det .nm { background:#FBFCFD; font-weight:400; padding-left:26px; color:#6C757D }
   table.book tr.det td.v { cursor:cell }
-  table.book .dlt { color:#ADB5BD; cursor:pointer; margin-left:6px; font-weight:400 }
+  table.book .dlt { color:#DEE2E6; cursor:pointer; margin-left:6px; font-weight:400 }
+  table.book tr:hover .dlt { color:#ADB5BD }
   table.book .dlt:hover { color:var(--red,#E03131) }
+  table.book .addi { color:#DEE2E6; cursor:pointer; margin-left:8px; font-size:12px; font-weight:600 }
+  table.book tr:hover .addi { color:var(--brand) }
+  table.book .addi:hover { text-decoration:underline }
+  table.book .qm { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px;
+    border-radius:50%; background:#DEE2E6; color:#fff; font-size:11px; font-weight:700; margin-right:6px;
+    cursor:help; vertical-align:1px }
+  table.book .qm:hover { background:var(--brand) }
+  table.book .cnt { display:inline-block; background:#E9ECEF; color:#495057; border-radius:10px;
+    padding:0 7px; font-size:11px; margin-left:5px; cursor:pointer }
   table.book input.cell { width:110px; text-align:right; border:2px solid var(--brand); border-radius:6px;
     padding:3px 6px; font-size:14px; font-variant-numeric:tabular-nums }
   table.book .up { color:#E03131; font-size:11px } table.book .dn { color:#1971C2; font-size:11px }
@@ -671,6 +681,25 @@
           </h2>
           <div class="sub">칸을 눌러서 바로 입력하세요. 엑셀처럼 쓰되, 매출·지출에 이미 넣은 건
             <b>실제 데이터 불러오기</b>로 자동으로 채워집니다.</div>
+        </div>
+
+        <!-- 빠른 추가: 이름만 치면 계정과목 자동 판별 -->
+        <div class="card" style="border-color:#FFD8A8; background:#FFFCF8">
+          <h2>⚡ 빠른 입력 <span class="sub" style="font-weight:400">— 거래처·항목 이름만 적으면 어느 계정인지 알아서 골라줍니다</span></h2>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end">
+            <div style="flex:2; min-width:200px"><label>항목·거래처</label>
+              <input id="qkName" style="width:100%" placeholder="예: 한국전력, 세스코, 대한축산, 알바비"
+                     oninput="qkGuess()" onkeydown="if(event.key==='Enter'){event.preventDefault();$('qkAmt').focus()}"></div>
+            <div style="flex:1; min-width:130px"><label>금액</label>
+              <input id="qkAmt" type="text" inputmode="numeric" oninput="mFmt(this)" style="width:100%"
+                     onkeydown="if(event.key==='Enter'){event.preventDefault();qkSave()}"></div>
+            <div style="flex:1.4; min-width:180px"><label>계정과목 <span class="sub" id="qkAuto"></span></label>
+              <select id="qkAcct" style="width:100%"></select></div>
+            <div style="flex:1; min-width:110px"><label>월</label>
+              <select id="qkYm" style="width:100%"></select></div>
+            <button class="btn" onclick="qkSave()">추가</button>
+          </div>
+          <div id="qkHint" class="sub" style="margin-top:8px"></div>
         </div>
         <div class="card" style="padding:0; overflow:auto">
           <table id="bkTable" class="book"><tbody id="bkBody"></tbody></table>
@@ -3132,6 +3161,7 @@ async function loadBook(){
   if(!$('bkYm').value) $('bkYm').value = localYm();
   try{
     BOOK = await api('pnlSheet', TOKEN, $('bkYm').value, +$('bkMonths').value || 3);
+    bkFillSelects();
     renderBook();
   }catch(e){ alert(e.message); }
 }
@@ -3184,18 +3214,22 @@ function renderBook(){
     H.push('<tr class="sec"><td class="nm">▶ '+sec+'</td>'
       + M.map(()=>'<td></td>').join('') + '<td></td></tr>');
     rows.forEach(r => {
-      H.push('<tr><td class="nm">'+esc(r.name)
+      const nDet = (r.details||[]).length;
+      H.push('<tr><td class="nm">'
+        + (r.hint ? '<span class="qm" title="'+esc(r.hint)+'">?</span>' : '')
+        + esc(r.name)
+        + (nDet ? ' <span class="cnt" onclick="bkToggleDetail()" title="세부 '+nDet+'개">'+nDet+'</span>' : '')
+        + '<span class="addi" title="이 계정에 항목 추가" onclick="bkAddDetail(\''+r.id+'\',\''+esc(r.name)+'\')">+ 항목</span>'
         + '<span class="dlt" title="계정 삭제" onclick="bkDelAccount(\''+r.id+'\',\''+esc(r.name)+'\')">✕</span></td>'
         + M.map(m => cell(r.id, '', m, (r.vals||{})[m], true)).join('')
         + diff((r.vals||{})[M[0]], (r.vals||{})[M[1]]) + '</tr>');
       if(showDet) (r.details||[]).forEach(d => {
-        H.push('<tr class="det"><td class="nm">└ '+esc(d.detail)+'</td>'
+        H.push('<tr class="det"><td class="nm">└ '+esc(d.detail)
+          + '<span class="dlt" title="이 항목 지우기" onclick="bkDelDetail(\''+r.id+'\',\''
+            + encodeURIComponent(d.detail)+'\')">✕</span></td>'
           + M.map(m => cell(r.id, d.detail, m, (d.vals||{})[m], true)).join('')
           + diff((d.vals||{})[M[0]], (d.vals||{})[M[1]]) + '</tr>');
       });
-      if(showDet) H.push('<tr class="det"><td class="nm">└ <span style="color:var(--brand); cursor:pointer" '
-        + 'onclick="bkAddDetail(\''+r.id+'\',\''+esc(r.name)+'\')">+ 거래처 추가</span></td>'
-        + M.map(()=>'<td class="v"></td>').join('') + '<td></td></tr>');
     });
     H.push(sumRow(sec+' 합계', m => secTotal(sec, m)));
 
@@ -3210,6 +3244,66 @@ function renderBook(){
     + secTotal('영업외수익', m) - secTotal('영업외비용', m)));
 
   $('bkBody').innerHTML = H.join('');
+}
+
+/* --- 빠른 입력: 이름 → 계정과목 자동 판별 --- */
+let QK_T = null, QK_LAST = '';
+function bkFillSelects(){
+  if(!BOOK) return;
+  const cur = $('qkAcct').value;
+  $('qkAcct').innerHTML = BK_SEC.map(sec =>
+    '<optgroup label="'+sec+'">' + (BOOK.rows||[]).filter(r => r.section===sec)
+      .map(r => '<option value="'+r.id+'">'+esc(r.name)+'</option>').join('') + '</optgroup>').join('');
+  if(cur) $('qkAcct').value = cur;
+  const ym = $('qkYm').value;
+  $('qkYm').innerHTML = BOOK.months.map(m =>
+    '<option value="'+m+'">'+m.slice(0,4)+'.'+m.slice(5)+'</option>').join('');
+  $('qkYm').value = ym && BOOK.months.includes(ym) ? ym : BOOK.months[0];
+}
+function qkGuess(){
+  clearTimeout(QK_T);
+  const t = $('qkName').value.trim();
+  if(!t){ $('qkAuto').textContent = ''; $('qkHint').textContent = ''; QK_LAST=''; return; }
+  QK_T = setTimeout(async () => {
+    try{
+      const r = await api('pnlClassify', TOKEN, t);
+      const m = (r.matches||[])[0];
+      if(m){
+        $('qkAcct').value = m.account_id;
+        $('qkAuto').innerHTML = '<span class="badge g">자동: '+esc(m.account)+'</span>';
+        $('qkHint').innerHTML = '💡 <b>'+esc(m.account)+'</b> — ' + esc(m.hint||'')
+          + ' <span style="color:#ADB5BD">("'+esc(m.keyword)+'" 로 판단)</span>'
+          + ((r.matches.length>1) ? '<br>다른 후보: ' + r.matches.slice(1)
+              .map(x=>'<span class="badge">'+esc(x.account)+'</span>').join(' ') : '')
+          + '<br>틀렸으면 오른쪽에서 바꿔주세요. 바꾼 대로 기억해서 다음부터 그렇게 넣습니다.';
+        QK_LAST = m.account_id;
+      }else{
+        $('qkAuto').innerHTML = '<span class="badge a">모르겠어요</span>';
+        $('qkHint').textContent = '처음 보는 이름이에요. 계정과목을 골라주시면 다음부터 기억할게요.';
+        QK_LAST = '';
+      }
+    }catch(e){}
+  }, 350);
+}
+async function qkSave(){
+  const name = $('qkName').value.trim();
+  const amt = +String($('qkAmt').value).replace(/[^\d]/g,'') || 0;
+  const acct = $('qkAcct').value, ym = $('qkYm').value;
+  if(!name){ alert('항목·거래처 이름을 적어주세요.'); return; }
+  if(!acct){ alert('계정과목을 골라주세요.'); return; }
+  try{
+    await api('pnlEntrySave', TOKEN, { ym:ym, account_id:acct, detail:name, amount:amt });
+    // 자동 추천과 다른 걸 골랐으면 그대로 학습
+    if(QK_LAST && QK_LAST !== acct)
+      try{ await api('pnlKeywordSave', TOKEN, { keyword:name, account_id:acct }); }catch(e){}
+    const label = $('qkAcct').options[$('qkAcct').selectedIndex].text;
+    $('qkName').value=''; $('qkAmt').value=''; $('qkAuto').textContent=''; $('qkHint').textContent='';
+    QK_LAST = '';
+    $('bkDetail').checked = true;
+    await loadBook();
+    toast(label + '에 ' + name + ' 넣었어요');
+    $('qkName').focus();
+  }catch(e){ alert(e.message); }
 }
 
 function bkEdit(td, accId, detailEnc, m){
@@ -3237,14 +3331,25 @@ function bkEdit(td, accId, detailEnc, m){
   };
 }
 
+function bkToggleDetail(){ $('bkDetail').checked = !$('bkDetail').checked; renderBook(); }
+
 async function bkAddDetail(accId, accName){
-  const d = prompt(accName + ' — 거래처·세부 이름');
-  if(!d || !d.trim()) return;
+  // 빠른 입력 칸으로 보내서 계정까지 미리 잡아줌
+  $('qkAcct').value = accId;
+  $('qkAuto').innerHTML = '<span class="badge">'+esc(accName)+'</span>';
+  $('qkHint').textContent = accName + ' 아래에 넣습니다. 이름과 금액만 적어주세요.';
+  QK_LAST = accId;
+  $('qkName').value = ''; $('qkAmt').value = '';
+  $('qkName').focus();
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+async function bkDelDetail(accId, detailEnc){
+  const d = decodeURIComponent(detailEnc);
+  if(!confirm('"'+d+'" 항목을 이 기간에서 지울까요?')) return;
   try{
-    await api('pnlEntrySave', TOKEN, { ym:BOOK.months[0], account_id:accId, detail:d.trim(), amount:0 });
-    $('bkDetail').checked = true;
-    await loadBook();
-    toast('추가했어요. 금액 칸을 눌러 입력하세요');
+    for(const m of BOOK.months)
+      await api('pnlEntrySave', TOKEN, { ym:m, account_id:accId, detail:d, amount:0 });
+    loadBook();
   }catch(e){ alert(e.message); }
 }
 async function bkAddAccount(){
