@@ -2358,7 +2358,8 @@ async function loadVendors(){
   try{
     const [vs, st] = await Promise.all([api('vendorList', TOKEN), api('storeGet', TOKEN)]);
     VENDORS = vs; STORE_ID = st.storeId || '';
-    $('vdInviteUrl').value = location.origin + location.pathname.replace(/[^/]*$/,'') + 'vendor.html?s=' + STORE_ID;
+    // &v=2 : 카톡이 예전 미리보기를 캐시해둬서, 주소를 살짝 바꿔 새로 읽게 함
+    $('vdInviteUrl').value = location.origin + location.pathname.replace(/[^/]*$/,'') + 'vendor.html?s=' + STORE_ID + '&v=2';
     renderVendors();
   }catch(e){ toast(e.message); }
 }
