@@ -54,6 +54,8 @@ input:focus{ outline:none; border-color:var(--brand) }
 .clock .ctime{ font-size:40px; font-weight:800; line-height:1.1; font-variant-numeric:tabular-nums; letter-spacing:1px }
 .nowbox{ margin-top:12px; background:rgba(255,255,255,.2); border-radius:12px; padding:10px 12px;
   font-size:15.5px; font-weight:600 }
+.bar{ height:10px; background:#FFF; border:1px solid #FFE066; border-radius:99px; overflow:hidden; margin-top:10px }
+.bar .fill{ height:100%; background:linear-gradient(90deg,#FFA94D,#F26522); border-radius:99px; transition:width .6s }
 .myclock{ text-align:center; margin-top:6px }
 .myclock .d{ color:var(--sub); font-size:14px }
 .myclock .t{ font-size:24px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--ink) }
@@ -81,11 +83,15 @@ details summary{ cursor:pointer; font-weight:600 }
   </div>
 
   <div class="card" style="background:#FFF9DB; border-color:#FFE066; text-align:center">
-    <div style="font-size:19px; font-weight:700">기다려주셔서 감사합니다 🙏</div>
-    <div style="margin-top:6px; font-size:16px" id="couponNotice">
+    <div style="font-size:19px; font-weight:700">기다리시는 시간, 그냥 보내지 않으실 거예요 🎁</div>
+    <div style="margin-top:8px; font-size:16.5px" id="couponNotice">
       <b>30분마다 500원</b> 할인쿠폰을 드려요
     </div>
-    <div class="sub" style="margin-top:4px" id="couponSub">계산하실 때 이 화면을 보여주시면 바로 할인됩니다 (당일만 사용 가능)</div>
+    <div class="sub" style="margin-top:6px" id="couponSub">계산하실 때 보여주시면 바로 할인됩니다 (당일 사용)</div>
+    <div style="margin-top:12px; padding-top:12px; border-top:1px dashed #FFE066; font-size:15px; line-height:1.6">
+      바쁘신 중에 찾아와 주셔서 감사합니다 🙏<br>
+      <span class="sub">최대한 빨리 모실 수 있도록 준비하겠습니다</span>
+    </div>
   </div>
 
   <div class="card">
@@ -131,9 +137,9 @@ details summary{ cursor:pointer; font-weight:600 }
   </div>
 
   <div id="callBox" class="callbox hidden">
-    <div style="font-size:15px; opacity:.95">지금 자리가 준비됐어요</div>
+    <div style="font-size:15px; opacity:.95">오래 기다리셨습니다 🙏</div>
     <div class="big">입장해 주세요! 🎉</div>
-    <div style="font-size:14px; opacity:.95">카운터에 번호를 말씀해 주세요</div>
+    <div style="font-size:14.5px; opacity:.95">카운터에 번호를 말씀해 주세요<br>기다려주신 만큼 할인쿠폰도 준비했어요</div>
   </div>
 
   <div id="waitBox" class="card">
@@ -153,21 +159,40 @@ details summary{ cursor:pointer; font-weight:600 }
     <div class="sub" id="dMsg" style="margin-top:6px"></div>
   </div>
 
-  <!-- 대기 중: 쿠폰 적립 진행 상황 -->
-  <div id="cpPending" class="card hidden" style="text-align:center; background:#FFF9DB; border-color:#FFE066">
-    <div class="sub">지금까지 <b id="cpMin">0</b>분 기다리셨어요</div>
-    <div style="font-size:15px; margin-top:6px" id="cpPendTxt">조금만 더 기다리시면 할인쿠폰이 발행돼요</div>
+  <!-- 대기 중: 혜택이 쌓이는 중 -->
+  <div id="cpPending" class="card hidden" style="background:#FFF9DB; border-color:#FFE066">
+    <div style="text-align:center; font-size:17px; font-weight:700">🎁 기다리시는 동안 혜택이 쌓이고 있어요</div>
+    <div style="text-align:center; margin-top:12px">
+      <span class="sub">지금까지</span>
+      <div style="font-size:30px; font-weight:800; font-variant-numeric:tabular-nums; color:var(--ink)" id="cpElapsed">0분 00초</div>
+    </div>
+    <div id="cpNow" style="text-align:center; font-size:17px; margin-top:10px"></div>
+    <div class="bar"><div class="fill" id="cpBar" style="width:0%"></div></div>
+    <div class="sub" style="text-align:center; margin-top:6px" id="cpNext"></div>
+    <div style="text-align:center; margin-top:14px; padding-top:12px; border-top:1px dashed #FFE066; font-size:15px; line-height:1.6">
+      귀한 시간 내주셔서 <b>정말 감사합니다</b> 🙏<br>
+      <span class="sub">자리가 준비되는 대로 바로 모실게요</span>
+    </div>
   </div>
 
   <!-- 입장 후: 확정된 쿠폰 -->
-  <div id="cpBox" class="card hidden" style="text-align:center; background:#FFF4E6; border-color:#FFD8A8">
-    <div style="font-size:16px; font-weight:700" id="cpThanks">기다려주셔서 감사합니다</div>
-    <div style="font-size:38px; font-weight:800; color:var(--brand); margin:8px 0" id="cpAmt">0원</div>
-    <div class="sub">할인쿠폰 번호</div>
-    <div style="font-size:34px; font-weight:800; letter-spacing:4px; font-variant-numeric:tabular-nums" id="cpCode">------</div>
-    <div class="sub" style="margin-top:8px">계산하실 때 <b>이 번호를 보여주세요</b><br>오늘 하루만 사용 가능해요</div>
-    <div id="cpUsed" class="hidden" style="margin-top:10px; padding:10px; background:#E9ECEF; border-radius:10px; font-weight:700">
-      ✔ 사용 완료된 쿠폰이에요
+  <div id="cpBox" class="card hidden" style="text-align:center; background:linear-gradient(180deg,#FFF4E6,#fff); border-color:#FFD8A8">
+    <div style="font-size:44px">🎁</div>
+    <div style="font-size:19px; font-weight:700; margin-top:4px" id="cpThanks">기다려주셔서 감사합니다</div>
+    <div class="sub" style="margin-top:4px">기다려주신 마음에 작은 감사를 담았어요</div>
+    <div style="border-top:1px dashed #FFD8A8; margin:16px 0 12px"></div>
+    <div style="font-size:44px; font-weight:800; color:var(--brand); line-height:1.1" id="cpAmt">0원</div>
+    <div class="sub" style="margin-top:2px">할인쿠폰</div>
+    <div style="font-size:36px; font-weight:800; letter-spacing:5px; font-variant-numeric:tabular-nums; margin-top:10px" id="cpCode">------</div>
+    <div style="margin-top:10px; background:#F8F9FA; border-radius:12px; padding:12px; font-size:15px; line-height:1.6">
+      계산하실 때 <b>이 번호를 보여주세요</b><br>
+      <span class="sub">오늘 하루 사용 가능해요</span>
+    </div>
+    <div style="margin-top:14px; font-size:15px; line-height:1.6">
+      맛있게 드시고 <b>또 뵙겠습니다</b> 😊
+    </div>
+    <div id="cpUsed" class="hidden" style="margin-top:12px; padding:12px; background:#E9ECEF; border-radius:10px; font-weight:700">
+      ✔ 사용 완료된 쿠폰이에요 — 감사합니다!
     </div>
   </div>
 
@@ -231,7 +256,31 @@ function tickClock(){
   set('hDate', ds); set('hTime', ts);
   set('mDate', ds); set('mTime', ts);
 }
-setInterval(tickClock, 1000);
+/* ---- 대기 시간·쿠폰: 매초 실시간 계산 (서버 응답을 기다리지 않는다) ---- */
+const CP = { start:null, stop:null, per30:500, max:2000, live:false };
+function tickElapsed(){
+  if(!CP.live || !CP.start) return;
+  const now = (CP.stop || (Date.now() + SKEW));       // 호출된 뒤엔 그 시각에서 멈춤
+  const sec = Math.max(0, Math.floor((now - CP.start)/1000));
+  const min = Math.floor(sec/60);
+  $('cpElapsed').textContent = min + '분 ' + String(sec % 60).padStart(2,'0') + '초';
+
+  const amt  = Math.min(Math.floor(min/30) * CP.per30, CP.max);
+  const w = n => n.toLocaleString('ko-KR');
+  $('cpNow').innerHTML = amt > 0
+    ? '지금 입장하시면 <b style="color:var(--brand); font-size:22px">' + w(amt) + '원</b> 할인!'
+    : '조금만 더 기다리시면 <b style="color:var(--brand)">' + w(CP.per30) + '원</b> 할인쿠폰을 드려요';
+
+  if(amt >= CP.max){
+    $('cpBar').style.width = '100%';
+    $('cpNext').innerHTML = '최대 혜택까지 받으셨어요! 정말 오래 기다려주셨습니다 🙏';
+  } else {
+    const into = min % 30, left = 30 - into;
+    $('cpBar').style.width = Math.round(into/30*100) + '%';
+    $('cpNext').innerHTML = '<b>' + left + '분</b> 뒤 ' + w(amt + CP.per30) + '원으로 올라가요';
+  }
+}
+setInterval(() => { tickClock(); tickElapsed(); }, 1000);
 tickClock();
 
 /* ---- 등록 화면의 현재 대기 현황 (10초마다 갱신) ---- */
@@ -315,20 +364,19 @@ function render(r){
   $('waitBox').classList.toggle('hidden', !live);
   $('doneBox').classList.toggle('hidden', live);
 
-  // 쿠폰: 대기 중엔 진행 상황, 입장 후엔 확정 번호
-  const amt = +r.coupon_amt || 0, pend = +r.coupon_pending || 0, per30 = +r.coupon_per30 || 500;
-  $('cpPending').classList.toggle('hidden', !(live && r.geo_ok));
-  if(live && r.geo_ok){
-    $('cpMin').textContent = r.waited_min;
-    const nextMin = 30 - (r.waited_min % 30);
-    $('cpPendTxt').innerHTML = pend > 0
-      ? '지금 입장하시면 <b style="color:var(--brand)">' + pend.toLocaleString('ko-KR') + '원</b> 할인쿠폰이 발행돼요'
-        + (pend < (+r.coupon_max) ? '<br><span class="sub">' + nextMin + '분 더 기다리시면 ' + (pend+per30).toLocaleString('ko-KR') + '원으로 올라가요</span>' : '')
-      : '<b>' + nextMin + '분</b> 더 기다리시면 ' + per30.toLocaleString('ko-KR') + '원 할인쿠폰이 발행돼요';
-  }
+  // 쿠폰: 대기 중엔 초 단위로 실시간, 입장 후엔 확정 번호
+  const amt = +r.coupon_amt || 0;
+  CP.per30 = +r.coupon_per30 || 500;
+  CP.max   = +r.coupon_max || 2000;
+  CP.start = r.created_at ? new Date(r.created_at).getTime() : null;
+  CP.stop  = r.called_at ? new Date(r.called_at).getTime() : null;   // 호출되면 시간 계산 멈춤
+  CP.live  = live && !!r.geo_ok;
+  $('cpPending').classList.toggle('hidden', !CP.live);
+  tickElapsed();
+
   $('cpBox').classList.toggle('hidden', !(amt > 0 && !live));
   if(amt > 0 && !live){
-    $('cpThanks').textContent = r.waited_min + '분 기다려주셔서 감사합니다 🙏';
+    $('cpThanks').textContent = (r.waited_min || 0) + '분이나 기다려주셨네요 🙏';
     $('cpAmt').textContent = amt.toLocaleString('ko-KR') + '원';
     $('cpCode').textContent = r.coupon_code || '------';
     $('cpUsed').classList.toggle('hidden', !r.coupon_used);
