@@ -14,6 +14,12 @@ body{font-family:Pretendard,-apple-system,sans-serif; background:#F8F9FA; color:
 .topbar .hddate{margin-left:auto; font-size:15px; color:#AEB4C0}
 .topbar .clock{font-size:24px; font-weight:800; font-variant-numeric:tabular-nums}
 .topbar a{color:#8A90A0; font-size:14px; cursor:pointer; text-decoration:none}
+.maintabs{display:flex; gap:0; background:#fff; border-bottom:2px solid #E9ECEF; position:sticky; top:56px; z-index:9}
+.maintabs .mt{flex:1; padding:15px 8px; font-size:18px; font-weight:700; background:none; border:none;
+  border-bottom:4px solid transparent; color:#868E96; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px}
+.maintabs .mt.active{color:var(--brand); border-bottom-color:var(--brand)}
+.maintabs .mt .n{background:#E9ECEF; color:#495057; border-radius:20px; padding:2px 10px; font-size:15px}
+.maintabs .mt.active .n{background:var(--brand); color:#fff}
 .wrap{padding:16px 20px 120px}
 .card{background:#fff; border:1px solid var(--line); border-radius:16px; padding:18px; margin-bottom:14px}
 h2{font-size:19px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
@@ -79,24 +85,41 @@ h2{font-size:19px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
     <a onclick="loadAll()">↻</a>
     <a onclick="doLogout()">로그아웃</a>
   </div>
+  <div class="maintabs">
+    <button class="mt active" id="mtOrder" onclick="mtab('order')">🛒 발주</button>
+    <button class="mt" id="mtLive" onclick="mtab('live')">⏳ 진행중 <span class="n" id="cntLive">0</span></button>
+    <button class="mt" id="mtDone" onclick="mtab('done')">✔ 완료 <span class="n" id="cntDone">0</span></button>
+  </div>
+
   <div class="wrap">
-    <div class="card">
-      <h2>🍽 부족한 걸 눌러주세요 <span class="sub">— 누를 때마다 1개씩, 길게 누르면 취소</span>
-        <span style="margin-left:auto; display:flex; gap:6px">
-          <button class="btn sm vmode active" onclick="setView('map',this)">🗺 배치도</button>
-          <button class="btn sm ghost vmode" onclick="setView('list',this)">☰ 목록</button>
-        </span></h2>
-      <div id="mapBox"></div>
-      <div id="itemBox" class="hidden"></div>
+    <div id="pane-order">
+      <div class="card">
+        <h2>🍽 부족한 걸 눌러주세요 <span class="sub">— 누를 때마다 1개씩, 길게 누르면 취소</span>
+          <span style="margin-left:auto; display:flex; gap:6px">
+            <button class="btn sm vmode active" onclick="setView('map',this)">🗺 배치도</button>
+            <button class="btn sm ghost vmode" onclick="setView('list',this)">☰ 목록</button>
+          </span></h2>
+        <div id="mapBox"></div>
+        <div id="itemBox" class="hidden"></div>
+      </div>
     </div>
 
-    <div class="card">
-      <h2>내 요청 현황</h2>
-      <div id="myReqs"><div class="sub">불러오는 중...</div></div>
+    <div id="pane-live" class="hidden">
+      <div class="card">
+        <h2>⏳ 주방에서 준비 중</h2>
+        <div id="liveReqs"><div class="sub">불러오는 중...</div></div>
+      </div>
+    </div>
+
+    <div id="pane-done" class="hidden">
+      <div class="card">
+        <h2>✔ 오늘 나온 것</h2>
+        <div id="doneReqs"><div class="sub">불러오는 중...</div></div>
+      </div>
     </div>
   </div>
 
-  <div class="bottom">
+  <div class="bottom" id="bottomBar">
     <span class="cnt" id="selCnt">선택 없음</span>
     <label style="display:flex; align-items:center; gap:6px; font-size:15px">
       <input type="checkbox" id="urgent" style="width:20px;height:20px"> 급함</label>
@@ -242,10 +265,11 @@ async function sendReq(){
   try{
     const r = await api('barReqCreate', TOKEN, { items, urgent:$('urgent').checked });
     clearSel(); $('urgent').checked = false;
-    loadReqs();
-    alert(r.count > 1
-      ? r.first_no + '~' + r.last_no + '번, 총 ' + r.count + '건으로 주방에 올렸어요!\n\n품목마다 따로 올라가서, 되는 것부터 하나씩 나옵니다.'
-      : r.first_no + '번으로 주방에 요청했어요!\n주방에서 확인하면 예상 시간이 여기 표시됩니다.');
+    mtab('live');                    // 요청하면 바로 진행중 탭으로
+    toast(r.count > 1
+      ? r.first_no + '~' + r.last_no + '번, 총 ' + r.count + '건 주방에 올렸어요'
+      : r.first_no + '번 주방에 요청했어요');
+    await loadReqs();
   }catch(e){ alert(e.message); }
 }
 
@@ -258,22 +282,64 @@ async function loadReqs(){
     mine.filter(x => x.status === '완료').forEach(x => {
       if(!DONE_SEEN.has(x.id)){ if(DONE_SEEN.size) beep(); DONE_SEEN.add(x.id); }
     });
-    $('myReqs').innerHTML = mine.slice(0,12).map(x =>
-      '<div class="row"><span>'
-      + '<b>'+x.req_no+'번</b> '
-      + (x.status==='요청' ? '<span class="badge a">주방 확인 대기</span>'
-        : x.status==='조리중' ? '<span class="badge g">준비 중 · 약 '+(x.eta_min||'?')+'분</span>'
-        : '<span class="badge">✔ 완료</span>')
-      + (x.urgent ? ' <span class="badge r">급함</span>' : '')
-      + (x.total_cnt > 1 && x.left_cnt > 0 ? ' <span class="sub">'+(x.total_cnt-x.left_cnt)+'/'+x.total_cnt+' 나옴</span>' : '')
-      + '<div style="margin-top:4px">'+(x.items||[]).map(i =>
-          i.status === '완료'
-            ? '<span class="badge g" style="margin:2px 3px 0 0">✔ '+esc(i.name)+' '+(+i.qty)+esc(i.unit||'')+'</span>'
-            : '<span class="badge" style="margin:2px 3px 0 0">'+esc(i.name)+' '+(+i.qty)+esc(i.unit||'')+'</span>'
-        ).join('')+'</div>'
-      + '</span><span class="sub">'+x.wait_min+'분 전</span></div>'
-    ).join('') || '<div class="sub">오늘 요청이 없어요</div>';
+    const live = mine.filter(x => x.status !== '완료');
+    const done = mine.filter(x => x.status === '완료');
+    $('cntLive').textContent = live.length;
+    $('cntDone').textContent = done.length;
+
+    const itemsHtml = x => '<div style="margin-top:4px">' + (x.items||[]).map(i =>
+        i.status === '완료'
+          ? '<span class="badge g" style="margin:2px 3px 0 0">✔ '+esc(i.name)+' '+(+i.qty)+esc(i.unit||'')+'</span>'
+          : '<span class="badge" style="margin:2px 3px 0 0">'+esc(i.name)+' '+(+i.qty)+esc(i.unit||'')+'</span>'
+      ).join('') + '</div>';
+
+    $('liveReqs').innerHTML = live.map(x => {
+      let eta = '';
+      if(x.status === '조리중' && x.eta_min){
+        const left = x.eta_min - (x.cook_min != null ? x.cook_min : 0);
+        eta = left >= 0
+          ? '<span class="badge g">약 '+x.eta_min+'분 · '+Math.max(0,Math.ceil(left))+'분쯤 남음</span>'
+          : '<span class="badge r">약속 '+x.eta_min+'분 · '+Math.ceil(-left)+'분 지남</span>';
+      }
+      return '<div class="row"><span>'
+        + '<b>'+x.req_no+'번</b> '
+        + (x.status==='요청' ? '<span class="badge a">주방 확인 대기</span>' : eta || '<span class="badge g">준비 중</span>')
+        + (x.urgent ? ' <span class="badge r">급함</span>' : '')
+        + (x.total_cnt > 1 && x.left_cnt > 0 ? ' <span class="sub">'+(x.total_cnt-x.left_cnt)+'/'+x.total_cnt+' 나옴</span>' : '')
+        + itemsHtml(x)
+        + '</span><span class="sub">'+x.wait_min+'분 전</span></div>';
+    }).join('') || '<div class="sub" style="padding:20px 0; text-align:center">진행 중인 요청이 없어요 👍</div>';
+
+    $('doneReqs').innerHTML = done.map(x =>
+      '<div class="row"><span><b>'+x.req_no+'번</b> <span class="badge">✔ 완료</span>'
+      + itemsHtml(x)
+      + '</span><span class="sub">'+(x.done_hm || '')+'</span></div>'
+    ).join('') || '<div class="sub" style="padding:20px 0; text-align:center">아직 완료된 게 없어요</div>';
   }catch(e){}
+}
+
+function mtab(name){
+  ['order','live','done'].forEach(n => {
+    $('pane-'+n).classList.toggle('hidden', n !== name);
+    $('mt'+n.charAt(0).toUpperCase()+n.slice(1)).classList.toggle('active', n === name);
+  });
+  $('bottomBar').style.display = (name === 'order') ? '' : 'none';
+  if(name !== 'order') loadReqs();
+}
+
+let TOAST_T = null;
+function toast(msg){
+  let el = $('toastBox');
+  if(!el){
+    el = document.createElement('div'); el.id = 'toastBox';
+    el.style.cssText = 'position:fixed; left:50%; transform:translateX(-50%); bottom:110px; z-index:99;'
+      + 'background:#212529; color:#fff; padding:14px 24px; border-radius:12px; font-size:18px; font-weight:600;'
+      + 'box-shadow:0 8px 24px rgba(0,0,0,.25); transition:opacity .25s';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg; el.style.opacity = '1';
+  clearTimeout(TOAST_T);
+  TOAST_T = setTimeout(() => { el.style.opacity = '0'; }, 2600);
 }
 
 async function loadAll(){

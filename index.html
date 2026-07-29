@@ -191,6 +191,7 @@
         <div class="nav-item" data-t="sales" onclick="tab('sales')"><span class="ico">💰</span>매출</div>
         <div class="nav-item" data-t="dep" onclick="tab('dep')"><span class="ico">📥</span>입금</div>
         <div class="nav-item" data-t="exp" onclick="tab('exp')"><span class="ico">🧾</span>지출</div>
+        <div class="nav-item" data-t="pnl" id="navPnl" onclick="tab('pnl')"><span class="ico">🧮</span>오늘 정산</div>
         <div class="nav-item" data-t="settle" onclick="tab('settle')"><span class="ico">📊</span>월 정산</div>
         <div class="nav-item" data-t="inb" onclick="tab('inb')"><span class="ico">📦</span>입고 명세서</div>
         <div class="nav-item" data-t="bar" onclick="tab('bar')"><span class="ico">🍽️</span>셀프바</div>
@@ -571,6 +572,83 @@
         </div>
       </div>
 
+      <!-- 오늘 정산 -->
+      <div id="tab-pnl" class="hidden">
+        <div class="card">
+          <h2>🧮 오늘의 정산
+            <input type="date" id="pnlDate" onchange="loadPnl()" style="margin-left:8px">
+            <button class="btn sm ghost" onclick="pnlShift(-1)">← 어제</button>
+            <button class="btn sm ghost" onclick="pnlShift(1)">내일 →</button>
+            <button class="btn sm ghost" onclick="window.print()" style="margin-left:auto">인쇄</button></h2>
+          <div class="sub">매출에서 <b>오늘 실제로 나간 재료비</b>·인건비·고정비(하루치)를 빼면 오늘 번 돈이 나와요.</div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:16px">
+          <div class="card" style="margin:0"><div class="sub">매출</div><div id="pnSales" style="font-size:24px; font-weight:700">-</div></div>
+          <div class="card" style="margin:0"><div class="sub">재료비 <span id="pnMatR" class="badge"></span></div><div id="pnMat" style="font-size:22px; font-weight:700; color:var(--red,#E03131)">-</div></div>
+          <div class="card" style="margin:0"><div class="sub">인건비 <span id="pnLabR" class="badge"></span></div><div id="pnLab" style="font-size:22px; font-weight:700; color:var(--red,#E03131)">-</div></div>
+          <div class="card" style="margin:0"><div class="sub">고정비(하루) <span id="pnFixR" class="badge"></span></div><div id="pnFix" style="font-size:22px; font-weight:700; color:var(--red,#E03131)">-</div></div>
+          <div class="card" style="margin:0"><div class="sub">기타 지출</div><div id="pnExp" style="font-size:22px; font-weight:700; color:var(--red,#E03131)">-</div></div>
+          <div class="card" style="margin:0; border-color:#FFD8A8; background:#FFF9F5">
+            <div class="sub">오늘 순이익 <span id="pnProR" class="badge"></span></div>
+            <div id="pnProfit" style="font-size:26px; font-weight:800">-</div></div>
+        </div>
+
+        <div class="card">
+          <h2>🍽 오늘 셀프바에 나간 것 <span class="sub" id="pnRefillSum"></span></h2>
+          <div class="sub" style="margin-bottom:8px">무한리필은 포스에 안 찍혀요. <b>여기가 곧 오늘 쓴 재료</b>입니다.</div>
+          <div class="table-scroll"><table><thead><tr><th>품목</th><th>리필 횟수</th><th>수량</th><th>중량</th><th>원가</th></tr></thead>
+          <tbody id="pnRefills"></tbody></table></div>
+        </div>
+
+        <div class="card">
+          <h2>👥 오늘 근무 <span class="sub" id="pnWorkSum"></span></h2>
+          <div id="pnWorkers"></div>
+        </div>
+
+        <div class="card">
+          <h2>⏱ 주방 응답 속도 <span class="sub">— 3분이라고 했으면 3분에 나왔나?</span></h2>
+          <div id="pnTimeSum" style="display:flex; gap:18px; flex-wrap:wrap; margin-bottom:12px"></div>
+          <div id="pnPeople" style="margin-bottom:12px"></div>
+          <div class="table-scroll"><table><thead><tr>
+            <th>번호</th><th>품목</th><th>요청</th><th>접수</th><th>완료</th>
+            <th>약속</th><th>실제</th><th>차이</th><th>판정</th></tr></thead>
+          <tbody id="pnTiming"></tbody></table></div>
+        </div>
+
+        <div class="card">
+          <h2>🏠 고정비 <span class="sub">— 월 금액을 넣으면 영업일수로 나눠 매일 조금씩 반영돼요</span>
+            <button class="btn sm" onclick="openFixed()" style="float:right">+ 항목 추가</button></h2>
+          <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap">
+            <span class="sub">월 영업일수</span>
+            <input id="pnOpenDays" type="number" min="1" max="31" style="width:80px">
+            <button class="btn sm ghost" onclick="saveOpenDays()">저장</button>
+            <span class="sub">예: 월 4일 쉬면 26일</span>
+          </div>
+          <div class="table-scroll"><table><thead><tr><th>항목</th><th>월 금액</th><th>하루치</th><th></th></tr></thead>
+          <tbody id="pnFixedList"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- 고정비 모달 -->
+      <div class="modal-bg hidden" id="fixedModal">
+        <div class="modal" style="max-width:420px">
+          <h2>고정비 항목</h2>
+          <input type="hidden" id="fxId">
+          <div class="grid2">
+            <div><label>항목명</label><input id="fxName" style="width:100%" placeholder="월세, 전기, 보험..."></div>
+            <div><label>분류</label><select id="fxCat" style="width:100%">
+              <option>임대료</option><option>공과금</option><option>세금·보험</option>
+              <option>렌탈·구독</option><option>대출상환</option><option>고정비</option></select></div>
+          </div>
+          <label>월 금액 (원)</label><input id="fxAmt" type="text" inputmode="numeric" oninput="mFmt(this)" style="width:100%">
+          <label>메모</label><input id="fxMemo" style="width:100%">
+          <div style="margin-top:14px"><button class="btn" onclick="fxSave()">저장</button>
+            <button class="btn red hidden" id="fxDel" onclick="fxDelete()">삭제</button>
+            <button class="btn ghost" onclick="closeModal('fixedModal')">닫기</button></div>
+        </div>
+      </div>
+
       <!-- 셀프바 -->
       <div id="tab-bar" class="hidden">
         <div class="card" style="border-color:#FFD8A8">
@@ -655,6 +733,8 @@
               <option>보리밥 코너</option><option>디저트</option><option>과일</option><option>기타</option></select></div>
             <div><label>단위</label><input id="biUnit" style="width:100%" placeholder="판" value="판"></div>
             <div><label>1단위 중량 (g)</label><input id="biPortion" type="number" style="width:100%" placeholder="500"></div>
+            <div><label>1개당 원가 (원) <span class="sub">— 오늘 정산 재료비</span></label>
+              <input id="biCost" type="text" inputmode="numeric" oninput="mFmt(this)" style="width:100%" placeholder="예: 3,500"></div>
           </div>
           <label>재고 자동 차감 <span class="sub">— 고기처럼 kg으로 딱 떨어지는 것만 연결하세요</span></label>
           <input id="biStock" list="stockNames" style="width:100%" placeholder="비워두면 차감 안 함 (판 수만 집계)">
@@ -1330,9 +1410,9 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 let TOKEN = localStorage.getItem('store_admin_token') || '';
 let ME = null, STAFF = [], ATT = [], WAGES = null, TASKS = [];
-const TABS = ['today','ai','cal','staff','shift','att','labor','tasks','board','manual','info','cust','cash','sales','dep','exp','settle','inb','bar','vendor','stock','price','links','logs','setup'];
+const TABS = ['today','ai','cal','staff','shift','att','labor','tasks','board','manual','info','cust','cash','sales','dep','exp','pnl','settle','inb','bar','vendor','stock','price','links','logs','setup'];
 const TITLES = {today:'오늘', ai:'AI 비서', cal:'캘린더', staff:'직원', shift:'근무표', att:'근태', labor:'인건비표', tasks:'오더', board:'업무보드',
-  manual:'매뉴얼', info:'매장정보', cust:'고객·포인트', cash:'자금', sales:'매출', dep:'입금', exp:'지출', settle:'월 정산', inb:'입고 명세서', bar:'셀프바', vendor:'거래처', stock:'재고', price:'단가 변동', links:'연결 주소', logs:'시스템 로그', setup:'설정'};
+  manual:'매뉴얼', info:'매장정보', cust:'고객·포인트', cash:'자금', sales:'매출', dep:'입금', exp:'지출', pnl:'오늘 정산', settle:'월 정산', inb:'입고 명세서', bar:'셀프바', vendor:'거래처', stock:'재고', price:'단가 변동', links:'연결 주소', logs:'시스템 로그', setup:'설정'};
 // 직책 — 매장에서 부르는 그대로
 // 홀 3 + 주방 6 — 바 담당은 주방 소속(숙련자), 셀프바 양 조절 = 원가 조절
 const POSITIONS = ['점장','매니저','홀','셰프','부셰프','바 담당','찬모','주방보조','세척'];
@@ -1442,6 +1522,7 @@ function tab(name){
   if(name==='cash') loadCash();
   if(name==='shift') loadShift();
   if(name==='bar') loadBar();
+  if(name==='pnl') loadPnl();
   if(name==='links') loadLinks();
   if(name==='cust') loadCust();
   if(name==='vendor') loadVendors();
@@ -1475,6 +1556,7 @@ function boot(){
   $('navLogs').style.display = (ME && ME.role==='owner') ? '' : 'none';
   $('navCash').style.display = (ME && ME.role==='owner') ? '' : 'none';
   $('navAi').style.display = (ME && ME.role==='owner') ? '' : 'none';
+  $('navPnl').style.display = (ME && ME.role==='owner') ? '' : 'none';
   if(ME && ME.role==='viewer'){
     document.querySelectorAll('#tabbar .nav-item').forEach(n => {
       if(!['cal','settle'].includes(n.dataset.t)) n.style.display='none';
@@ -2976,6 +3058,141 @@ async function unplace(id){
   try{ await api('barPlace', TOKEN, { id, zone:'', gx:'', gy:'' }); loadBar(); }
   catch(e){ alert(e.message); }
 }
+/* ===== 오늘 정산 ===== */
+let PNL = null;
+function pnlShift(d){
+  const el = $('pnlDate');
+  const t = new Date(el.value + 'T12:00:00');
+  t.setDate(t.getDate() + d);
+  el.value = localDate(t);
+  loadPnl();
+}
+function pnMoney(n){ return (n<0?'-':'') + '₩' + Math.abs(+n||0).toLocaleString('ko-KR'); }
+function pnPct(n){ return (n==null) ? '' : (+n).toFixed(1) + '%'; }
+
+async function loadPnl(){
+  if(!$('pnlDate').value) $('pnlDate').value = localDate(new Date());
+  const d = $('pnlDate').value;
+  try{
+    const [p, t] = await Promise.all([ api('dailyPnl', TOKEN, d), api('barTiming', TOKEN, d) ]);
+    PNL = p;
+    $('pnSales').textContent   = pnMoney(p.sales);
+    $('pnMat').textContent     = '-' + pnMoney(p.material).replace('-','');
+    $('pnLab').textContent     = '-' + pnMoney(p.labor).replace('-','');
+    $('pnFix').textContent     = '-' + pnMoney(p.fixed).replace('-','');
+    $('pnExp').textContent     = '-' + pnMoney(p.expense).replace('-','');
+    $('pnProfit').textContent  = pnMoney(p.profit);
+    $('pnProfit').style.color  = p.profit >= 0 ? '#2B8A3E' : '#E03131';
+    const r = p.rate || {};
+    $('pnMatR').textContent = pnPct(r.material);
+    $('pnLabR').textContent = pnPct(r.labor);
+    $('pnFixR').textContent = pnPct(r.fixed);
+    $('pnProR').textContent = pnPct(r.profit);
+
+    // 리필 상세
+    const rf = p.refills || [];
+    $('pnRefillSum').textContent = rf.length
+      ? rf.length + '개 품목 · 총 ' + rf.reduce((a,x)=>a+(+x.times||0),0) + '번 리필'
+      : '';
+    $('pnRefills').innerHTML = rf.map(x =>
+      '<tr><td><b>'+esc(x.name)+'</b></td>'
+      + '<td>'+(+x.times)+'번</td>'
+      + '<td>'+(+x.qty)+esc(x.unit||'')+'</td>'
+      + '<td>'+(x.grams ? (x.grams/1000).toFixed(3)+'kg' : '-')+'</td>'
+      + '<td>'+pnMoney(x.cost)+'</td></tr>'
+    ).join('') || '<tr><td colspan="5" class="sub">오늘 셀프바 요청이 없어요</td></tr>';
+
+    // 근무자
+    const wk = p.workers || [];
+    $('pnWorkSum').textContent = wk.length ? wk.length + '명 · ' + pnMoney(p.labor) : '';
+    $('pnWorkers').innerHTML = wk.length
+      ? '<div class="table-scroll"><table><thead><tr><th>이름</th><th>직책</th><th>근무</th><th>인건비</th></tr></thead><tbody>'
+        + wk.map(w => '<tr><td>'+esc(w.name)+'</td><td class="sub">'+esc(w.position||'')+'</td>'
+          + '<td>'+(w.hours!=null ? (+w.hours).toFixed(1)+'시간' : '-')+'</td>'
+          + '<td>'+pnMoney(w.cost)+'</td></tr>').join('')
+        + '</tbody></table></div>'
+      : '<div class="sub">근태 기록이 없어요</div>';
+
+    // 고정비
+    $('pnOpenDays').value = p.open_days || 30;
+    const fl = p.fixedList || [];
+    $('pnFixedList').innerHTML = fl.map(f =>
+      '<tr><td><b>'+esc(f.name)+'</b> <span class="sub">'+esc(f.category||'')+'</span></td>'
+      + '<td>'+pnMoney(f.monthly)+'</td>'
+      + '<td class="sub">'+pnMoney(Math.round((+f.monthly||0)/(p.open_days||30)))+'</td>'
+      + '<td><button class="btn sm ghost" onclick=\'openFixed('+JSON.stringify(f).replace(/'/g,"&#39;")+')\'>수정</button></td></tr>'
+    ).join('') || '<tr><td colspan="4" class="sub">월세·전기 같은 고정비를 넣어주세요</td></tr>';
+
+    renderTiming(t);
+  }catch(e){ alert(e.message); }
+}
+
+function renderTiming(t){
+  const s = t.summary || {};
+  const box = [];
+  box.push('<div><div class="sub">요청</div><b style="font-size:19px">'+(s.total||0)+'건</b></div>');
+  box.push('<div><div class="sub">약속 지킴</div><b style="font-size:19px">'
+    + (s.keptRate!=null ? s.keptRate+'%' : '-') + '</b> <span class="sub">('+(s.kept||0)+'/'+(s.promised||0)+')</span></div>');
+  box.push('<div><div class="sub">받기까지</div><b style="font-size:19px">'+(s.avgAck!=null? s.avgAck+'분':'-')+'</b></div>');
+  box.push('<div><div class="sub">평균 소요</div><b style="font-size:19px">'+(s.avgReal!=null? s.avgReal+'분':'-')+'</b></div>');
+  box.push('<div><div class="sub">평균 초과</div><b style="font-size:19px; color:'+((s.avgOver>0)?'#E03131':'#2B8A3E')+'">'
+    + (s.avgOver!=null ? (s.avgOver>0?'+':'')+s.avgOver+'분' : '-') + '</b></div>');
+  box.push('<div><div class="sub">최악</div><b style="font-size:19px">'+(s.worst!=null ? '+'+s.worst+'분' : '-')+'</b></div>');
+  $('pnTimeSum').innerHTML = box.join('');
+
+  $('pnPeople').innerHTML = (t.people||[]).map(p =>
+    '<span class="badge" style="margin-right:6px; font-size:14px">'+esc(p.who)+' · '+p.cnt+'건 · 평균 '
+    + (p.avg_real!=null?p.avg_real+'분':'-')
+    + (p.kept_rate!=null ? ' · 약속 '+p.kept_rate+'%' : '') + '</span>'
+  ).join('');
+
+  const gb = g => g==='지킴' ? '<span class="badge g">✔ 지킴</span>'
+    : g==='조금늦음' ? '<span class="badge a">조금 늦음</span>'
+    : g==='늦음' ? '<span class="badge r">늦음</span>'
+    : g==='즉시' ? '<span class="badge">즉시 완료</span>'
+    : '<span class="badge">진행중</span>';
+
+  $('pnTiming').innerHTML = (t.rows||[]).map(x =>
+    '<tr><td><b>'+x.req_no+'</b></td><td>'+esc(x.items||'')+'</td>'
+    + '<td class="sub">'+(x.t_req||'')+'</td><td class="sub">'+(x.t_acc||'-')+'</td><td class="sub">'+(x.t_done||'-')+'</td>'
+    + '<td>'+(x.eta_min!=null ? x.eta_min+'분' : '-')+'</td>'
+    + '<td>'+(x.real_min!=null ? x.real_min+'분' : '-')+'</td>'
+    + '<td style="color:'+((x.over_min>0)?'#E03131':'#2B8A3E')+'">'
+      + (x.over_min!=null ? (x.over_min>0?'+':'')+x.over_min+'분' : '-') + '</td>'
+    + '<td>'+gb(x.grade)+'</td></tr>'
+  ).join('') || '<tr><td colspan="9" class="sub">오늘 셀프바 요청이 없어요</td></tr>';
+}
+
+function openFixed(f){
+  f = f || {};
+  $('fxId').value = f.id || '';
+  $('fxName').value = f.name || '';
+  $('fxCat').value = f.category || '고정비';
+  $('fxAmt').value = f.monthly ? (+f.monthly).toLocaleString('ko-KR') : '';
+  $('fxMemo').value = f.memo || '';
+  $('fxDel').classList.toggle('hidden', !f.id);
+  $('fixedModal').classList.remove('hidden');
+}
+async function fxSave(){
+  const name = $('fxName').value.trim();
+  if(!name){ alert('항목명을 적어주세요.'); return; }
+  try{
+    await api('fixedCostSave', TOKEN, {
+      id: $('fxId').value || null, name: name, category: $('fxCat').value,
+      monthly: +String($('fxAmt').value).replace(/[^\d]/g,'') || 0, memo: $('fxMemo').value.trim() });
+    closeModal('fixedModal'); loadPnl();
+  }catch(e){ alert(e.message); }
+}
+async function fxDelete(){
+  if(!confirm('이 고정비 항목을 삭제할까요?')) return;
+  try{ await api('fixedCostDelete', TOKEN, $('fxId').value); closeModal('fixedModal'); loadPnl(); }
+  catch(e){ alert(e.message); }
+}
+async function saveOpenDays(){
+  try{ await api('storeSave', TOKEN, { open_days: +$('pnOpenDays').value || 30 }); loadPnl(); }
+  catch(e){ alert(e.message); }
+}
+
 async function loadBar(){
   const base = location.origin + location.pathname.replace(/[^/]*$/,'');
   $('barUrl').value = base + 'bar.html';
@@ -3036,6 +3253,7 @@ function openBarItem(id){
   $('biName').value = x ? x.name : ''; $('biCat').value = x ? x.category : '고기';
   $('biUnit').value = x ? x.unit : '판'; $('biPortion').value = x ? (+x.portion_g||'') : '';
   $('biStock').value = x ? (x.stock_name||'') : ''; $('biSort').value = x ? x.sort : 0;
+  $('biCost').value = (x && +x.unit_cost) ? (+x.unit_cost).toLocaleString('ko-KR') : '';
   $('biDel').classList.toggle('hidden', !id);
   $('barItemModal').classList.remove('hidden');
 }
@@ -3043,7 +3261,8 @@ async function biSave(){
   try{
     await api('barItemSave', TOKEN, { id:$('biId').value, name:$('biName').value.trim(), category:$('biCat').value,
       unit:$('biUnit').value.trim()||'판', portion_g:+$('biPortion').value||0,
-      stock_name:$('biStock').value.trim(), sort:+$('biSort').value||0 });
+      stock_name:$('biStock').value.trim(), sort:+$('biSort').value||0,
+      unit_cost:+String($('biCost').value).replace(/[^\d]/g,'')||0 });
     closeModal('barItemModal'); loadBar();
   }catch(e){ alert(e.message); }
 }

@@ -213,6 +213,15 @@ function tick(){
 }
 setInterval(tick, 1000); tick();
 
+// 약속 시간 대비 지금 상태 — 남았으면 초록, 넘겼으면 빨강
+function etaBadge(x){
+  if(!x.eta_min) return '<span class="badge g">조리중</span>';
+  const over = (x.over_min != null) ? +x.over_min : null;
+  if(over === null) return '<span class="badge g">조리중 '+x.eta_min+'분</span>';
+  if(over <= 0) return '<span class="badge g">'+x.eta_min+'분 약속 · '+Math.max(0,Math.ceil(-over))+'분 남음</span>';
+  return '<span class="badge r">'+x.eta_min+'분 약속 · '+Math.ceil(over)+'분 초과</span>';
+}
+
 async function loadReqs(){
   try{
     const r = await api('barReqList', TOKEN);
@@ -234,7 +243,7 @@ async function loadReqs(){
       '<div class="req '+(x.status==='요청'?'new':'cook')+'">'
       + '<div class="head"><span class="no">'+x.req_no+'</span>'
         + (x.urgent ? '<span class="badge r">급함</span>' : '')
-        + (x.status==='조리중' ? '<span class="badge g">조리중 '+(x.eta_min||'')+'분</span>' : '<span class="badge a">새 요청</span>')
+        + (x.status==='조리중' ? etaBadge(x) : '<span class="badge a">새 요청</span>')
         + '<span class="wait">'+x.wait_min+'분 전</span></div>'
       + '<div class="items">' + (x.items||[]).map(i => {
           const ok = i.status === '완료';
