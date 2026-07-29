@@ -585,8 +585,8 @@
 
         <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:16px">
           <div class="card" style="margin:0"><div class="sub">매출</div><div id="pnSales" style="font-size:24px; font-weight:700">-</div></div>
-          <div class="card" style="margin:0"><div class="sub">재료비 <span id="pnMatR" class="badge"></span></div><div id="pnMat" style="font-size:22px; font-weight:700; color:var(--red,#E03131)">-</div></div>
-          <div class="card" style="margin:0"><div class="sub">인건비 <span id="pnLabR" class="badge"></span></div><div id="pnLab" style="font-size:22px; font-weight:700; color:var(--red,#E03131)">-</div></div>
+          <div class="card" style="margin:0"><div class="sub">재료비 <span id="pnMatR" class="badge"></span> <span id="pnMatSrc"></span></div><div id="pnMat" style="font-size:22px; font-weight:700; color:var(--red,#E03131)">-</div></div>
+          <div class="card" style="margin:0"><div class="sub">인건비 <span id="pnLabR" class="badge"></span> <span id="pnLabSrc"></span></div><div id="pnLab" style="font-size:22px; font-weight:700; color:var(--red,#E03131)">-</div></div>
           <div class="card" style="margin:0"><div class="sub">고정비(하루) <span id="pnFixR" class="badge"></span></div><div id="pnFix" style="font-size:22px; font-weight:700; color:var(--red,#E03131)">-</div></div>
           <div class="card" style="margin:0"><div class="sub">기타 지출</div><div id="pnExp" style="font-size:22px; font-weight:700; color:var(--red,#E03131)">-</div>
             <div class="sub" id="pnExcl" style="font-size:12px"></div></div>
@@ -1440,7 +1440,7 @@ const EV_COLORS = {
   '이벤트':['#EBFBEE','#2F9E44'], '휴무':['#FDEDF0','#D6455D'], '일정':['#F1F3F5','#495057']
 };
 let CAL = null, calYm = '', dmDate = '';
-const EXP_CATS = ['재료비','임대료','공과금','배달수수료','카드수수료','비품·소모품','수리·유지','광고·마케팅','일용직·외주','세금·보험','기타'];
+const EXP_CATS = ['재료비','인건비','임대료','공과금','렌탈·구독','대출·이자','배달수수료','카드수수료','비품·소모품','수리·유지','광고·마케팅','일용직·외주','세금·보험','기타'];
 let CHANNELS = ['카드','현금','배민','요기요','쿠팡이츠'];
 let SALES = [], EXPS = [], chDaily = null, chCat = null;
 
@@ -3106,6 +3106,10 @@ async function loadPnl(){
     const r = p.rate || {};
     $('pnMatR').textContent = pnPct(r.material);
     $('pnLabR').textContent = pnPct(r.labor);
+    $('pnMatSrc').innerHTML = p.materialSrc === '추정'
+      ? '<span class="badge a" title="셀프바 기록이 없어서 그 달 매입액을 매출 비율로 나눈 추정치예요">추정</span>' : '';
+    $('pnLabSrc').innerHTML = p.laborSrc === '추정'
+      ? '<span class="badge a" title="근태 기록이 없어서 그 달 급여를 매출 비율로 나눈 추정치예요">추정</span>' : '';
     $('pnFixR').textContent = pnPct(r.fixed);
     $('pnProR').textContent = pnPct(r.profit);
 
