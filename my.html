@@ -53,22 +53,31 @@ a.kakao{ display:block; text-align:center; background:#FEE500; color:#191919; pa
 <div id="joinView" class="hidden">
   <div class="hero">
     <div style="font-size:15px; opacity:.95" id="hStore">매장</div>
-    <div style="margin-top:6px">결제하실 때마다 <b id="hRate">3</b><span style="font-size:20px; font-weight:700">% 적립</span></div>
+    <div style="font-size:17px; font-weight:700; margin-top:8px">오늘 찾아와 주셔서 감사합니다 🙏</div>
+    <div style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,.3)">
+      결제하실 때마다 <b id="hRate">3</b><span style="font-size:20px; font-weight:700">% 적립</span></div>
     <div style="font-size:14.5px; opacity:.95; margin-top:6px" id="hBonus"></div>
   </div>
 
   <div class="card">
-    <h1>포인트 회원가입</h1>
-    <div class="sub">전화번호만 있으면 돼요. 다음 방문부터 번호만 말씀하시면 적립·사용됩니다.</div>
+    <h1>단골이 되어 주세요 🙇</h1>
+    <div style="margin-top:8px; font-size:16px; line-height:1.75">
+      <b>오늘 와주신 걸 기억하고 싶어요.</b><br>
+      전화번호 하나만 남겨주시면,<br>
+      다음에 오셨을 때 번호만 말씀하셔도 됩니다.
+    </div>
 
     <label>전화번호 <span style="color:var(--red)">*</span></label>
     <input type="tel" id="phone" inputmode="numeric" placeholder="010 1234 5678" autocomplete="tel">
+    <div class="sub" style="margin-top:6px">적립·조회에만 쓰고, 광고 문자로 귀찮게 하지 않을게요.</div>
 
     <label>이름 (선택)</label>
-    <input type="text" id="name" placeholder="김순창" autocomplete="name">
+    <input type="text" id="name" placeholder="어떻게 불러드릴까요?" autocomplete="name">
+    <div class="sub" style="margin-top:6px">성함을 알면 다음에 더 반갑게 맞이할 수 있어요 😊</div>
 
     <label>생일 (선택 · 월일 4자리)</label>
     <input type="text" id="birth" inputmode="numeric" placeholder="0315" maxlength="4">
+    <div class="sub" style="margin-top:6px">🎂 <b>생일에 축하 선물을 보내드려요!</b> 그 달에 오시면 특별히 챙겨드릴게요.</div>
 
     <label class="chk"><input type="checkbox" id="c1">
       <span><b>[필수]</b> 개인정보 수집·이용 동의<br>
@@ -78,6 +87,13 @@ a.kakao{ display:block; text-align:center; background:#FEE500; color:#191919; pa
       <span><b>[선택]</b> 혜택·이벤트 안내 수신 동의<br>
         <span class="sub">동의하지 않아도 적립은 정상적으로 됩니다.</span></span></label>
 
+    <div style="margin-top:16px; padding:14px; background:#FFF9DB; border:1px solid #FFE066; border-radius:12px;
+      text-align:center; font-size:15.5px; line-height:1.75">
+      먼 걸음 해주셔서 감사합니다 🙏<br>
+      <b>오시는 길이 아깝지 않도록</b><br>
+      <span class="sub">정성껏 준비해서 오래 뵙겠습니다</span>
+    </div>
+
     <button class="btn" id="btnJoin" onclick="join()">가입하고 포인트 받기</button>
     <button class="btn ghost" onclick="lookup()">이미 회원이에요 — 포인트 조회</button>
     <div class="err hidden" id="err"></div>
@@ -85,8 +101,8 @@ a.kakao{ display:block; text-align:center; background:#FEE500; color:#191919; pa
     <details>
       <summary>개인정보 처리방침 보기</summary>
       <p>
-        <b>1. 수집 항목</b> — 전화번호(필수), 이름·생일(선택)<br>
-        <b>2. 이용 목적</b> — 포인트 적립·사용·조회, 동의한 경우에 한해 혜택 안내<br>
+        <b>1. 수집 항목</b> — 전화번호(필수), 이름·생일 월일(선택)<br>
+        <b>2. 이용 목적</b> — 포인트 적립·사용·조회, 생일 축하 혜택 제공, 동의한 경우에 한해 혜택 안내<br>
         <b>3. 보유 기간</b> — 마지막 방문일로부터 3년, 이후 지체 없이 파기<br>
         <b>4. 파기·철회</b> — 매장에 말씀하시면 즉시 삭제하거나 수신 동의를 철회할 수 있습니다<br>
         <b>5. 안전조치</b> — 접근 권한을 최소화하고, 화면에는 뒷자리만 표시하며 전체 번호 열람은 기록으로 남깁니다<br>
@@ -104,6 +120,11 @@ a.kakao{ display:block; text-align:center; background:#FEE500; color:#191919; pa
     <div style="margin:18px 0 6px" class="sub">현재 포인트</div>
     <div class="pts"><span id="dPts">0</span>P</div>
     <div class="sub" style="margin-top:10px" id="dUse"></div>
+    <div style="margin-top:18px; padding-top:16px; border-top:1px dashed var(--line); font-size:15.5px; line-height:1.8">
+      이제 <b>저희 집 단골</b>이세요 😊<br>
+      오실 때마다 조금씩 쌓아드릴게요.<br>
+      <span class="sub">다음에도 꼭 다시 뵙겠습니다 🙏</span>
+    </div>
     <a class="kakao hidden" id="dKakao" href="#" target="_blank">💬 카카오 채널 추가하고 혜택 받기</a>
     <button class="btn ghost" onclick="location.reload()">다른 번호로 가입</button>
   </div>
@@ -159,10 +180,12 @@ async function join(){
     const r = await api('custJoin', STORE, { phone, name:$('name').value.trim(), birth:$('birth').value.trim(),
       consent_basic:true, consent_mkt:$('c2').checked });
     $('dIcon').textContent = r.is_new ? '🎉' : '👋';
-    $('dTitle').textContent = r.is_new ? '가입 완료!' : '이미 가입되어 있어요';
+    const nm = r.name ? r.name + '님' : '';
+    $('dTitle').textContent = r.is_new ? (nm ? nm + ', 반갑습니다!' : '가입 완료!')
+                                       : (nm ? nm + ', 또 오셨네요!' : '이미 가입되어 있어요');
     $('dMsg').textContent = r.is_new
-      ? (r.bonus > 0 ? '가입 축하 ' + (+r.bonus).toLocaleString('ko-KR') + 'P를 드렸어요!' : '이제부터 적립됩니다.')
-      : (r.name ? r.name + '님, 반갑습니다!' : '기존 회원이시네요!');
+      ? (r.bonus > 0 ? '첫 만남 감사 인사로 ' + (+r.bonus).toLocaleString('ko-KR') + 'P를 먼저 드렸어요' : '이제부터 차곡차곡 적립됩니다')
+      : '기억하고 있었어요. 오늘도 감사합니다';
     $('dPts').textContent = (+r.balance).toLocaleString('ko-KR');
     $('dUse').textContent = (+r.min_use).toLocaleString('ko-KR') + 'P부터 매장에서 현금처럼 쓸 수 있어요.';
     if(r.kakao_url){ $('dKakao').href = r.kakao_url; $('dKakao').classList.remove('hidden'); }
