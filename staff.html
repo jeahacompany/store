@@ -477,11 +477,23 @@ async function loadMyLeaves(){
 async function loadTasks(){
   try{
     const list = await api('myTasks', TOKEN);
+    const late = t => {
+      if(t.status !== 'open') return 0;
+      const today = new Date(); today.setHours(0,0,0,0);
+      const base = t.due_date ? new Date(t.due_date+'T00:00:00')
+                 : (t.created_at ? new Date(new Date(t.created_at).setDate(new Date(t.created_at).getDate()+3)) : null);
+      if(!base) return 0;
+      base.setHours(0,0,0,0);
+      const d = Math.round((today - base)/86400000);
+      return d > 0 ? d : 0;
+    };
     $('taskList').innerHTML = list.length ? list.map(t =>
       '<div class="task'+(t.status==='done'?' done':'')+'">'
       + '<input type="checkbox" '+(t.status==='done'?'checked disabled':'')+' onchange="finishTask(\''+t.id+'\', this)">'
       + '<div><div class="t">'+esc(t.title)+(t.for_all?' <span class="badge">전체</span>':'')
-      + (t.due_date?' <span class="badge a">'+fmtDate(t.due_date)+'까지</span>':'')+'</div>'
+      + (late(t)?' <span class="badge r">'+late(t)+'일 지남</span>':'')
+      + (t.due_date?' <span class="badge '+(late(t)?'r':'a')+'">'+fmtDate(t.due_date)+'까지</span>':'')+'</div>'
+      + (t.created_at?'<div class="b">요청 '+fmtDate(t.created_at)+'</div>':'')
       + (t.body?'<div class="b">'+esc(t.body)+'</div>':'')
       + (t.status==='done'&&t.done_name?'<div class="b">완료: '+esc(t.done_name)+'</div>':'')
       + '</div></div>'

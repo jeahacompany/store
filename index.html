@@ -365,8 +365,8 @@
           <div style="margin-top:12px"><button class="btn" onclick="saveTask()">오더 등록</button></div>
         </div>
         <div class="card">
-          <h2>오더 현황</h2>
-          <div class="table-scroll"><table><thead><tr><th>제목</th><th>담당</th><th>기한</th><th>상태</th><th></th></tr></thead>
+          <h2>오더 현황 <span id="taskLate" style="margin-left:8px"></span></h2>
+          <div class="table-scroll"><table><thead><tr><th>제목</th><th>담당</th><th>요청일</th><th>기한</th><th>상태</th><th></th></tr></thead>
           <tbody id="taskBody"></tbody></table></div>
         </div>
       </div>
@@ -2043,14 +2043,31 @@ async function loadTasks(){
   if(!STAFF.length){ try{ STAFF = await api('staffList', TOKEN); fillWhoSelects(); }catch(e){} }
   try{
     TASKS = await api('taskList', TOKEN);
+    const lateOf = t => {
+      if(t.status !== 'open') return 0;
+      const today = new Date(); today.setHours(0,0,0,0);
+      const base = t.due_date ? new Date(t.due_date+'T00:00:00')
+                 : (t.created_at ? new Date(new Date(t.created_at).setDate(new Date(t.created_at).getDate()+3)) : null);
+      if(!base) return 0;
+      base.setHours(0,0,0,0);
+      const d = Math.round((today - base)/86400000);
+      return d > 0 ? d : 0;
+    };
+    const lateCnt = TASKS.filter(t => lateOf(t) > 0).length;
+    $('taskLate').innerHTML = lateCnt
+      ? '<span class="badge r">⚠️ 기한 지난 미완료 '+lateCnt+'건</span>' : '';
     $('taskBody').innerHTML = TASKS.map(t => {
-      const st = t.status==='open' ? '<span class="badge a">진행중</span>'
+      const L = lateOf(t);
+      const st = t.status==='open'
+        ? (L ? '<span class="badge r">'+L+'일 지남</span>' : '<span class="badge a">진행중</span>')
         : '<span class="badge g">완료'+(t.done_name?' · '+esc(t.done_name):'')+'</span>';
-      return '<tr><td class="name-cell">'+esc(t.title)+(t.body?'<div class="sub">'+esc(t.body)+'</div>':'')+'</td>'
-        + '<td>'+(t.assignee_name?esc(t.assignee_name):'전체')+'</td><td>'+(t.due_date?fmtDate(t.due_date):'-')+'</td>'
+      return '<tr'+(L?' style="background:#FFF5F5"':'')+'><td class="name-cell">'+esc(t.title)+(t.body?'<div class="sub">'+esc(t.body)+'</div>':'')+'</td>'
+        + '<td>'+(t.assignee_name?esc(t.assignee_name):'전체')+'</td>'
+        + '<td class="sub">'+(t.created_at?fmtDate(t.created_at):'-')+'</td>'
+        + '<td>'+(t.due_date?fmtDate(t.due_date):'-')+'</td>'
         + '<td>'+st+'</td>'
         + '<td><button class="btn sm red" onclick="delTask(\''+t.id+'\')">삭제</button></td></tr>';
-    }).join('') || '<tr><td colspan="5" class="sub">아직 오더가 없어요.</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="sub">아직 오더가 없어요.</td></tr>';
   }catch(e){ toast(e.message); }
 }
 async function saveTask(){
