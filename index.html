@@ -683,6 +683,7 @@
         </div>
         <div class="card">
           <h2>요일별 인원 <span class="sub">— 평일 홀 4명 · 주말 홀 6명 기준</span></h2>
+          <div class="sub" style="margin-bottom:8px">영업 · 평일 11:00~15:00 / <b>브레이크 15:00~17:00</b> / 17:00~21:00 &nbsp;·&nbsp; 주말 10:30~21:00 (브레이크 없음)</div>
           <div id="shCount"></div>
         </div>
       </div>
@@ -693,12 +694,7 @@
           <h2 id="shmTitle">근무 배정</h2>
           <input type="hidden" id="shmId"><input type="hidden" id="shmStaff"><input type="hidden" id="shmDate">
           <div class="sub" id="shmWho" style="margin-bottom:10px"></div>
-          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px">
-            <button class="btn sm ghost" onclick="shPreset('10:30','21:30',60)">종일 10:30~21:30</button>
-            <button class="btn sm ghost" onclick="shPreset('10:30','16:00',0)">오픈 10:30~16:00</button>
-            <button class="btn sm ghost" onclick="shPreset('16:00','21:30',0)">마감 16:00~21:30</button>
-            <button class="btn sm ghost" onclick="shPreset('17:00','22:00',0)">저녁 17:00~22:00</button>
-          </div>
+          <div id="shPresets" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px"></div>
           <div class="grid2">
             <div><label>출근</label><input id="shmStart" type="time" style="width:100%"></div>
             <div><label>퇴근</label><input id="shmEnd" type="time" style="width:100%"></div>
@@ -1213,6 +1209,22 @@ const TITLES = {today:'오늘', ai:'AI 비서', cal:'캘린더', staff:'직원',
 // 직책 — 매장에서 부르는 그대로
 const POSITIONS = ['점장','매니저','홀','셰프','부셰프','찬모','주방보조','세척'];
 const SHIFT_TARGET = { weekday: 4, weekend: 6 };   // 홀 목표 인원
+// 영업시간 — 평일 11:00~15:00 / 브레이크 15:00~17:00 / 17:00~21:00, 주말 10:30~21:00 풀
+// 근무는 오픈 준비 30분 전 ~ 마감 정리 30분 후 기준
+const SHIFT_PRESETS = {
+  weekday: [
+    ['통근무',  '10:30','21:30',120],   // 브레이크타임 2시간은 휴게로 제외
+    ['런치',    '10:30','15:30',0],
+    ['디너',    '16:30','21:30',0],
+    ['런치 짧게','11:00','15:00',0],
+  ],
+  weekend: [
+    ['통근무',  '10:00','21:30',60],
+    ['오픈',    '10:00','16:00',0],
+    ['미들',    '12:00','18:00',0],
+    ['마감',    '15:30','21:30',0],
+  ]
+};
 const IB_CATS = ['고기','야채','식자재','음료','주류','소모품','기타'];
 const EV_COLORS = {
   '공사·인테리어':['#FFF4E6','#E8590C'], '행정·계약':['#E7F5FF','#1971C2'], '발주·입고':['#F3F0FF','#7048E8'],
@@ -2752,9 +2764,17 @@ function openShift(staffId, date, id){
   $('shmWho').textContent = (st ? st.name + ' (' + (st.position||'-') + ')' : '') + ' · '
     + (d.getMonth()+1)+'/'+d.getDate()+' ('+DOWK[d.getDay()]+')';
   $('shmTitle').textContent = id ? '근무 수정' : '근무 배정';
-  $('shmStart').value = x ? x.start_time.slice(0,5) : '10:30';
-  $('shmEnd').value   = x ? x.end_time.slice(0,5) : '21:30';
-  $('shmBreak').value = x ? x.break_min : 0;
+  // 요일에 맞는 프리셋 (평일엔 브레이크타임 2시간이 휴게로 빠짐)
+  const wk = (d.getDay() === 0 || d.getDay() === 6);
+  const ps = wk ? SHIFT_PRESETS.weekend : SHIFT_PRESETS.weekday;
+  $('shPresets').innerHTML = '<span class="sub" style="align-self:center; margin-right:4px">'
+    + (wk ? '주말 (10:30~21:00 풀)' : '평일 (11~15 · 브레이크 · 17~21)') + '</span>'
+    + ps.map(p => '<button class="btn sm ghost" onclick="shPreset(\''+p[1]+'\',\''+p[2]+'\','+p[3]+')">'
+        + p[0]+' '+p[1]+'~'+p[2]+'</button>').join('');
+  const def = ps[0];
+  $('shmStart').value = x ? x.start_time.slice(0,5) : def[1];
+  $('shmEnd').value   = x ? x.end_time.slice(0,5) : def[2];
+  $('shmBreak').value = x ? x.break_min : def[3];
   $('shmMemo').value  = x ? (x.memo||'') : '';
   $('shmDel').classList.toggle('hidden', !id);
   shCost();
