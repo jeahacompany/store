@@ -48,6 +48,15 @@ input:focus{ outline:none; border-color:var(--brand) }
 .callbox .big{ font-size:30px; font-weight:800; margin:6px 0 }
 .dot{ display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--green); margin-right:5px;
   animation:blink 1.6s infinite }
+/* 실시간 시계 */
+.clock{ margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,.28) }
+.clock .cdate{ font-size:15px; opacity:.95 }
+.clock .ctime{ font-size:40px; font-weight:800; line-height:1.1; font-variant-numeric:tabular-nums; letter-spacing:1px }
+.nowbox{ margin-top:12px; background:rgba(255,255,255,.2); border-radius:12px; padding:10px 12px;
+  font-size:15.5px; font-weight:600 }
+.myclock{ text-align:center; margin-top:6px }
+.myclock .d{ color:var(--sub); font-size:14px }
+.myclock .t{ font-size:24px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--ink) }
 @keyframes blink{ 0%,100%{opacity:1} 50%{opacity:.25} }
 a.kakao{ display:block; text-align:center; background:#FEE500; color:#191919; padding:15px; border-radius:12px;
   font-weight:700; text-decoration:none; margin-top:12px }
@@ -64,7 +73,11 @@ details summary{ cursor:pointer; font-weight:600 }
   <div class="hero">
     <div style="font-size:15px; opacity:.95" id="hStore">매장</div>
     <div style="font-size:22px; font-weight:700; margin-top:6px">웨이팅 등록</div>
-    <div style="font-size:14.5px; opacity:.95; margin-top:8px" id="hNow">지금 대기 확인 중...</div>
+    <div class="clock">
+      <div class="cdate" id="hDate">-</div>
+      <div class="ctime" id="hTime">--:--:--</div>
+    </div>
+    <div class="nowbox" id="hNow"><span class="dot"></span>대기 현황 확인 중...</div>
   </div>
 
   <div class="card">
@@ -99,7 +112,11 @@ details summary{ cursor:pointer; font-weight:600 }
   <div class="card">
     <div class="myno">
       <div class="lbl" id="mStore">순창담_본점</div>
-      <div class="lbl" style="margin-top:10px">내 대기번호</div>
+      <div class="myclock">
+        <div class="d" id="mDate">-</div>
+        <div class="t" id="mTime">--:--:--</div>
+      </div>
+      <div class="lbl" style="margin-top:12px">내 대기번호</div>
       <div class="no" id="mNo">-</div>
       <div class="sub" id="mPeople"></div>
     </div>
@@ -171,16 +188,51 @@ function setPeople(n, btn){
   document.querySelectorAll('#peopleBox button').forEach(b => b.classList.toggle('on', b===btn));
 }
 
+/* ---- 시계: 서버 시각에 맞춰 1초마다 (폰 시계가 틀려도 화면은 정확하게) ---- */
+let SKEW = 0;                                   // 서버시각 - 폰시각 (ms)
+const DOW = ['일','월','화','수','목','금','토'];
+function syncTime(s){
+  if(!s) return;
+  const t = new Date(s.replace(' ', 'T')).getTime();   // 서버가 준 KST 시각
+  if(!isNaN(t)) SKEW = t - Date.now();
+}
+function tickClock(){
+  const d = new Date(Date.now() + SKEW);
+  const p = n => String(n).padStart(2,'0');
+  const ds = d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+DOW[d.getDay()]+')';
+  const ts = p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
+  const set = (id, v) => { const el = $(id); if(el) el.textContent = v; };
+  set('hDate', ds); set('hTime', ts);
+  set('mDate', ds); set('mTime', ts);
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+/* ---- 등록 화면의 현재 대기 현황 (10초마다 갱신) ---- */
+async function loadPublic(){
+  try{
+    const r = await api('waitPublic', STORE);
+    INFO = r;
+    syncTime(r.server_time);
+    tickClock();
+    $('hStore').textContent = r.store_name || '매장';
+    $('mStore').textContent = r.store_name || '매장';
+    document.title = (r.store_name||'매장') + ' 웨이팅';
+    if(r.join_bonus > 0) $('bonusTxt').textContent = (+r.join_bonus).toLocaleString('ko-KR')+'P';
+    $('hNow').innerHTML = r.waiting > 0
+      ? '<span class="dot"></span>현재 대기 <b>' + r.waiting + '팀</b> · 예상 <b>' + r.eta + '분</b>'
+      : '<span class="dot"></span>지금은 <b>대기 없이 바로 입장</b> 가능해요!';
+  }catch(e){ /* 잠깐 실패해도 다음 갱신 때 다시 시도 */ }
+}
+
 (async () => {
   if(TOK){ await poll(); show('myView'); startTimer(); return; }
   if(!STORE){ $('loading').textContent = '잘못된 주소예요. 매장의 QR을 다시 스캔해주세요.'; return; }
   try{
-    INFO = await api('custStoreInfo', STORE);
-    $('hStore').textContent = INFO.name || '매장';
-    $('mStore').textContent = INFO.name || '매장';
-    document.title = (INFO.name||'매장') + ' 웨이팅';
-    if(INFO.join_bonus > 0) $('bonusTxt').textContent = (+INFO.join_bonus).toLocaleString('ko-KR')+'P';
+    await api('waitPublic', STORE);          // 주소가 유효한지 먼저 확인
+    await loadPublic();
     show('joinView');
+    setInterval(() => { if(!$('joinView').classList.contains('hidden')) loadPublic(); }, 10000);
   }catch(e){ $('loading').textContent = e.message; }
 })();
 
@@ -207,6 +259,7 @@ async function join(){
 function fail(m){ $('err').textContent = m; $('err').classList.remove('hidden'); }
 
 function render(r){
+  syncTime(r.server_time);
   $('mNo').textContent = r.wait_no;
   $('mPeople').textContent = r.people + '명';
   if(r.store_name) $('mStore').textContent = r.store_name;
@@ -217,8 +270,8 @@ function render(r){
   if(st === '대기' || st === '호출'){
     $('mAhead').textContent = r.ahead;
     $('mEta').textContent = Math.max(0, (+r.ahead) * (+r.avg_min || 8));
-    const d = new Date();
-    $('mUpdated').textContent = '마지막 확인 ' + String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+    const d = new Date(Date.now() + SKEW), p = n => String(n).padStart(2,'0');
+    $('mUpdated').textContent = '마지막 확인 ' + p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
   } else {
     const map = { '입장':['🍲','입장하셨어요','맛있게 드세요!'],
                   '취소':['🙏','대기가 취소됐어요','다음에 또 찾아주세요.'],
