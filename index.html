@@ -698,11 +698,42 @@
               <input id="qkAmt" type="text" inputmode="numeric" oninput="mFmt(this)" style="width:100%"
                      onkeydown="if(event.key==='Enter'){event.preventDefault();qkSave()}"></div>
             <div style="flex:1.4; min-width:180px"><label>계정과목 <span class="sub" id="qkAuto"></span></label>
-              <select id="qkAcct" style="width:100%"></select></div>
-            <div style="flex:1; min-width:110px"><label>월</label>
+              <select id="qkAcct" style="width:100%" onchange="qkAcctChange()"></select></div>
+            <div style="flex:0.9; min-width:120px"><label>성격 <span class="sub" id="qkCtAuto"></span></label>
+              <select id="qkCt" style="width:100%">
+                <option value="고정">고정 (매달 같음)</option>
+                <option value="변동">변동 (매출 비례)</option>
+                <option value="준변동">준변동 (기본+사용량)</option>
+                <option value="일시">일시 (이번 달만)</option>
+              </select></div>
+            <div style="flex:0.8; min-width:105px"><label>월</label>
               <select id="qkYm" style="width:100%"></select></div>
             <button class="btn" onclick="qkSave()">추가</button>
           </div>
+
+          <!-- 없는 계정과목 새로 만들기 -->
+          <div id="qkNewBox" class="hidden" style="margin-top:10px; padding:12px; background:#fff;
+               border:2px dashed var(--brand); border-radius:12px">
+            <div class="sub" style="margin-bottom:8px"><b>새 계정과목 만들기</b> — 어디에 속하는지만 골라주면 됩니다.
+              코드를 모르면 비워두세요 (세무사가 채워줍니다).</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end">
+              <div style="flex:1; min-width:150px"><label>구분</label>
+                <select id="naSec" style="width:100%">
+                  <option>판관비</option><option>매출원가</option><option>매출</option>
+                  <option>영업외비용</option><option>영업외수익</option></select></div>
+              <div style="flex:1.3; min-width:160px"><label>계정과목 이름</label>
+                <input id="naName" style="width:100%" placeholder="예: 로열티, 배달대행료"></div>
+              <div style="flex:0.7; min-width:100px"><label>코드 (선택)</label>
+                <input id="naCode" style="width:100%" placeholder="831"></div>
+              <div style="flex:1; min-width:130px"><label>성격</label>
+                <select id="naCt" style="width:100%">
+                  <option value="고정">고정</option><option value="변동">변동</option>
+                  <option value="준변동">준변동</option><option value="일시" selected>일시</option></select></div>
+              <button class="btn sm" onclick="qkCreateAccount()">만들기</button>
+              <button class="btn sm ghost" onclick="qkCancelNew()">취소</button>
+            </div>
+          </div>
+
           <div id="qkHint" class="sub" style="margin-top:8px"></div>
         </div>
         <!-- 비용 성격 요약 + 손익분기점 -->
@@ -3340,13 +3371,59 @@ function bkFillSelects(){
   const cur = $('qkAcct').value;
   $('qkAcct').innerHTML = BK_SEC.map(sec =>
     '<optgroup label="'+sec+'">' + (BOOK.rows||[]).filter(r => r.section===sec)
-      .map(r => '<option value="'+r.id+'">'+esc(r.name)+'</option>').join('') + '</optgroup>').join('');
-  if(cur) $('qkAcct').value = cur;
+      .map(r => '<option value="'+r.id+'">'+(r.code?'['+esc(r.code)+'] ':'')+esc(r.name)+'</option>').join('')
+    + '</optgroup>').join('')
+    + '<option value="__new__">➕ 새 계정과목 만들기…</option>';
+  if(cur && cur !== '__new__') $('qkAcct').value = cur;
+  qkSyncCt();
   const ym = $('qkYm').value;
   $('qkYm').innerHTML = BOOK.months.map(m =>
     '<option value="'+m+'">'+m.slice(0,4)+'.'+m.slice(5)+'</option>').join('');
   $('qkYm').value = ym && BOOK.months.includes(ym) ? ym : BOOK.months[0];
 }
+// 계정과목을 고르면 그 계정의 기본 성격을 성격칸에 맞춰줌
+function qkSyncCt(){
+  if(!BOOK) return;
+  const r = (BOOK.rows||[]).find(x => x.id === $('qkAcct').value);
+  if(r){ $('qkCt').value = r.cost_type || '일시';
+         $('qkCtAuto').innerHTML = '<span class="badge">기본 '+esc(r.cost_type||'일시')+'</span>'; }
+  else { $('qkCtAuto').textContent = ''; }
+}
+function qkAcctChange(){
+  if($('qkAcct').value === '__new__'){
+    $('qkNewBox').classList.remove('hidden');
+    $('naName').value = $('qkName').value.trim();
+    $('naName').focus();
+  }else{
+    $('qkNewBox').classList.add('hidden');
+    qkSyncCt();
+  }
+}
+function qkCancelNew(){
+  $('qkNewBox').classList.add('hidden');
+  if($('qkAcct').value === '__new__' && BOOK && BOOK.rows.length) $('qkAcct').value = BOOK.rows[0].id;
+  qkSyncCt();
+}
+async function qkCreateAccount(){
+  const name = $('naName').value.trim();
+  if(!name){ alert('계정과목 이름을 적어주세요.'); $('naName').focus(); return; }
+  try{
+    const r = await api('pnlAccountSave', TOKEN, {
+      section: $('naSec').value, name: name,
+      code: $('naCode').value.trim(), cost_type: $('naCt').value,
+      keyword: $('qkName').value.trim() || name    // 친 이름을 키워드로 학습
+    });
+    $('qkNewBox').classList.add('hidden');
+    $('naName').value=''; $('naCode').value='';
+    await loadBook();
+    $('qkAcct').value = r.id; qkSyncCt();
+    $('qkCt').value = $('naCt').value;
+    QK_LAST = r.id;
+    toast(r.name + ' 계정을 만들었어요');
+    $('qkAmt').focus();
+  }catch(e){ alert(e.message); }
+}
+
 function qkGuess(){
   clearTimeout(QK_T);
   const t = $('qkName').value.trim();
@@ -3357,6 +3434,7 @@ function qkGuess(){
       const m = (r.matches||[])[0];
       if(m){
         $('qkAcct').value = m.account_id;
+        qkSyncCt();
         $('qkAuto').innerHTML = '<span class="badge g">자동: '+esc(m.account)+'</span>';
         $('qkHint').innerHTML = '💡 <b>'+esc(m.account)+'</b> — ' + esc(m.hint||'')
           + ' <span style="color:#ADB5BD">("'+esc(m.keyword)+'" 로 판단)</span>'
@@ -3366,20 +3444,29 @@ function qkGuess(){
         QK_LAST = m.account_id;
       }else{
         $('qkAuto').innerHTML = '<span class="badge a">모르겠어요</span>';
-        $('qkHint').textContent = '처음 보는 이름이에요. 계정과목을 골라주시면 다음부터 기억할게요.';
+        $('qkHint').innerHTML = '처음 보는 이름이에요. 계정과목을 골라주시면 다음부터 기억할게요.<br>'
+          + '맞는 계정이 아예 없으면 <b style="color:var(--brand); cursor:pointer" onclick="qkNewFromHint()">'
+          + '➕ 새 계정과목 만들기</b> 를 누르세요.';
         QK_LAST = '';
       }
     }catch(e){}
   }, 350);
 }
+function qkNewFromHint(){ $('qkAcct').value = '__new__'; qkAcctChange(); }
+
 async function qkSave(){
   const name = $('qkName').value.trim();
   const amt = +String($('qkAmt').value).replace(/[^\d]/g,'') || 0;
-  const acct = $('qkAcct').value, ym = $('qkYm').value;
+  const acct = $('qkAcct').value, ym = $('qkYm').value, ct = $('qkCt').value;
   if(!name){ alert('항목·거래처 이름을 적어주세요.'); return; }
+  if(acct === '__new__'){ alert('먼저 [만들기]를 눌러 계정과목을 만들어주세요.'); return; }
   if(!acct){ alert('계정과목을 골라주세요.'); return; }
   try{
     await api('pnlEntrySave', TOKEN, { ym:ym, account_id:acct, detail:name, amount:amt });
+    // 계정 기본 성격과 다르게 골랐으면 이 항목만 따로 지정
+    const r = (BOOK.rows||[]).find(x => x.id === acct);
+    if(r && ct && ct !== r.cost_type)
+      try{ await api('pnlEntryCostType', TOKEN, { account_id:acct, detail:name, cost_type:ct }); }catch(e){}
     // 자동 추천과 다른 걸 골랐으면 그대로 학습
     if(QK_LAST && QK_LAST !== acct)
       try{ await api('pnlKeywordSave', TOKEN, { keyword:name, account_id:acct }); }catch(e){}
