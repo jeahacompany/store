@@ -20,6 +20,13 @@ body{font-family:Pretendard,-apple-system,sans-serif; background:#F8F9FA; color:
 .maintabs .mt.active{color:var(--brand); border-bottom-color:var(--brand)}
 .maintabs .mt .n{background:#E9ECEF; color:#495057; border-radius:20px; padding:2px 10px; font-size:15px}
 .maintabs .mt.active .n{background:var(--brand); color:#fff}
+.maintabs .mt.ready{color:#2B8A3E; animation:mtblink .9s infinite}
+@keyframes mtblink{0%,100%{background:#EBFBEE}50%{background:#C3FAE8}}
+.ready-card{border:3px solid #37B24D; background:#EBFBEE; border-radius:16px; padding:16px; margin-bottom:12px}
+.ready-card .rc-top{display:flex; align-items:center; gap:8px; font-size:20px}
+.ready-card .rc-what{font-size:24px; font-weight:800; margin:10px 0 14px}
+.ready-banner{position:fixed; left:0; right:0; bottom:0; z-index:50; background:#37B24D; color:#fff;
+  padding:16px; text-align:center; font-size:20px; font-weight:800; cursor:pointer}
 .wrap{padding:16px 20px 120px}
 .card{background:#fff; border:1px solid var(--line); border-radius:16px; padding:18px; margin-bottom:14px}
 h2{font-size:19px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
@@ -39,6 +46,13 @@ h2{font-size:19px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
 .item.on{border-color:var(--brand); background:#FFF4E6}
 .item .nm{font-size:17px; font-weight:700}
 .item .qty{font-size:26px; font-weight:800; color:var(--brand); margin-top:4px}
+.stepper{display:flex; align-items:center; justify-content:center; gap:6px; margin-top:8px}
+.stepper .stp{width:44px; height:44px; border-radius:12px; border:2px solid var(--brand); background:#fff;
+  color:var(--brand); font-size:26px; font-weight:800; line-height:1; cursor:pointer; padding:0;
+  display:flex; align-items:center; justify-content:center}
+.stepper .stp.plus{background:var(--brand); color:#fff}
+.stepper .stp:active{transform:scale(.92)}
+.stepper .stpq{min-width:54px; font-size:22px; font-weight:800; color:var(--brand)}
 .item .pg{font-size:12px; color:var(--sub)}
 /* 배치도 — 실제 셀프바 생긴 대로 */
 .zone{margin-top:16px}
@@ -94,7 +108,7 @@ h2{font-size:19px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
   <div class="wrap">
     <div id="pane-order">
       <div class="card">
-        <h2>🍽 부족한 걸 눌러주세요 <span class="sub">— 누를 때마다 1개씩, 길게 누르면 취소</span>
+        <h2>🍽 부족한 걸 눌러주세요 <span class="sub">— 누르면 1개, 담긴 건 −/+ 로 조절</span>
           <span style="margin-left:auto; display:flex; gap:6px">
             <button class="btn sm vmode active" onclick="setView('map',this)">🗺 배치도</button>
             <button class="btn sm ghost vmode" onclick="setView('list',this)">☰ 목록</button>
@@ -110,6 +124,7 @@ h2{font-size:19px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
         <div id="liveReqs"><div class="sub">불러오는 중...</div></div>
       </div>
     </div>
+    <div id="readyBanner" class="ready-banner hidden" onclick="mtab('live')"></div>
 
     <div id="pane-done" class="hidden">
       <div class="card">
@@ -212,10 +227,10 @@ function renderMap(){
         if(!it){ cells.push('<div class="slot empty"></div>'); continue; }
         const q = SEL[it.id] || 0;
         cells.push('<div class="slot'+(q?' on':'')+'" onclick="pick(\''+it.id+'\')" '
-          + 'oncontextmenu="event.preventDefault(); unpick(\''+it.id+'\')">'
-          + (q ? '<span class="q">'+q+'</span>' : '')
+          + '>'
           + '<div class="nm">'+esc(it.name)+'</div>'
           + '<div class="un">'+(it.portion_g>0 ? (+it.portion_g)+'g/'+esc(it.unit) : esc(it.unit))+'</div>'
+          + (q ? stepper(it, q) : '')
           + '</div>');
       }
     }
@@ -230,9 +245,9 @@ function renderMap(){
       + '<div class="grid" style="grid-template-columns:repeat(4,1fr)">'
       + rest.map(it => { const q = SEL[it.id]||0;
           return '<div class="slot'+(q?' on':'')+'" onclick="pick(\''+it.id+'\')" '
-            + 'oncontextmenu="event.preventDefault(); unpick(\''+it.id+'\')">'
-            + (q?'<span class="q">'+q+'</span>':'')
-            + '<div class="nm">'+esc(it.name)+'</div><div class="un">'+esc(it.unit)+'</div></div>';
+            + '>'
+            + '<div class="nm">'+esc(it.name)+'</div><div class="un">'+esc(it.unit)+'</div>'
+            + (q ? stepper(it, q) : '') + '</div>';
         }).join('') + '</div></div>';
   }
 }
@@ -242,9 +257,9 @@ function renderItems(){
     '<div class="cat">'+esc(c)+'</div><div class="items">'
     + ITEMS.filter(i => i.category === c).map(i => {
         const q = SEL[i.id] || 0;
-        return '<div class="item'+(q?' on':'')+'" onclick="pick(\''+i.id+'\')" oncontextmenu="event.preventDefault(); unpick(\''+i.id+'\')">'
+        return '<div class="item'+(q?' on':'')+'" onclick="pick(\''+i.id+'\')">'
           + '<div class="nm">'+esc(i.name)+'</div>'
-          + '<div class="qty">'+(q ? '+'+q+esc(i.unit) : '&nbsp;')+'</div>'
+          + (q ? stepper(i, q) : '<div class="qty">&nbsp;</div>')
           + (i.portion_g > 0 ? '<div class="pg">1'+esc(i.unit)+' = '+(+i.portion_g)+'g</div>' : '')
           + '</div>';
       }).join('') + '</div>'
@@ -255,6 +270,14 @@ function renderItems(){
   }).join(', ') : '선택 없음';
 }
 function redraw(){ renderItems(); renderMap(); }
+// 담긴 품목에는 [−] 수량 [+] 를 붙여줌 (길게 누를 필요 없이 손으로 바로 조절)
+function stepper(it, q){
+  return '<div class="stepper" onclick="event.stopPropagation()">'
+    + '<button class="stp minus" onclick="unpick(\''+it.id+'\')">−</button>'
+    + '<span class="stpq">'+q+esc(it.unit||'')+'</span>'
+    + '<button class="stp plus" onclick="pick(\''+it.id+'\')">+</button>'
+    + '</div>';
+}
 function pick(id){ SEL[id] = (SEL[id]||0) + 1; redraw(); }
 function unpick(id){ if(SEL[id]){ SEL[id]--; if(!SEL[id]) delete SEL[id]; redraw(); } }
 function clearSel(){ SEL = {}; redraw(); }
@@ -278,14 +301,19 @@ async function loadReqs(){
     const r = await api('barReqList', TOKEN);
     REQS = r.rows || [];
     const mine = REQS.filter(x => x.status !== '취소');
-    // 완료된 게 새로 생기면 소리로 알림
-    mine.filter(x => x.status === '완료').forEach(x => {
+    // 주방에서 나오면 소리로 알림
+    mine.filter(x => x.status === '나옴' || x.status === '완료').forEach(x => {
       if(!DONE_SEEN.has(x.id)){ if(DONE_SEEN.size) beep(); DONE_SEEN.add(x.id); }
     });
     const live = mine.filter(x => x.status !== '완료');
     const done = mine.filter(x => x.status === '완료');
+    const ready = live.filter(x => x.status === '나옴');   // 나왔는데 아직 안 가져간 것
     $('cntLive').textContent = live.length;
     $('cntDone').textContent = done.length;
+    $('mtLive').classList.toggle('ready', ready.length > 0);
+    $('readyBanner').classList.toggle('hidden', ready.length === 0);
+    $('readyBanner').textContent = ready.length
+      ? '🔔 ' + ready.map(x => x.req_no + '번').join(', ') + ' 나왔어요 — 가져가세요!' : '';
 
     const itemsHtml = x => '<div style="margin-top:4px">' + (x.items||[]).map(i =>
         i.status === '완료'
@@ -294,6 +322,16 @@ async function loadReqs(){
       ).join('') + '</div>';
 
     $('liveReqs').innerHTML = live.map(x => {
+      // 주방에서 나온 것 — 크게 띄우고 [서빙 완료] 버튼
+      if(x.status === '나옴'){
+        return '<div class="ready-card">'
+          + '<div class="rc-top"><b>'+x.req_no+'번</b> <span class="badge g">🔔 나왔어요</span>'
+            + '<span class="sub" style="margin-left:auto">'+(x.done_hm||'')+' 나옴'
+            + (x.serve_min >= 1 ? ' · '+Math.round(x.serve_min)+'분째 대기' : '')+'</span></div>'
+          + '<div class="rc-what">'+(x.items||[]).map(i => esc(i.name)+' '+(+i.qty)+esc(i.unit||'')).join(', ')+'</div>'
+          + '<button class="btn green big full" onclick="serve(\''+x.id+'\', this)">✔ 가져다 놨어요 (서빙 완료)</button>'
+          + '</div>';
+      }
       let eta = '';
       if(x.status === '조리중' && x.eta_min){
         const left = x.eta_min - (x.cook_min != null ? x.cook_min : 0);
@@ -311,11 +349,21 @@ async function loadReqs(){
     }).join('') || '<div class="sub" style="padding:20px 0; text-align:center">진행 중인 요청이 없어요 👍</div>';
 
     $('doneReqs').innerHTML = done.map(x =>
-      '<div class="row"><span><b>'+x.req_no+'번</b> <span class="badge">✔ 완료</span>'
+      '<div class="row"><span><b>'+x.req_no+'번</b> <span class="badge g">✔ 서빙 완료</span>'
       + itemsHtml(x)
-      + '</span><span class="sub">'+(x.done_hm || '')+'</span></div>'
+      + '</span><span class="sub">'+(x.done_hm||'')+' 나옴 → '+(x.served_hm||'')+' 서빙'
+      + (x.served_by ? '<br>'+esc(x.served_by) : '')+'</span></div>'
     ).join('') || '<div class="sub" style="padding:20px 0; text-align:center">아직 완료된 게 없어요</div>';
   }catch(e){}
+}
+
+async function serve(id, btn){
+  btn.disabled = true; btn.textContent = '처리 중...';
+  try{
+    const r = await api('barReqServe', TOKEN, id);
+    toast(r.req_no + '번 서빙 완료!');
+    await loadReqs();
+  }catch(e){ alert(e.message); btn.disabled = false; btn.textContent = '✔ 가져다 놨어요 (서빙 완료)'; }
 }
 
 function mtab(name){

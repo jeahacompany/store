@@ -58,6 +58,8 @@ h2{font-size:19px; display:flex; align-items:center; gap:8px}
 .drow .dno{font-weight:800; min-width:44px}
 .drow .dwhat{flex:1}
 .drow .dt{color:#868E96; font-size:14px; white-space:nowrap}
+.serve-wait{background:#FFF9DB; border:2px solid #FFE066; border-radius:14px; padding:14px 16px;
+  font-size:18px; margin-bottom:14px}
 .btn.full{width:100%; margin-top:8px}
 .login{max-width:340px; margin:80px auto; background:#fff; padding:26px; border-radius:16px}
 .login input{width:100%; padding:13px; border:1px solid var(--line); border-radius:10px; font-size:17px; margin-top:8px; font-family:inherit}
@@ -105,6 +107,7 @@ h2{font-size:19px; display:flex; align-items:center; gap:8px}
     </div>
 
     <div id="pane-new">
+      <div id="serveWait" class="serve-wait hidden"></div>
       <div id="reqList" class="reqs"></div>
       <div id="emptyBox" class="empty hidden">
         <div class="big">👨‍🍳</div>
@@ -263,7 +266,13 @@ async function loadReqs(){
     const r = await api('barReqList', TOKEN);
     REQS = r.rows || [];
     const live = REQS.filter(x => x.status === '요청' || x.status === '조리중');
-    const done = REQS.filter(x => x.status === '완료');
+    const done = REQS.filter(x => x.status === '나옴' || x.status === '완료');
+    const waitServe = REQS.filter(x => x.status === '나옴');   // 나왔는데 홀이 아직 안 가져감
+    $('serveWait').classList.toggle('hidden', !waitServe.length);
+    $('serveWait').innerHTML = waitServe.length
+      ? '🍽 <b>' + waitServe.map(x => x.req_no+'번').join(', ') + '</b> 나왔는데 아직 안 가져갔어요'
+        + (waitServe.some(x => x.serve_min >= 3) ? ' <span class="badge r">3분 넘음 — 홀에 알려주세요</span>' : '')
+      : '';
     $('hdPending').textContent = '대기 ' + live.length;
     $('hdPending').className = 'badge ' + (live.length ? 'r' : 'g');
 
@@ -316,9 +325,13 @@ async function loadReqs(){
       else if(x.over_min == null) verdict = '';
       else if(+x.over_min <= 0) verdict = '<span class="badge g">'+x.eta_min+'분 → '+x.cook_min+'분 · 지킴</span>';
       else verdict = '<span class="badge r">'+x.eta_min+'분 → '+x.cook_min+'분 · '+(+x.over_min).toFixed(1)+'분 초과</span>';
-      return '<div class="drow"><span class="dno">'+x.req_no+'번</span>'
+      const served = x.status === '완료'
+        ? '<span class="badge g">홀 서빙 '+(x.served_hm||'')+'</span>'
+        : '<span class="badge a">홀 대기'+(x.serve_min>=1 ? ' '+Math.round(x.serve_min)+'분' : '')+'</span>';
+      return '<div class="drow"'+(x.status==='나옴'?' style="background:#FFF9DB"':'')+'>'
+        + '<span class="dno">'+x.req_no+'번</span>'
         + '<span class="dwhat">' + (x.items||[]).map(i => esc(i.name)+' '+(+i.qty)+esc(i.unit||'')).join(', ')
-        + ' ' + verdict + '</span>'
+        + ' ' + verdict + ' ' + served + '</span>'
         + '<span class="dt">'+(x.done_hm||'')+' · '+esc(x.accepted_by||'')+'</span></div>';
     }).join('') || '<div class="sub">아직 없어요</div>';
 
