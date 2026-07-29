@@ -56,6 +56,11 @@ label{display:block; font-size:14px; color:var(--sub); margin:10px 0 4px}
 .task input[type=checkbox]{width:24px; height:24px; accent-color:var(--brand); flex:none}
 .row{display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px 0; border-bottom:1px solid #F1F2F4; font-size:16px}
 .row:last-child{border-bottom:0}
+.vtabs{display:flex; gap:8px; padding:12px 20px 0; flex-wrap:wrap; background:#fff; border-bottom:1px solid var(--line); position:sticky; top:56px; z-index:9}
+.vtab{padding:12px 18px; border:none; background:transparent; font-size:18px; font-weight:700; font-family:inherit;
+  color:#868E96; cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-1px; display:flex; align-items:center; gap:6px}
+.vtab.active{color:var(--brand); border-bottom-color:var(--brand)}
+.vcnt{background:var(--brand); color:#fff; border-radius:11px; padding:1px 9px; font-size:14px}
 .modal-bg{position:fixed; inset:0; background:rgba(15,17,22,.5); display:flex; align-items:center; justify-content:center; z-index:50; padding:14px}
 .modal{background:#fff; border-radius:16px; padding:24px; width:min(480px,94vw); max-height:90vh; overflow:auto}
 .toast{position:fixed; left:50%; transform:translateX(-50%); bottom:30px; background:var(--side); color:#fff; padding:12px 22px; border-radius:999px; font-size:15px; opacity:0; transition:.25s; pointer-events:none; z-index:99}
@@ -87,7 +92,49 @@ label{display:block; font-size:14px; color:var(--sub); margin:10px 0 4px}
     <a onclick="loadAll()">↻</a>
     <a onclick="doLogout()">로그아웃</a>
   </div>
-  <div class="grid">
+
+  <div class="vtabs">
+    <button class="vtab active" data-v="all"  onclick="showView('all',this)">📋 전체 현황판</button>
+    <button class="vtab" data-v="wait" onclick="showView('wait',this)">⏳ 웨이팅 관리<span class="vcnt hidden" id="vcWait"></span></button>
+    <button class="vtab" data-v="resv" onclick="showView('resv',this)">📅 오늘 예약<span class="vcnt hidden" id="vcResv"></span></button>
+    <button class="vtab" data-v="task" onclick="showView('task',this)">✅ 오늘 할 일<span class="vcnt hidden" id="vcTask"></span></button>
+  </div>
+
+  <!-- 웨이팅 관리 (입장·취소·노쇼까지 전부 보이고 되돌릴 수 있음) -->
+  <div id="view-wait" class="hidden">
+    <div class="card">
+      <h2>⏳ 웨이팅 전체 <span class="sub" id="wfSummary" style="font-weight:400"></span>
+        <button class="btn sm ghost" style="margin-left:auto" onclick="useCoupon()">🎟 쿠폰 사용</button>
+        <button class="btn sm" onclick="openWait()">+ 대기 등록</button></h2>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin:10px 0">
+        <button class="btn sm wf-f active" onclick="wfFilter('live',this)">대기중</button>
+        <button class="btn sm ghost wf-f" onclick="wfFilter('입장',this)">입장</button>
+        <button class="btn sm ghost wf-f" onclick="wfFilter('노쇼',this)">노쇼</button>
+        <button class="btn sm ghost wf-f" onclick="wfFilter('취소',this)">취소</button>
+        <button class="btn sm ghost wf-f" onclick="wfFilter('all',this)">전체</button>
+      </div>
+      <div id="waitFull"><div class="sub">불러오는 중...</div></div>
+    </div>
+  </div>
+
+  <!-- 예약 전체 -->
+  <div id="view-resv" class="hidden">
+    <div class="card">
+      <h2>📅 오늘 예약 <span class="badge b" id="resvCnt2">0</span>
+        <button class="btn sm" style="margin-left:auto" onclick="openResv()">+ 예약 등록</button></h2>
+      <div id="resvListFull"><div class="sub">불러오는 중...</div></div>
+    </div>
+  </div>
+
+  <!-- 할 일 전체 -->
+  <div id="view-task" class="hidden">
+    <div class="card">
+      <h2>✅ 오늘 할 일 <span class="badge a" id="taskCnt2">0</span></h2>
+      <div id="taskListFull"><div class="sub">불러오는 중...</div></div>
+    </div>
+  </div>
+
+  <div class="grid" id="view-all">
     <div><!-- 왼쪽: 웨이팅 · 예약 -->
       <div class="card" style="border-color:#FFD8A8">
         <h2>⏳ 웨이팅 <span class="badge a" id="waitCnt">0</span>
@@ -236,8 +283,54 @@ async function loadAll(){
   loadWait(); loadResv(); loadNotices(); loadSold(); loadTasksB(); loadWork(); loadSn();
 }
 
+/* ---------- 화면 전환 (태블릿 상단 탭) ---------- */
+function showView(v, btn){
+  ['all','wait','resv','task'].forEach(x => $('view-'+x).classList.toggle('hidden', x!==v));
+  document.querySelectorAll('.vtab').forEach(b => b.classList.toggle('active', b===btn));
+  if(v==='wait') renderWaitFull();
+}
+
 /* ---------- 웨이팅 ---------- */
-let WAITS = [];
+let WAITS = [], WF = 'live';
+const WSTAT = { '대기':'', '호출':'g', '입장':'b', '취소':'', '노쇼':'r' };
+function wfFilter(f, btn){
+  WF = f;
+  document.querySelectorAll('.wf-f').forEach(b => { b.classList.toggle('active', b===btn); b.classList.toggle('ghost', b!==btn); });
+  renderWaitFull();
+}
+function renderWaitFull(){
+  const list = WF === 'live' ? WAITS.filter(w => w.status==='대기' || w.status==='호출')
+             : WF === 'all'  ? WAITS
+             : WAITS.filter(w => w.status === WF);
+  $('waitFull').innerHTML = list.map(w => {
+    const done = (w.status!=='대기' && w.status!=='호출');
+    return '<div class="row" style="align-items:center">'
+    + '<span style="font-size:26px; font-weight:800; width:52px; color:'+(done?'#ADB5BD':(w.status==='호출'?'var(--green)':'var(--brand)'))+'">'+w.wait_no+'</span>'
+    + '<span style="flex:1">'
+      + '<b style="font-size:18px">'+w.people+'명</b> '
+      + '<span class="sub">'+esc(w.phone_masked)+'</span> '
+      + '<span class="badge '+(WSTAT[w.status]||'')+'">'+w.status+'</span>'
+      + (w.is_member ? ' <span class="badge b">회원</span>' : '')
+      + (w.geo_ok === false ? ' <span class="badge r">위치미확인</span>' : '')
+      + (w.coupon_amt > 0 ? ' <span class="badge a">🎟 '+(+w.coupon_amt).toLocaleString('ko-KR')+'원 '
+          + (w.coupon_used ? '사용됨' : '#'+w.coupon_code)+'</span>' : '')
+      + (w.memo ? '<div class="sub">'+esc(w.memo)+'</div>' : '')
+      + '<div class="sub">'+tmOf(w.created_at)+' 등록'
+        + (w.called_at ? ' · '+tmOf(w.called_at)+' 호출' : '')
+        + (w.entered_at ? ' · '+tmOf(w.entered_at)+' 입장' : '')
+        + (done ? '' : ' · '+waitMin(w.created_at)+'분 대기중')+'</div>'
+    + '</span>'
+    + '<span style="white-space:nowrap">'
+      + (w.status==='대기' ? '<button class="btn sm green" onclick="setWait(\''+w.id+'\',\'호출\')">호출</button> ' : '')
+      + (w.status==='호출' ? '<button class="btn sm green" onclick="setWait(\''+w.id+'\',\'입장\')">입장</button> ' : '')
+      + '<button class="btn sm ghost" onclick="callPhone(\''+w.id+'\')">📞</button> '
+      + (done ? '<button class="btn sm ghost" onclick="setWait(\''+w.id+'\',\'대기\')">↩ 대기로 되돌리기</button>'
+              : '<button class="btn sm red" onclick="setWait(\''+w.id+'\',\'노쇼\')">노쇼</button> '
+                + '<button class="btn sm ghost" onclick="setWait(\''+w.id+'\',\'취소\')">취소</button>')
+    + '</span></div>';
+  }).join('') || '<div class="sub">해당하는 팀이 없어요.</div>';
+}
+function tmOf(t){ const d = new Date(t), p = n => String(n).padStart(2,'0'); return p(d.getHours())+':'+p(d.getMinutes()); }
 async function loadWait(){
   try{
     const r = await api('waitList', TOKEN);
@@ -271,6 +364,13 @@ async function loadWait(){
         + '<button class="btn sm ghost" onclick="setWait(\''+w.id+'\',\'취소\')">취소</button>'
       + '</span></div>'
     ).join('') || '<div class="sub">대기 팀 없음</div>';
+    // 탭 배지 + 웨이팅 관리 화면
+    const vc = $('vcWait');
+    vc.textContent = r.waiting || ''; vc.classList.toggle('hidden', !r.waiting);
+    $('wfSummary').textContent = '— 대기 ' + r.waiting + ' · 입장 ' + r.entered + ' · 노쇼 ' + r.noshow
+      + ' · 쿠폰 ' + (+r.coupon_issued).toLocaleString('ko-KR') + '원 발행 / '
+      + (+r.coupon_used).toLocaleString('ko-KR') + '원 사용';
+    if(!$('view-wait').classList.contains('hidden')) renderWaitFull();
   }catch(e){ $('waitList').innerHTML = '<div class="sub">'+esc(e.message)+'</div>'; }
 }
 function waitMin(t){ return Math.max(0, Math.round((Date.now() - new Date(t).getTime())/60000)); }
@@ -335,6 +435,9 @@ async function loadResv(){
         : '<button class="btn sm ghost" onclick="setResv(\''+x.id+'\',\'예약\')">되돌리기</button>')
       + '</div>'
     ).join('') : '<div class="sub" style="padding:14px 0">오늘 예약이 없어요. 전화 오면 "+ 예약 등록"을 눌러주세요.</div>';
+    $('resvListFull').innerHTML = $('resvList').innerHTML;
+    $('resvCnt2').textContent = active.length + '팀';
+    const vr = $('vcResv'); vr.textContent = active.length || ''; vr.classList.toggle('hidden', !active.length);
   }catch(e){ $('resvList').innerHTML = '<div class="sub">'+esc(e.message)+'</div>'; }
 }
 function openResv(){
@@ -435,6 +538,17 @@ async function loadTasksB(){
       + (t.assignee_name?' <span class="badge">'+esc(t.assignee_name)+'</span>':' <span class="badge">전체</span>')
       + (t.body?'<div class="sub">'+esc(t.body)+'</div>':'')+'</div></div>'
     ).join('') : '<div class="sub">남은 할 일이 없어요 👍</div>';
+    // 할 일 탭에는 완료된 것까지 전부
+    $('taskCnt2').textContent = open.length;
+    const vt = $('vcTask'); vt.textContent = open.length || ''; vt.classList.toggle('hidden', !open.length);
+    $('taskListFull').innerHTML = list.length ? list.map(t =>
+      '<div class="task"'+(t.status==='done'?' style="opacity:.5"':'')+'>'
+      + (t.status==='open' ? '<input type="checkbox" onchange="doneTask(\''+t.id+'\', this)">' : '<span style="font-size:22px">✔</span>')
+      + '<div><b>'+esc(t.title)+'</b>'
+      + (t.assignee_name?' <span class="badge">'+esc(t.assignee_name)+'</span>':' <span class="badge">전체</span>')
+      + (t.status==='done'?' <span class="badge g">완료</span>':'')
+      + (t.body?'<div class="sub">'+esc(t.body)+'</div>':'')+'</div></div>'
+    ).join('') : '<div class="sub">등록된 할 일이 없어요.</div>';
   }catch(e){}
 }
 async function doneTask(id, cb){
