@@ -192,6 +192,7 @@
         <div class="nav-item" data-t="exp" onclick="tab('exp')"><span class="ico">🧾</span>지출</div>
         <div class="nav-item" data-t="settle" onclick="tab('settle')"><span class="ico">📊</span>월 정산</div>
         <div class="nav-item" data-t="inb" onclick="tab('inb')"><span class="ico">📦</span>입고 명세서</div>
+        <div class="nav-item" data-t="bar" onclick="tab('bar')"><span class="ico">🍽️</span>셀프바</div>
         <div class="nav-item" data-t="vendor" onclick="tab('vendor')"><span class="ico">🤝</span>거래처<span class="cnt hidden" id="cntVendor"></span></div>
         <div class="nav-item" data-t="stock" onclick="tab('stock')"><span class="ico">🗃️</span>재고</div>
         <div class="nav-item" data-t="price" onclick="tab('price')"><span class="ico">💹</span>단가 변동</div>
@@ -565,6 +566,65 @@
           <div id="ibSummary" style="margin-bottom:10px"></div>
           <div class="table-scroll"><table><thead><tr><th>날짜</th><th>거래처</th><th>품목</th><th>합계</th><th>결제</th><th></th></tr></thead>
           <tbody id="ibListBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- 셀프바 -->
+      <div id="tab-bar" class="hidden">
+        <div class="card" style="border-color:#FFD8A8">
+          <h2>🍽️ 셀프바 화면 주소 <span class="sub">— 태블릿 2대에 각각 띄워두세요</span></h2>
+          <div class="grid2">
+            <div><label>셀프바 태블릿 (바 담당)</label>
+              <div style="display:flex; gap:6px"><input id="barUrl" readonly style="flex:1; background:#F8F9FA; font-size:13px">
+                <button class="btn sm ghost" onclick="barCopy('barUrl')">복사</button></div></div>
+            <div><label>주방 태블릿 (셰프·찬모)</label>
+              <div style="display:flex; gap:6px"><input id="kitUrl" readonly style="flex:1; background:#F8F9FA; font-size:13px">
+                <button class="btn sm ghost" onclick="barCopy('kitUrl')">복사</button></div></div>
+          </div>
+          <div class="sub" style="margin-top:8px">직원 계정으로 로그인하면 돼요. 요청하면 주방 화면에서 <b>소리로 알려주고</b>, 완료하면 <b>재고가 자동으로 차감</b>됩니다.</div>
+        </div>
+
+        <div class="card">
+          <h2>셀프바 품목 <span class="sub">— 정량(1판 = 몇 g)을 넣으면 소진량·원가가 자동 계산돼요</span>
+            <button class="btn sm" onclick="openBarItem()" style="float:right">+ 품목 추가</button></h2>
+          <div class="table-scroll"><table><thead><tr><th>분류</th><th>품목</th><th>단위</th><th>1단위 중량</th><th>재고 연결</th><th>상태</th><th></th></tr></thead>
+          <tbody id="barItemBody"></tbody></table></div>
+        </div>
+
+        <div class="card">
+          <h2>오늘 소진 현황 <span class="sub" id="barTodaySum"></span></h2>
+          <div id="barToday"></div>
+        </div>
+
+        <div class="card">
+          <h2>기간 소진 집계
+            <input type="date" id="barFrom" onchange="loadBarStats()" style="margin-left:8px">
+            <input type="date" id="barTo" onchange="loadBarStats()"></h2>
+          <div class="sub" style="margin-bottom:8px">무한리필은 포스에 소진량이 안 찍혀요. <b>이 데이터가 유일한 소비 기록</b>이라 발주·원가의 근거가 됩니다.</div>
+          <div class="table-scroll"><table><thead><tr><th>품목</th><th>요청 횟수</th><th>총 수량</th><th>총 중량</th></tr></thead>
+          <tbody id="barStatBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- 셀프바 품목 모달 -->
+      <div class="modal-bg hidden" id="barItemModal">
+        <div class="modal" style="max-width:460px">
+          <h2>셀프바 품목</h2>
+          <input type="hidden" id="biId">
+          <div class="grid2">
+            <div><label>품목명</label><input id="biName" style="width:100%" placeholder="예: 우삼겹"></div>
+            <div><label>분류</label><select id="biCat" style="width:100%">
+              <option>고기</option><option>야채</option><option>사리</option><option>소스</option><option>기타</option></select></div>
+            <div><label>단위</label><input id="biUnit" style="width:100%" placeholder="판" value="판"></div>
+            <div><label>1단위 중량 (g)</label><input id="biPortion" type="number" style="width:100%" placeholder="500"></div>
+          </div>
+          <label>재고 품목 연결 <span class="sub">(입고 명세서의 품목명과 똑같이 — 비우면 재고 차감 안 함)</span></label>
+          <input id="biStock" list="stockNames" style="width:100%" placeholder="예: 우삼겹">
+          <datalist id="stockNames"></datalist>
+          <label>표시 순서</label><input id="biSort" type="number" value="0" style="width:100%">
+          <div style="margin-top:14px"><button class="btn" onclick="biSave()">저장</button>
+            <button class="btn red hidden" id="biDel" onclick="biDelete()">삭제</button>
+            <button class="btn ghost" onclick="closeModal('barItemModal')">닫기</button></div>
         </div>
       </div>
 
@@ -1203,9 +1263,9 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 let TOKEN = localStorage.getItem('store_admin_token') || '';
 let ME = null, STAFF = [], ATT = [], WAGES = null, TASKS = [];
-const TABS = ['today','ai','cal','staff','shift','att','labor','tasks','board','manual','info','cust','cash','sales','dep','exp','settle','inb','vendor','stock','price','logs','setup'];
+const TABS = ['today','ai','cal','staff','shift','att','labor','tasks','board','manual','info','cust','cash','sales','dep','exp','settle','inb','bar','vendor','stock','price','logs','setup'];
 const TITLES = {today:'오늘', ai:'AI 비서', cal:'캘린더', staff:'직원', shift:'근무표', att:'근태', labor:'인건비표', tasks:'오더', board:'업무보드',
-  manual:'매뉴얼', info:'매장정보', cust:'고객·포인트', cash:'자금', sales:'매출', dep:'입금', exp:'지출', settle:'월 정산', inb:'입고 명세서', vendor:'거래처', stock:'재고', price:'단가 변동', logs:'시스템 로그', setup:'설정'};
+  manual:'매뉴얼', info:'매장정보', cust:'고객·포인트', cash:'자금', sales:'매출', dep:'입금', exp:'지출', settle:'월 정산', inb:'입고 명세서', bar:'셀프바', vendor:'거래처', stock:'재고', price:'단가 변동', logs:'시스템 로그', setup:'설정'};
 // 직책 — 매장에서 부르는 그대로
 // 홀 3 + 주방 6 — 바 담당은 주방 소속(숙련자), 셀프바 양 조절 = 원가 조절
 const POSITIONS = ['점장','매니저','홀','셰프','부셰프','바 담당','찬모','주방보조','세척'];
@@ -1314,6 +1374,7 @@ function tab(name){
   if(name==='price') loadPrice();
   if(name==='cash') loadCash();
   if(name==='shift') loadShift();
+  if(name==='bar') loadBar();
   if(name==='cust') loadCust();
   if(name==='vendor') loadVendors();
   if(name==='dep') loadDep();
@@ -2679,6 +2740,83 @@ function renderPrice(){
     + '<td><b>'+cm(x.unit_price)+'원</b></td>'
     + '<td><span class="badge '+(x.pct>0?'r':'g')+'">'+(x.pct>0?'▲ +':'▼ ')+x.pct+'%</span></td></tr>'
   ).join('') || '<tr><td colspan="7" class="sub">아직 단가 변동이 없어요. 입고를 등록하다가 단가가 바뀌면 자동으로 쌓입니다.</td></tr>';
+}
+
+/* ---------- 셀프바 ---------- */
+let BAR_ITEMS = [];
+async function loadBar(){
+  const base = location.origin + location.pathname.replace(/[^/]*$/,'');
+  $('barUrl').value = base + 'bar.html';
+  $('kitUrl').value = base + 'kitchen.html';
+  if(!$('barFrom').value){
+    const d = new Date(); d.setDate(d.getDate() - 6);
+    $('barFrom').value = localDate(d); $('barTo').value = localDate();
+  }
+  try{
+    BAR_ITEMS = await api('barItems', TOKEN);
+    $('barItemBody').innerHTML = BAR_ITEMS.map(x =>
+      '<tr><td><span class="badge">'+esc(x.category)+'</span></td>'
+      + '<td><a class="link" onclick="openBarItem(\''+x.id+'\')"><b>'+esc(x.name)+'</b></a></td>'
+      + '<td>'+esc(x.unit)+'</td>'
+      + '<td>'+(+x.portion_g > 0 ? (+x.portion_g)+'g' : '<span class="sub">-</span>')+'</td>'
+      + '<td class="sub">'+(x.stock_name ? esc(x.stock_name) : '<span style="color:#ADB5BD">연결 안 함</span>')+'</td>'
+      + '<td>'+(x.active === false ? '<span class="badge r">숨김</span>' : '<span class="badge g">사용</span>')+'</td>'
+      + '<td><button class="btn sm ghost" onclick="openBarItem(\''+x.id+'\')">수정</button></td></tr>'
+    ).join('') || '<tr><td colspan="7" class="sub">품목을 추가하면 셀프바 태블릿에 버튼으로 나타나요.</td></tr>';
+    // 재고 품목명 자동완성
+    try{
+      const stock = await api('stockSummary', TOKEN);
+      $('stockNames').innerHTML = stock.map(s => '<option value="'+esc(s.name)+'">').join('');
+    }catch(e){}
+    loadBarToday(); loadBarStats();
+  }catch(e){ toast(e.message); }
+}
+async function loadBarToday(){
+  try{
+    const r = await api('barReqList', TOKEN);
+    const rows = r.rows || [];
+    const done = rows.filter(x => x.status === '완료');
+    $('barTodaySum').textContent = '— 요청 ' + rows.length + '건 · 완료 ' + done.length + '건 · 대기 ' + r.pending + '건';
+    $('barToday').innerHTML = rows.slice(0,15).map(x =>
+      '<div class="row"><span><b>'+x.req_no+'번</b> '
+      + (x.status==='요청'?'<span class="badge a">대기</span>':x.status==='조리중'?'<span class="badge g">준비중 '+(x.eta_min||'')+'분</span>':x.status==='완료'?'<span class="badge">완료</span>':'<span class="badge r">취소</span>')
+      + ' <span class="sub">'+(x.items||[]).map(i=>esc(i.name)+' '+(+i.qty)+esc(i.unit||'')).join(', ')+'</span></span>'
+      + '<span class="sub">'+esc(x.requested_by||'')+' · '+x.wait_min+'분 전</span></div>'
+    ).join('') || '<div class="sub">오늘 요청이 없어요.</div>';
+  }catch(e){}
+}
+async function loadBarStats(){
+  try{
+    const r = await api('barStats', TOKEN, $('barFrom').value, $('barTo').value);
+    $('barStatBody').innerHTML = (r.byItem||[]).map(x =>
+      '<tr><td class="name-cell">'+esc(x.name)+'</td><td>'+x.req_cnt+'회</td>'
+      + '<td><b>'+(+x.total_qty)+'</b>'+esc(x.unit||'')+'</td>'
+      + '<td>'+(+x.total_g > 0 ? (Math.round(+x.total_g/100)/10)+'kg' : '-')+'</td></tr>'
+    ).join('') || '<tr><td colspan="4" class="sub">기간 내 완료된 요청이 없어요.</td></tr>';
+  }catch(e){}
+}
+function barCopy(id){ navigator.clipboard.writeText($(id).value).then(()=>toast('주소를 복사했어요')); }
+function openBarItem(id){
+  const x = id ? BAR_ITEMS.find(i => i.id === id) : null;
+  $('biId').value = id || '';
+  $('biName').value = x ? x.name : ''; $('biCat').value = x ? x.category : '고기';
+  $('biUnit').value = x ? x.unit : '판'; $('biPortion').value = x ? (+x.portion_g||'') : '';
+  $('biStock').value = x ? (x.stock_name||'') : ''; $('biSort').value = x ? x.sort : 0;
+  $('biDel').classList.toggle('hidden', !id);
+  $('barItemModal').classList.remove('hidden');
+}
+async function biSave(){
+  try{
+    await api('barItemSave', TOKEN, { id:$('biId').value, name:$('biName').value.trim(), category:$('biCat').value,
+      unit:$('biUnit').value.trim()||'판', portion_g:+$('biPortion').value||0,
+      stock_name:$('biStock').value.trim(), sort:+$('biSort').value||0 });
+    closeModal('barItemModal'); loadBar();
+  }catch(e){ alert(e.message); }
+}
+async function biDelete(){
+  if(!confirm('이 품목을 셀프바에서 뺄까요?')) return;
+  try{ await api('barItemDelete', TOKEN, $('biId').value); closeModal('barItemModal'); loadBar(); }
+  catch(e){ alert(e.message); }
 }
 
 /* ---------- 주간 근무표 ---------- */

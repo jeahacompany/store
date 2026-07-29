@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>셀프바 — 보충 요청</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<style>
+:root{--brand:#F26522; --ink:#20242E; --side:#20242E; --line:#E9ECEF; --sub:#868E96; --green:#2F9E44; --red:#E03131;}
+*{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent}
+body{font-family:Pretendard,-apple-system,sans-serif; background:#F8F9FA; color:var(--ink); font-size:17px}
+.topbar{display:flex; align-items:center; gap:14px; padding:14px 20px; background:var(--side); color:#fff; position:sticky; top:0; z-index:10}
+.topbar .store{font-size:20px; font-weight:700}
+.topbar .clock{font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; margin-left:auto}
+.topbar a{color:#8A90A0; font-size:14px; cursor:pointer; text-decoration:none}
+.wrap{padding:16px 20px 120px}
+.card{background:#fff; border:1px solid var(--line); border-radius:16px; padding:18px; margin-bottom:14px}
+h2{font-size:19px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.sub{color:var(--sub); font-size:14px}
+.btn{padding:12px 18px; border:none; border-radius:12px; background:var(--brand); color:#fff;
+  font-size:17px; font-weight:700; font-family:inherit; cursor:pointer}
+.btn.ghost{background:#fff; color:var(--ink); border:1px solid var(--line)}
+.btn.green{background:var(--green)} .btn.red{background:var(--red)}
+.hidden{display:none}
+.badge{display:inline-block; padding:3px 10px; border-radius:99px; background:#F1F3F5; font-size:14px; font-weight:600}
+.badge.r{background:#FFE3E3; color:#C92A2A} .badge.g{background:#D3F9D8; color:#2B8A3E}
+.badge.a{background:#FFF3BF; color:#E67700}
+/* 품목 버튼 */
+.cat{margin-top:14px; font-size:15px; font-weight:700; color:var(--sub)}
+.items{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-top:8px}
+.item{background:#fff; border:2px solid var(--line); border-radius:14px; padding:14px 10px; text-align:center; cursor:pointer}
+.item.on{border-color:var(--brand); background:#FFF4E6}
+.item .nm{font-size:17px; font-weight:700}
+.item .qty{font-size:26px; font-weight:800; color:var(--brand); margin-top:4px}
+.item .pg{font-size:12px; color:var(--sub)}
+/* 하단 고정 바 */
+.bottom{position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid var(--line);
+  padding:14px 20px; display:flex; gap:10px; align-items:center; box-shadow:0 -4px 16px rgba(0,0,0,.06)}
+.bottom .cnt{font-size:17px; font-weight:700; flex:1}
+.login{max-width:340px; margin:80px auto; background:#fff; padding:26px; border-radius:16px}
+.login input{width:100%; padding:13px; border:1px solid var(--line); border-radius:10px; font-size:17px; margin-top:8px; font-family:inherit}
+.row{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--line)}
+</style>
+</head>
+<body>
+
+<div id="loginView" class="login">
+  <h2 style="margin-bottom:6px">셀프바 화면</h2>
+  <div class="sub">부족한 걸 눌러서 주방에 요청하는 화면이에요.</div>
+  <label class="sub" style="display:block; margin-top:14px">아이디</label>
+  <input id="liUser" autocomplete="username">
+  <label class="sub" style="display:block; margin-top:10px">비밀번호</label>
+  <input id="liPw" type="password" onkeydown="if(event.key==='Enter')doLogin()">
+  <button class="btn" style="width:100%; margin-top:14px" onclick="doLogin()">로그인</button>
+  <div id="liErr" style="color:var(--red); margin-top:8px; font-size:14px"></div>
+</div>
+
+<div id="mainView" class="hidden">
+  <div class="topbar">
+    <span class="store" id="hdStore">셀프바</span>
+    <span class="clock" id="hdClock">--:--</span>
+    <a onclick="loadAll()">↻</a>
+    <a onclick="doLogout()">로그아웃</a>
+  </div>
+  <div class="wrap">
+    <div class="card">
+      <h2>🍽 부족한 걸 눌러주세요 <span class="sub">— 누를 때마다 1판씩 올라가요</span></h2>
+      <div id="itemBox"></div>
+    </div>
+
+    <div class="card">
+      <h2>내 요청 현황</h2>
+      <div id="myReqs"><div class="sub">불러오는 중...</div></div>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <span class="cnt" id="selCnt">선택 없음</span>
+    <label style="display:flex; align-items:center; gap:6px; font-size:15px">
+      <input type="checkbox" id="urgent" style="width:20px;height:20px"> 급함</label>
+    <button class="btn ghost" onclick="clearSel()">비우기</button>
+    <button class="btn" style="font-size:19px" onclick="sendReq()">주방에 요청</button>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://zcjvriedzememkiltqfa.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjanZyaWVkemVtZW1raWx0cWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMjg2MTIsImV4cCI6MjA5OTYwNDYxMn0.2nZh82xFUNORqcKObAHUnz8K5EjjL-Nym0T4YkDHxMk';
+const $ = id => document.getElementById(id);
+const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let TOKEN = localStorage.getItem('store_bar_token') || '';
+let ITEMS = [], SEL = {}, REQS = [], DONE_SEEN = new Set();
+
+async function api(fn, ...args){
+  const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/store_api', {
+    method:'POST', headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON},
+    body: JSON.stringify({ p_fn: fn, p_args: args })
+  });
+  const data = await res.json();
+  if(!data || data.ok === false){
+    const msg = (data && data.error) || '서버 오류';
+    if(msg.includes('세션이 만료')){ localStorage.removeItem('store_bar_token'); TOKEN=''; show('loginView'); }
+    throw new Error(msg);
+  }
+  return data.result;
+}
+function show(v){ ['loginView','mainView'].forEach(x => $(x).classList.toggle('hidden', x!==v)); }
+async function doLogin(){
+  $('liErr').textContent = '';
+  try{
+    const r = await api('login', $('liUser').value.trim(), $('liPw').value);
+    TOKEN = r.token; localStorage.setItem('store_bar_token', TOKEN); start();
+  }catch(e){ $('liErr').textContent = e.message; }
+}
+function doLogout(){ localStorage.removeItem('store_bar_token'); TOKEN=''; show('loginView'); }
+
+function beep(){
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination); o.frequency.value = 660;
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
+    o.start(); o.stop(ctx.currentTime + 0.42);
+  }catch(e){}
+}
+function tick(){ const d=new Date(), p=n=>String(n).padStart(2,'0');
+  $('hdClock').textContent = p(d.getHours())+':'+p(d.getMinutes()); }
+setInterval(tick, 1000); tick();
+
+function renderItems(){
+  const cats = [...new Set(ITEMS.map(i => i.category))];
+  $('itemBox').innerHTML = cats.map(c =>
+    '<div class="cat">'+esc(c)+'</div><div class="items">'
+    + ITEMS.filter(i => i.category === c).map(i => {
+        const q = SEL[i.id] || 0;
+        return '<div class="item'+(q?' on':'')+'" onclick="pick(\''+i.id+'\')" oncontextmenu="event.preventDefault(); unpick(\''+i.id+'\')">'
+          + '<div class="nm">'+esc(i.name)+'</div>'
+          + '<div class="qty">'+(q ? '+'+q+esc(i.unit) : '&nbsp;')+'</div>'
+          + (i.portion_g > 0 ? '<div class="pg">1'+esc(i.unit)+' = '+(+i.portion_g)+'g</div>' : '')
+          + '</div>';
+      }).join('') + '</div>'
+  ).join('') || '<div class="sub">셀프바 품목이 아직 등록되지 않았어요. 관리자 → 셀프바에서 품목을 추가해주세요.</div>';
+  const n = Object.values(SEL).reduce((a,b)=>a+b, 0);
+  $('selCnt').textContent = n ? Object.entries(SEL).map(([id,q]) => {
+    const it = ITEMS.find(x => x.id === id); return (it?it.name:'') + ' ' + q + (it?it.unit:'');
+  }).join(', ') : '선택 없음';
+}
+function pick(id){ SEL[id] = (SEL[id]||0) + 1; renderItems(); }
+function unpick(id){ if(SEL[id]){ SEL[id]--; if(!SEL[id]) delete SEL[id]; renderItems(); } }
+function clearSel(){ SEL = {}; renderItems(); }
+
+async function sendReq(){
+  const items = Object.entries(SEL).map(([id,q]) => ({ item_id:id, qty:q }));
+  if(!items.length){ alert('부족한 품목을 눌러주세요.'); return; }
+  try{
+    const r = await api('barReqCreate', TOKEN, { items, urgent:$('urgent').checked });
+    clearSel(); $('urgent').checked = false;
+    loadReqs();
+    alert(r.req_no + '번으로 주방에 요청했어요!\n주방에서 확인하면 예상 시간이 여기 표시됩니다.');
+  }catch(e){ alert(e.message); }
+}
+
+async function loadReqs(){
+  try{
+    const r = await api('barReqList', TOKEN);
+    REQS = r.rows || [];
+    const mine = REQS.filter(x => x.status !== '취소');
+    // 완료된 게 새로 생기면 소리로 알림
+    mine.filter(x => x.status === '완료').forEach(x => {
+      if(!DONE_SEEN.has(x.id)){ if(DONE_SEEN.size) beep(); DONE_SEEN.add(x.id); }
+    });
+    $('myReqs').innerHTML = mine.slice(0,12).map(x =>
+      '<div class="row"><span>'
+      + '<b>'+x.req_no+'번</b> '
+      + (x.status==='요청' ? '<span class="badge a">주방 확인 대기</span>'
+        : x.status==='조리중' ? '<span class="badge g">준비 중 · 약 '+(x.eta_min||'?')+'분</span>'
+        : '<span class="badge">✔ 완료</span>')
+      + (x.urgent ? ' <span class="badge r">급함</span>' : '')
+      + '<div class="sub">'+(x.items||[]).map(i => esc(i.name)+' '+(+i.qty)+esc(i.unit||'')).join(', ')+'</div>'
+      + '</span><span class="sub">'+x.wait_min+'분 전</span></div>'
+    ).join('') || '<div class="sub">오늘 요청이 없어요</div>';
+  }catch(e){}
+}
+
+async function loadAll(){
+  try{ ITEMS = (await api('barItems', TOKEN)).filter(i => i.active !== false); renderItems(); }catch(e){}
+  loadReqs();
+}
+async function start(){
+  show('mainView');
+  try{ const b = await api('boot', TOKEN); $('hdStore').textContent = (b.store && b.store.name ? b.store.name : '') + ' 셀프바'; }catch(e){}
+  loadAll();
+  setInterval(loadReqs, 6000);
+}
+if(TOKEN) start(); else show('loginView');
+</script>
+</body>
+</html>
