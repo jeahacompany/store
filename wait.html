@@ -202,7 +202,11 @@ details summary{ cursor:pointer; font-weight:600 }
   </div>
 
   <a class="kakao hidden" id="mKakao" href="#" target="_blank">💬 카카오 채널 추가하고 혜택 받기</a>
-  <button class="btn ghost" onclick="location.href=location.pathname+'?s='+STORE">새로 등록하기</button>
+  <button class="btn ghost hidden" id="btnCancel" onclick="cancelWait()"
+    style="color:var(--red); border-color:#FFC9C9">대기 취소하기</button>
+  <div class="sub hidden" id="cancelNote" style="text-align:center; margin-top:14px">
+    다시 기다리시려면 매장 입구의 QR을 한 번 더 찍어주세요.
+  </div>
 </div>
 
 <script>
@@ -350,6 +354,7 @@ async function join(){
     render(r);
     show('myView');
     startTimer();
+    poll();                                   // 등록 직후 곧바로 최신 상태로 한 번 더
   }catch(e){ fail(e.message); $('btnJoin').disabled = false; $('btnJoin').textContent = '대기 등록하기'; }
 }
 function fail(m){ $('err').textContent = m; $('err').classList.remove('hidden'); }
@@ -363,13 +368,19 @@ function render(r){
   $('callBox').classList.toggle('hidden', st !== '호출');
   $('waitBox').classList.toggle('hidden', !live);
   $('doneBox').classList.toggle('hidden', live);
+  $('btnCancel').classList.toggle('hidden', !live);
+  $('cancelNote').classList.toggle('hidden', live);
 
   // 쿠폰: 대기 중엔 초 단위로 실시간, 입장 후엔 확정 번호
   const amt = +r.coupon_amt || 0;
   CP.per30 = +r.coupon_per30 || 500;
   CP.max   = +r.coupon_max || 2000;
-  CP.start = r.created_at ? new Date(r.created_at).getTime() : null;
-  CP.stop  = r.called_at ? new Date(r.called_at).getTime() : null;   // 호출되면 시간 계산 멈춤
+  // 등록 시각: 서버가 준 값을 쓰되, 못 읽으면 대기 분수로 역산 (0분 00초로 멈추지 않게)
+  const ct = Date.parse(r.created_at || '');
+  CP.start = isFinite(ct) ? ct
+           : (r.waited_min != null ? (Date.now() + SKEW) - (+r.waited_min) * 60000 : null);
+  const lt = Date.parse(r.called_at || '');
+  CP.stop  = isFinite(lt) ? lt : null;                               // 호출되면 시간 계산 멈춤
   CP.live  = live && !!r.geo_ok;
   $('cpPending').classList.toggle('hidden', !CP.live);
   tickElapsed();
@@ -394,6 +405,16 @@ function render(r){
     $('dIcon').textContent = m[0]; $('dTitle').textContent = m[1]; $('dMsg').textContent = m[2];
     if(TIMER) clearInterval(TIMER);
   }
+}
+async function cancelWait(){
+  if(!confirm('대기를 취소할까요?\n취소하시면 순번이 사라지고, 다시 등록하셔야 해요.')) return;
+  const t = new URLSearchParams(location.search).get('t');
+  if(!t) return;
+  try{
+    await api('waitCancel', t);
+    if(TIMER) clearInterval(TIMER);
+    await poll();
+  }catch(e){ alert(e.message); }
 }
 async function poll(){
   const t = new URLSearchParams(location.search).get('t');
