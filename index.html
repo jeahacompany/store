@@ -588,7 +588,8 @@
           <div class="card" style="margin:0"><div class="sub">재료비 <span id="pnMatR" class="badge"></span></div><div id="pnMat" style="font-size:22px; font-weight:700; color:var(--red,#E03131)">-</div></div>
           <div class="card" style="margin:0"><div class="sub">인건비 <span id="pnLabR" class="badge"></span></div><div id="pnLab" style="font-size:22px; font-weight:700; color:var(--red,#E03131)">-</div></div>
           <div class="card" style="margin:0"><div class="sub">고정비(하루) <span id="pnFixR" class="badge"></span></div><div id="pnFix" style="font-size:22px; font-weight:700; color:var(--red,#E03131)">-</div></div>
-          <div class="card" style="margin:0"><div class="sub">기타 지출</div><div id="pnExp" style="font-size:22px; font-weight:700; color:var(--red,#E03131)">-</div></div>
+          <div class="card" style="margin:0"><div class="sub">기타 지출</div><div id="pnExp" style="font-size:22px; font-weight:700; color:var(--red,#E03131)">-</div>
+            <div class="sub" id="pnExcl" style="font-size:12px"></div></div>
           <div class="card" style="margin:0; border-color:#FFD8A8; background:#FFF9F5">
             <div class="sub">오늘 순이익 <span id="pnProR" class="badge"></span></div>
             <div id="pnProfit" style="font-size:26px; font-weight:800">-</div></div>
@@ -3098,6 +3099,8 @@ async function loadPnl(){
     $('pnLab').textContent     = '-' + pnMoney(p.labor).replace('-','');
     $('pnFix').textContent     = '-' + pnMoney(p.fixed).replace('-','');
     $('pnExp').textContent     = '-' + pnMoney(p.expense).replace('-','');
+    $('pnExcl').textContent    = p.excluded ? '중복 제외 ' + pnMoney(p.excluded) : '';
+    $('pnExcl').title          = '월세·공과금·급여·재료비는 위에서 이미 반영돼서 여기선 뺐어요';
     $('pnProfit').textContent  = pnMoney(p.profit);
     $('pnProfit').style.color  = p.profit >= 0 ? '#2B8A3E' : '#E03131';
     const r = p.rate || {};
