@@ -223,7 +223,9 @@ async function sendReq(){
     const r = await api('barReqCreate', TOKEN, { items, urgent:$('urgent').checked });
     clearSel(); $('urgent').checked = false;
     loadReqs();
-    alert(r.req_no + '번으로 주방에 요청했어요!\n주방에서 확인하면 예상 시간이 여기 표시됩니다.');
+    alert(r.count > 1
+      ? r.first_no + '~' + r.last_no + '번, 총 ' + r.count + '건으로 주방에 올렸어요!\n\n품목마다 따로 올라가서, 되는 것부터 하나씩 나옵니다.'
+      : r.first_no + '번으로 주방에 요청했어요!\n주방에서 확인하면 예상 시간이 여기 표시됩니다.');
   }catch(e){ alert(e.message); }
 }
 
