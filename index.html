@@ -2470,7 +2470,12 @@ function vdEdit(id){
   const v = VENDORS.find(x=>x.id===id); if(!v) return;
   $('vdId').value=v.id; $('vdName').value=v.name; $('vdPhone').value=v.phone||'';
   $('vdBank').value=v.bank_name||''; $('vdAcct').value=v.bank_acct||''; $('vdManager').value=v.manager||'';
-  $('vdMemo').value=v.memo||''; $('vdCat').value=v.category||'기타'; $('vdCycle').value=v.pay_cycle||'월말';
+  $('vdMemo').value=v.memo||'';
+  // 거래처가 직접 적은 분류(예: 수산물)도 그대로 유지되게 목록에 없으면 추가
+  const cat = v.category || '기타';
+  if(![...$('vdCat').options].some(o => o.value === cat)) $('vdCat').innerHTML += '<option>'+esc(cat)+'</option>';
+  $('vdCat').value = cat;
+  $('vdCycle').value=v.pay_cycle||'월말';
   $('vdDelBtn').classList.remove('hidden');
   $('vdModal').classList.remove('hidden');
 }

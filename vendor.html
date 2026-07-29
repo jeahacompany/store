@@ -71,10 +71,14 @@ textarea{ min-height:70px; resize:vertical }
       <div><label>대표자명</label><input id="f_ceo"></div>
     </div>
     <label>취급 품목 분류</label>
-    <select id="f_cat">
+    <select id="f_cat" onchange="catChange()">
       <option>고기</option><option>야채</option><option>식자재</option>
-      <option>음료</option><option>주류</option><option>소모품</option><option selected>기타</option>
+      <option>음료</option><option>주류</option><option>소모품</option>
+      <option selected>기타</option>
+      <option value="__etc__">✏️ 직접 입력</option>
     </select>
+    <input type="text" id="f_cat_etc" class="hidden" style="margin-top:8px"
+      placeholder="취급하시는 품목을 적어주세요 (예: 수산물, 주방소모품)">
   </div>
 
   <div class="card">
@@ -181,6 +185,18 @@ function hyphenPhone(raw){
   $(id).addEventListener('input', e => { e.target.value = hyphenPhone(e.target.value); });
 });
 
+/* 취급 품목: 목록에 없으면 직접 적을 수 있게 */
+function catChange(){
+  const etc = $('f_cat').value === '__etc__';
+  $('f_cat_etc').classList.toggle('hidden', !etc);
+  if(etc) $('f_cat_etc').focus();
+}
+function catValue(){
+  return $('f_cat').value === '__etc__'
+    ? ($('f_cat_etc').value.trim() || '기타')
+    : $('f_cat').value;
+}
+
 function compress(file, max, q){
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -229,7 +245,7 @@ async function submitForm(){
   try{
     const r = await api('vendorSelfSubmit', STORE, {
       name:$('f_name').value.trim(), biz_no:biz, ceo:$('f_ceo').value.trim(),
-      category:$('f_cat').value,
+      category: catValue(),
       bank_name:$('f_bank').value.trim(), bank_acct:$('f_acct').value.trim(), bank_holder:$('f_holder').value.trim(),
       phone:$('f_phone').value.trim(), tax_email:$('f_tax').value.trim(),
       manager:$('f_mgr').value.trim(), mgr_phone:$('f_mgrp').value.trim(),
