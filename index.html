@@ -66,6 +66,27 @@
   tbody tr:last-child td { border-bottom:none; }
   tbody tr:hover { background:#FFF9F5; }
   .table-scroll { overflow-x:auto; }
+  /* 손익계산서 (엑셀형 시트) */
+  table.book { border-collapse:separate; border-spacing:0; font-size:14px; min-width:100%; white-space:nowrap }
+  table.book td, table.book th { border-bottom:1px solid #E9ECEF; border-right:1px solid #E9ECEF; padding:7px 10px }
+  table.book .hd { position:sticky; top:0; z-index:3; background:#20242E; color:#fff; font-weight:700; text-align:center }
+  table.book .nm { position:sticky; left:0; z-index:2; background:#fff; min-width:190px; font-weight:600 }
+  table.book .hd.nm { z-index:4; background:#20242E; text-align:left }
+  table.book td.v { text-align:right; font-variant-numeric:tabular-nums; cursor:cell; min-width:118px }
+  table.book td.v:hover { background:#FFF4EC; outline:2px solid var(--brand); outline-offset:-2px }
+  table.book td.v .pc { display:block; font-size:11px; color:#909296; font-weight:400 }
+  table.book tr.sec > td { background:#F1F3F5; font-weight:800; color:#20242E }
+  table.book tr.sec .nm { background:#F1F3F5 }
+  table.book tr.sum > td { background:#FFF9F5; font-weight:800; border-top:2px solid var(--brand) }
+  table.book tr.sum .nm { background:#FFF9F5 }
+  table.book tr.det > td { color:#6C757D; font-size:13px }
+  table.book tr.det .nm { background:#FBFCFD; font-weight:400; padding-left:26px; color:#6C757D }
+  table.book tr.det td.v { cursor:cell }
+  table.book .dlt { color:#ADB5BD; cursor:pointer; margin-left:6px; font-weight:400 }
+  table.book .dlt:hover { color:var(--red,#E03131) }
+  table.book input.cell { width:110px; text-align:right; border:2px solid var(--brand); border-radius:6px;
+    padding:3px 6px; font-size:14px; font-variant-numeric:tabular-nums }
+  table.book .up { color:#E03131; font-size:11px } table.book .dn { color:#1971C2; font-size:11px }
   .name-cell { font-weight:600; color:var(--txt); }
 
   /* controls */
@@ -192,6 +213,7 @@
         <div class="nav-item" data-t="dep" onclick="tab('dep')"><span class="ico">📥</span>입금</div>
         <div class="nav-item" data-t="exp" onclick="tab('exp')"><span class="ico">🧾</span>지출</div>
         <div class="nav-item" data-t="pnl" id="navPnl" onclick="tab('pnl')"><span class="ico">🧮</span>오늘 정산</div>
+        <div class="nav-item" data-t="book" id="navBook" onclick="tab('book')"><span class="ico">📒</span>손익계산서</div>
         <div class="nav-item" data-t="settle" onclick="tab('settle')"><span class="ico">📊</span>월 정산</div>
         <div class="nav-item" data-t="inb" onclick="tab('inb')"><span class="ico">📦</span>입고 명세서</div>
         <div class="nav-item" data-t="bar" onclick="tab('bar')"><span class="ico">🍽️</span>셀프바</div>
@@ -628,6 +650,30 @@
           </div>
           <div class="table-scroll"><table><thead><tr><th>항목</th><th>월 금액</th><th>하루치</th><th></th></tr></thead>
           <tbody id="pnFixedList"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- 손익계산서 (엑셀형) -->
+      <div id="tab-book" class="hidden">
+        <div class="card">
+          <h2>📒 월간 손익계산서
+            <input type="month" id="bkYm" onchange="loadBook()" style="margin-left:8px">
+            <select id="bkMonths" onchange="loadBook()" style="width:110px">
+              <option value="3">3개월</option><option value="6">6개월</option><option value="12">12개월</option>
+            </select>
+            <button class="btn sm ghost" onclick="bkImport()">↻ 실제 데이터 불러오기</button>
+            <button class="btn sm ghost" onclick="bkAddAccount()">+ 계정과목</button>
+            <button class="btn sm ghost" onclick="bkCsv()">⬇ 엑셀(CSV)</button>
+            <label class="sub" style="margin-left:auto; display:flex; align-items:center; gap:5px">
+              <input type="checkbox" id="bkPct" checked onchange="renderBook()"> 매출대비 %</label>
+            <label class="sub" style="display:flex; align-items:center; gap:5px">
+              <input type="checkbox" id="bkDetail" onchange="renderBook()"> 거래처까지</label>
+          </h2>
+          <div class="sub">칸을 눌러서 바로 입력하세요. 엑셀처럼 쓰되, 매출·지출에 이미 넣은 건
+            <b>실제 데이터 불러오기</b>로 자동으로 채워집니다.</div>
+        </div>
+        <div class="card" style="padding:0; overflow:auto">
+          <table id="bkTable" class="book"><tbody id="bkBody"></tbody></table>
         </div>
       </div>
 
@@ -1411,9 +1457,9 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 let TOKEN = localStorage.getItem('store_admin_token') || '';
 let ME = null, STAFF = [], ATT = [], WAGES = null, TASKS = [];
-const TABS = ['today','ai','cal','staff','shift','att','labor','tasks','board','manual','info','cust','cash','sales','dep','exp','pnl','settle','inb','bar','vendor','stock','price','links','logs','setup'];
+const TABS = ['today','ai','cal','staff','shift','att','labor','tasks','board','manual','info','cust','cash','sales','dep','exp','pnl','book','settle','inb','bar','vendor','stock','price','links','logs','setup'];
 const TITLES = {today:'오늘', ai:'AI 비서', cal:'캘린더', staff:'직원', shift:'근무표', att:'근태', labor:'인건비표', tasks:'오더', board:'업무보드',
-  manual:'매뉴얼', info:'매장정보', cust:'고객·포인트', cash:'자금', sales:'매출', dep:'입금', exp:'지출', pnl:'오늘 정산', settle:'월 정산', inb:'입고 명세서', bar:'셀프바', vendor:'거래처', stock:'재고', price:'단가 변동', links:'연결 주소', logs:'시스템 로그', setup:'설정'};
+  manual:'매뉴얼', info:'매장정보', cust:'고객·포인트', cash:'자금', sales:'매출', dep:'입금', exp:'지출', pnl:'오늘 정산', book:'손익계산서', settle:'월 정산', inb:'입고 명세서', bar:'셀프바', vendor:'거래처', stock:'재고', price:'단가 변동', links:'연결 주소', logs:'시스템 로그', setup:'설정'};
 // 직책 — 매장에서 부르는 그대로
 // 홀 3 + 주방 6 — 바 담당은 주방 소속(숙련자), 셀프바 양 조절 = 원가 조절
 const POSITIONS = ['점장','매니저','홀','셰프','부셰프','바 담당','찬모','주방보조','세척'];
@@ -1524,6 +1570,7 @@ function tab(name){
   if(name==='shift') loadShift();
   if(name==='bar') loadBar();
   if(name==='pnl') loadPnl();
+  if(name==='book') loadBook();
   if(name==='links') loadLinks();
   if(name==='cust') loadCust();
   if(name==='vendor') loadVendors();
@@ -1558,6 +1605,7 @@ function boot(){
   $('navCash').style.display = (ME && ME.role==='owner') ? '' : 'none';
   $('navAi').style.display = (ME && ME.role==='owner') ? '' : 'none';
   $('navPnl').style.display = (ME && ME.role==='owner') ? '' : 'none';
+  $('navBook').style.display = (ME && ME.role==='owner') ? '' : 'none';
   if(ME && ME.role==='viewer'){
     document.querySelectorAll('#tabbar .nav-item').forEach(n => {
       if(!['cal','settle'].includes(n.dataset.t)) n.style.display='none';
@@ -3076,6 +3124,165 @@ async function unplace(id){
   try{ await api('barPlace', TOKEN, { id, zone:'', gx:'', gy:'' }); loadBar(); }
   catch(e){ alert(e.message); }
 }
+/* ===== 월간 손익계산서 (엑셀형) ===== */
+let BOOK = null;
+const BK_SEC = ['매출','매출원가','판관비','영업외수익','영업외비용'];
+
+async function loadBook(){
+  if(!$('bkYm').value) $('bkYm').value = localYm();
+  try{
+    BOOK = await api('pnlSheet', TOKEN, $('bkYm').value, +$('bkMonths').value || 3);
+    renderBook();
+  }catch(e){ alert(e.message); }
+}
+function bkN(v){ return (+v || 0).toLocaleString('ko-KR'); }
+function bkPctOf(v, sales){ return sales > 0 ? (v*100/sales).toFixed(1)+'%' : ''; }
+function bkYmLabel(m){ const [y,mo] = m.split('-'); return (+mo)+'월'; }
+
+function renderBook(){
+  if(!BOOK) return;
+  const M = BOOK.months, T = BOOK.totals || {}, showPct = $('bkPct').checked, showDet = $('bkDetail').checked;
+  const salesOf = m => (T[m] && +T[m].sales) || 0;
+  const H = [];
+
+  // 헤더
+  H.push('<tr><th class="hd nm">계정과목</th>'
+    + M.map(m => '<th class="hd">'+m.slice(0,4)+'년 '+bkYmLabel(m)+'</th>').join('')
+    + '<th class="hd">전월대비</th></tr>');
+
+  // 금액 셀 (클릭하면 입력)
+  const cell = (accId, detail, m, v, editable) => {
+    const s = salesOf(m);
+    return '<td class="v"'+(editable ? ' onclick="bkEdit(this,\''+accId+'\',\''+encodeURIComponent(detail||'')+'\',\''+m+'\')"' : '')+'>'
+      + (v ? bkN(v) : '<span style="color:#CED4DA">-</span>')
+      + (showPct && v && s ? '<span class="pc">'+bkPctOf(v, s)+'</span>' : '') + '</td>';
+  };
+  // 전월대비 (M[0]이 이번달, M[1]이 지난달)
+  const diff = (cur, prev) => {
+    if(!prev) return '<td class="v"></td>';
+    const d = (+cur||0) - (+prev||0);
+    if(!d) return '<td class="v"><span style="color:#CED4DA">-</span></td>';
+    const pct = prev ? (d*100/prev).toFixed(0)+'%' : '';
+    return '<td class="v"><span class="'+(d>0?'up':'dn')+'">'+(d>0?'▲':'▼')+' '+bkN(Math.abs(d))
+      + (pct?' ('+pct+')':'') + '</span></td>';
+  };
+
+  const rowsBySec = sec => (BOOK.rows||[]).filter(r => r.section === sec);
+  const secTotal = (sec, m) => rowsBySec(sec).reduce((a,r) => a + (+(r.vals||{})[m] || 0), 0);
+
+  const sumRow = (label, fn, cls) => {
+    const vals = M.map(fn);
+    return '<tr class="'+(cls||'sum')+'"><td class="nm">'+label+'</td>'
+      + M.map((m,i) => { const s = salesOf(m);
+          return '<td class="v">'+bkN(vals[i])
+            + (showPct && s ? '<span class="pc">'+bkPctOf(vals[i], s)+'</span>' : '')+'</td>'; }).join('')
+      + diff(vals[0], vals[1]) + '</tr>';
+  };
+
+  BK_SEC.forEach(sec => {
+    const rows = rowsBySec(sec);
+    H.push('<tr class="sec"><td class="nm">▶ '+sec+'</td>'
+      + M.map(()=>'<td></td>').join('') + '<td></td></tr>');
+    rows.forEach(r => {
+      H.push('<tr><td class="nm">'+esc(r.name)
+        + '<span class="dlt" title="계정 삭제" onclick="bkDelAccount(\''+r.id+'\',\''+esc(r.name)+'\')">✕</span></td>'
+        + M.map(m => cell(r.id, '', m, (r.vals||{})[m], true)).join('')
+        + diff((r.vals||{})[M[0]], (r.vals||{})[M[1]]) + '</tr>');
+      if(showDet) (r.details||[]).forEach(d => {
+        H.push('<tr class="det"><td class="nm">└ '+esc(d.detail)+'</td>'
+          + M.map(m => cell(r.id, d.detail, m, (d.vals||{})[m], true)).join('')
+          + diff((d.vals||{})[M[0]], (d.vals||{})[M[1]]) + '</tr>');
+      });
+      if(showDet) H.push('<tr class="det"><td class="nm">└ <span style="color:var(--brand); cursor:pointer" '
+        + 'onclick="bkAddDetail(\''+r.id+'\',\''+esc(r.name)+'\')">+ 거래처 추가</span></td>'
+        + M.map(()=>'<td class="v"></td>').join('') + '<td></td></tr>');
+    });
+    H.push(sumRow(sec+' 합계', m => secTotal(sec, m)));
+
+    if(sec === '매출원가')
+      H.push(sumRow('매출총이익', m => secTotal('매출', m) - secTotal('매출원가', m)));
+    if(sec === '판관비')
+      H.push(sumRow('영업이익', m => secTotal('매출', m) - secTotal('매출원가', m) - secTotal('판관비', m)));
+  });
+
+  H.push(sumRow('당기순이익', m =>
+    secTotal('매출', m) - secTotal('매출원가', m) - secTotal('판관비', m)
+    + secTotal('영업외수익', m) - secTotal('영업외비용', m)));
+
+  $('bkBody').innerHTML = H.join('');
+}
+
+function bkEdit(td, accId, detailEnc, m){
+  if(td.querySelector('input')) return;
+  const detail = decodeURIComponent(detailEnc);
+  const cur = td.textContent.replace(/[^\d]/g,'').slice(0, 12);
+  const old = td.innerHTML;
+  td.innerHTML = '<input class="cell" value="'+(cur||'')+'">';
+  const inp = td.querySelector('input');
+  inp.focus(); inp.select();
+  let done = false;
+  const commit = async (save) => {
+    if(done) return; done = true;
+    if(!save){ td.innerHTML = old; return; }
+    const amount = +String(inp.value).replace(/[^\d]/g,'') || 0;
+    try{
+      await api('pnlEntrySave', TOKEN, { ym:m, account_id:accId, detail:detail, amount:amount });
+      await loadBook();
+    }catch(e){ alert(e.message); td.innerHTML = old; }
+  };
+  inp.onblur = () => commit(true);
+  inp.onkeydown = e => {
+    if(e.key === 'Enter'){ e.preventDefault(); commit(true); }
+    if(e.key === 'Escape'){ e.preventDefault(); commit(false); }
+  };
+}
+
+async function bkAddDetail(accId, accName){
+  const d = prompt(accName + ' — 거래처·세부 이름');
+  if(!d || !d.trim()) return;
+  try{
+    await api('pnlEntrySave', TOKEN, { ym:BOOK.months[0], account_id:accId, detail:d.trim(), amount:0 });
+    $('bkDetail').checked = true;
+    await loadBook();
+    toast('추가했어요. 금액 칸을 눌러 입력하세요');
+  }catch(e){ alert(e.message); }
+}
+async function bkAddAccount(){
+  const sec = prompt('어느 항목인가요?\n매출 / 매출원가 / 판관비 / 영업외수익 / 영업외비용', '판관비');
+  if(!sec || !BK_SEC.includes(sec.trim())){ if(sec) alert('그 항목은 없어요.'); return; }
+  const name = prompt('계정과목 이름');
+  if(!name || !name.trim()) return;
+  try{ await api('pnlAccountSave', TOKEN, { section:sec.trim(), name:name.trim() }); loadBook(); }
+  catch(e){ alert(e.message); }
+}
+async function bkDelAccount(id, name){
+  if(!confirm('"'+name+'" 계정과 그 안의 모든 금액을 지울까요?')) return;
+  try{ await api('pnlAccountDelete', TOKEN, id); loadBook(); }catch(e){ alert(e.message); }
+}
+async function bkImport(){
+  const m = BOOK ? BOOK.months[0] : $('bkYm').value;
+  if(!confirm(m + ' 매출·지출에 입력된 내용을 손익계산서로 가져올까요?\n(직접 고친 칸은 그대로 둡니다)')) return;
+  try{ const r = await api('pnlImport', TOKEN, m); toast(r.filled + '개 계정을 채웠어요'); loadBook(); }
+  catch(e){ alert(e.message); }
+}
+function bkCsv(){
+  if(!BOOK) return;
+  const rows = [], M = BOOK.months;
+  rows.push(['계정과목', ...M].join(','));
+  BK_SEC.forEach(sec => {
+    rows.push(['▶ '+sec, ...M.map(()=>'')].join(','));
+    (BOOK.rows||[]).filter(r => r.section === sec).forEach(r => {
+      rows.push([r.name, ...M.map(m => (r.vals||{})[m] || 0)].join(','));
+      (r.details||[]).forEach(d => rows.push(['  └ '+d.detail, ...M.map(m => (d.vals||{})[m] || 0)].join(',')));
+    });
+  });
+  const blob = new Blob(['﻿' + rows.join('\n')], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '손익계산서_' + M[M.length-1] + '_' + M[0] + '.csv';
+  a.click();
+}
+
 /* ===== 오늘 정산 ===== */
 let PNL = null;
 function pnlShift(d){
