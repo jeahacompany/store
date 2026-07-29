@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>순창담_본점 웨이팅 등록</title>
+<!-- 카톡·문자 링크 미리보기 (크롤러는 JS를 실행하지 않아 매장명을 직접 적어둔다) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="순창담_본점">
+<meta property="og:title" content="순창담_본점 웨이팅 등록">
+<meta property="og:description" content="전화번호만 남기면 대기번호가 발급돼요. 내 순번은 이 화면에서 실시간으로 확인하세요.">
+<meta name="description" content="순창담_본점 웨이팅 등록">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<style>
+:root{ --brand:#F26522; --ink:#20242E; --line:#E9ECEF; --sub:#868E96; --green:#2F9E44; --red:#E03131; }
+*{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent }
+body{ font-family:Pretendard,-apple-system,sans-serif; background:#F8F9FA; color:var(--ink); font-size:17px; line-height:1.55;
+  padding:18px 16px 40px; max-width:520px; margin:0 auto }
+h1{ font-size:23px; margin-bottom:4px }
+.sub{ color:var(--sub); font-size:14.5px }
+.card{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:20px 18px; margin-top:14px }
+label{ display:block; font-size:14.5px; color:var(--sub); margin:14px 0 6px; font-weight:600 }
+input[type=tel],input[type=text]{ width:100%; padding:15px; border:1px solid var(--line); border-radius:12px;
+  font-size:19px; font-family:inherit; background:#fff }
+input:focus{ outline:none; border-color:var(--brand) }
+.btn{ display:block; width:100%; padding:17px; border:none; border-radius:12px; background:var(--brand); color:#fff;
+  font-size:18px; font-weight:700; font-family:inherit; cursor:pointer; margin-top:18px }
+.btn:disabled{ opacity:.5 }
+.btn.ghost{ background:#fff; color:var(--ink); border:1px solid var(--line); font-weight:600; font-size:16px; padding:14px }
+.chk{ display:flex; gap:10px; align-items:flex-start; margin-top:12px; font-size:15px }
+.chk input{ width:22px; height:22px; margin-top:2px; flex:none; accent-color:var(--brand) }
+.hero{ background:linear-gradient(135deg,#F26522,#FF922B); color:#fff; border-radius:18px; padding:22px 18px; text-align:center }
+.hidden{ display:none }
+.err{ color:var(--red); font-size:14.5px; margin-top:10px }
+.people{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:6px }
+.people button{ padding:14px 0; border:1px solid var(--line); background:#fff; border-radius:12px;
+  font-size:17px; font-family:inherit; font-weight:600; cursor:pointer; color:var(--ink) }
+.people button.on{ background:var(--brand); color:#fff; border-color:var(--brand) }
+/* 순번 화면 */
+.myno{ text-align:center; padding:8px 0 }
+.myno .lbl{ color:var(--sub); font-size:15px }
+.myno .no{ font-size:78px; font-weight:800; line-height:1.05; color:var(--brand); font-variant-numeric:tabular-nums }
+.ahead{ display:flex; gap:10px; margin-top:16px }
+.ahead > div{ flex:1; background:#F8F9FA; border-radius:14px; padding:14px 10px; text-align:center }
+.ahead b{ display:block; font-size:26px; margin-top:2px; font-variant-numeric:tabular-nums }
+.callbox{ background:linear-gradient(135deg,#2F9E44,#40C057); color:#fff; border-radius:16px; padding:24px 18px;
+  text-align:center; margin-top:14px }
+.callbox .big{ font-size:30px; font-weight:800; margin:6px 0 }
+.dot{ display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--green); margin-right:5px;
+  animation:blink 1.6s infinite }
+@keyframes blink{ 0%,100%{opacity:1} 50%{opacity:.25} }
+a.kakao{ display:block; text-align:center; background:#FEE500; color:#191919; padding:15px; border-radius:12px;
+  font-weight:700; text-decoration:none; margin-top:12px }
+details{ margin-top:14px; font-size:13.5px; color:var(--sub) }
+details summary{ cursor:pointer; font-weight:600 }
+</style>
+</head>
+<body>
+
+<div id="loading" class="sub" style="text-align:center; padding:40px 0">불러오는 중...</div>
+
+<!-- 1) 등록 화면 -->
+<div id="joinView" class="hidden">
+  <div class="hero">
+    <div style="font-size:15px; opacity:.95" id="hStore">매장</div>
+    <div style="font-size:22px; font-weight:700; margin-top:6px">웨이팅 등록</div>
+    <div style="font-size:14.5px; opacity:.95; margin-top:8px" id="hNow">지금 대기 확인 중...</div>
+  </div>
+
+  <div class="card">
+    <label>전화번호 <span style="color:var(--red)">*</span></label>
+    <input type="tel" id="phone" inputmode="numeric" placeholder="010 1234 5678" autocomplete="tel">
+    <div class="sub" style="margin-top:6px">호명해도 안 계실 때 연락드려요.</div>
+
+    <label>인원 <span style="color:var(--red)">*</span></label>
+    <div class="people" id="peopleBox"></div>
+
+    <label class="chk"><input type="checkbox" id="c1" checked>
+      <span><b>[선택] 포인트 회원으로 함께 가입</b><br>
+        <span class="sub">가입만 해도 <b id="bonusTxt">500P</b> 바로 지급! 다음부터 결제할 때마다 적립돼요.
+        (미체크해도 대기 등록은 됩니다)</span></span></label>
+    <label class="chk"><input type="checkbox" id="c2">
+      <span>[선택] 혜택·이벤트 안내 수신 동의</span></label>
+
+    <button class="btn" id="btnJoin" onclick="join()">대기 등록하기</button>
+    <div class="err hidden" id="err"></div>
+
+    <details>
+      <summary>개인정보 안내</summary>
+      <p style="margin-top:8px">전화번호는 대기 안내·호출 목적으로 수집하며 당일 영업 종료 후 대기 목적으로는 사용하지 않습니다.
+      포인트 회원 가입에 동의하신 경우에 한해 적립·조회 목적으로 보관하고, 마지막 방문 후 3년이 지나면 파기합니다.
+      매장에 말씀하시면 즉시 삭제해 드립니다.</p>
+    </details>
+  </div>
+</div>
+
+<!-- 2) 내 순번 화면 -->
+<div id="myView" class="hidden">
+  <div class="card">
+    <div class="myno">
+      <div class="lbl" id="mStore">순창담_본점</div>
+      <div class="lbl" style="margin-top:10px">내 대기번호</div>
+      <div class="no" id="mNo">-</div>
+      <div class="sub" id="mPeople"></div>
+    </div>
+  </div>
+
+  <div id="callBox" class="callbox hidden">
+    <div style="font-size:15px; opacity:.95">지금 자리가 준비됐어요</div>
+    <div class="big">입장해 주세요! 🎉</div>
+    <div style="font-size:14px; opacity:.95">카운터에 번호를 말씀해 주세요</div>
+  </div>
+
+  <div id="waitBox" class="card">
+    <div class="ahead">
+      <div><span class="sub">내 앞 대기</span><b id="mAhead">-</b><span class="sub">팀</span></div>
+      <div><span class="sub">예상 대기</span><b id="mEta">-</b><span class="sub">분</span></div>
+    </div>
+    <div class="sub" style="text-align:center; margin-top:14px">
+      <span class="dot"></span>이 화면은 자동으로 갱신돼요. 켜두시면 순서가 되면 바뀝니다.
+    </div>
+    <div class="sub" style="text-align:center; margin-top:4px" id="mUpdated"></div>
+  </div>
+
+  <div id="doneBox" class="card hidden" style="text-align:center">
+    <div style="font-size:40px" id="dIcon">✅</div>
+    <div style="font-size:20px; font-weight:700; margin-top:6px" id="dTitle">입장 완료</div>
+    <div class="sub" id="dMsg" style="margin-top:6px"></div>
+  </div>
+
+  <div id="ptsBox" class="card hidden" style="text-align:center; background:#FFF9DB; border-color:#FFE066">
+    <b id="ptsTxt"></b>
+    <div class="sub" style="margin-top:4px">계산하실 때 전화번호만 말씀하시면 적립돼요.</div>
+  </div>
+
+  <a class="kakao hidden" id="mKakao" href="#" target="_blank">💬 카카오 채널 추가하고 혜택 받기</a>
+  <button class="btn ghost" onclick="location.href=location.pathname+'?s='+STORE">새로 등록하기</button>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://zcjvriedzememkiltqfa.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjanZyaWVkemVtZW1raWx0cWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMjg2MTIsImV4cCI6MjA5OTYwNDYxMn0.2nZh82xFUNORqcKObAHUnz8K5EjjL-Nym0T4YkDHxMk';
+const Q = new URLSearchParams(location.search);
+const STORE = Q.get('s') || '';
+const TOK = Q.get('t') || '';
+const $ = id => document.getElementById(id);
+let PEOPLE = 2, TIMER = null, INFO = null;
+
+async function api(fn, ...args){
+  const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/store_api', {
+    method:'POST', headers:{ 'Content-Type':'application/json', 'apikey':SUPABASE_ANON, 'Authorization':'Bearer '+SUPABASE_ANON },
+    body: JSON.stringify({ p_fn: fn, p_args: args })
+  });
+  const data = await res.json();
+  if(!data || data.ok === false) throw new Error((data && data.error) || '서버 오류');
+  return data.result;
+}
+function show(v){ ['loading','joinView','myView'].forEach(x => $(x).classList.toggle('hidden', x!==v)); }
+
+$('phone').addEventListener('input', e => {
+  let v = e.target.value.replace(/[^0-9]/g,'').slice(0,11);
+  if(v.length > 7) v = v.slice(0,3)+'-'+v.slice(3,7)+'-'+v.slice(7);
+  else if(v.length > 3) v = v.slice(0,3)+'-'+v.slice(3);
+  e.target.value = v;
+});
+// 인원 버튼
+$('peopleBox').innerHTML = [1,2,3,4,5,6,8,10].map(n =>
+  '<button onclick="setPeople('+n+',this)"'+(n===2?' class="on"':'')+'>'+n+'명</button>').join('');
+function setPeople(n, btn){
+  PEOPLE = n;
+  document.querySelectorAll('#peopleBox button').forEach(b => b.classList.toggle('on', b===btn));
+}
+
+(async () => {
+  if(TOK){ await poll(); show('myView'); startTimer(); return; }
+  if(!STORE){ $('loading').textContent = '잘못된 주소예요. 매장의 QR을 다시 스캔해주세요.'; return; }
+  try{
+    INFO = await api('custStoreInfo', STORE);
+    $('hStore').textContent = INFO.name || '매장';
+    $('mStore').textContent = INFO.name || '매장';
+    document.title = (INFO.name||'매장') + ' 웨이팅';
+    if(INFO.join_bonus > 0) $('bonusTxt').textContent = (+INFO.join_bonus).toLocaleString('ko-KR')+'P';
+    show('joinView');
+  }catch(e){ $('loading').textContent = e.message; }
+})();
+
+async function join(){
+  $('err').classList.add('hidden');
+  const phone = $('phone').value.replace(/[^0-9]/g,'');
+  if(phone.length < 10){ fail('전화번호를 정확히 입력해주세요.'); return; }
+  $('btnJoin').disabled = true;
+  try{
+    const r = await api('waitJoin', STORE, { phone, people:PEOPLE,
+      consent_basic:$('c1').checked, consent_mkt:$('c2').checked });
+    // 주소에 토큰을 남겨둬야 새로고침·재접속해도 내 순번이 유지된다
+    history.replaceState(null, '', location.pathname + '?t=' + r.token);
+    if(r.bonus > 0){
+      $('ptsTxt').textContent = '🎉 포인트 회원 가입 완료 — ' + (+r.bonus).toLocaleString('ko-KR') + 'P 지급!';
+      $('ptsBox').classList.remove('hidden');
+    }
+    if(INFO && INFO.kakao_url){ $('mKakao').href = INFO.kakao_url; $('mKakao').classList.remove('hidden'); }
+    render(r);
+    show('myView');
+    startTimer();
+  }catch(e){ fail(e.message); $('btnJoin').disabled = false; }
+}
+function fail(m){ $('err').textContent = m; $('err').classList.remove('hidden'); }
+
+function render(r){
+  $('mNo').textContent = r.wait_no;
+  $('mPeople').textContent = r.people + '명';
+  if(r.store_name) $('mStore').textContent = r.store_name;
+  const st = r.status;
+  $('callBox').classList.toggle('hidden', st !== '호출');
+  $('waitBox').classList.toggle('hidden', st !== '대기' && st !== '호출');
+  $('doneBox').classList.toggle('hidden', st === '대기' || st === '호출');
+  if(st === '대기' || st === '호출'){
+    $('mAhead').textContent = r.ahead;
+    $('mEta').textContent = Math.max(0, (+r.ahead) * (+r.avg_min || 8));
+    const d = new Date();
+    $('mUpdated').textContent = '마지막 확인 ' + String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  } else {
+    const map = { '입장':['🍲','입장하셨어요','맛있게 드세요!'],
+                  '취소':['🙏','대기가 취소됐어요','다음에 또 찾아주세요.'],
+                  '노쇼':['⏰','호출 시간이 지났어요','카운터에 문의해주세요.'] };
+    const m = map[st] || ['✅','완료',''];
+    $('dIcon').textContent = m[0]; $('dTitle').textContent = m[1]; $('dMsg').textContent = m[2];
+    if(TIMER) clearInterval(TIMER);
+  }
+}
+async function poll(){
+  const t = new URLSearchParams(location.search).get('t');
+  if(!t) return;
+  try{ render(await api('waitStatus', t)); }
+  catch(e){ /* 일시적 오류는 무시하고 다음 갱신을 기다린다 */ }
+}
+function startTimer(){
+  if(TIMER) clearInterval(TIMER);
+  TIMER = setInterval(poll, 10000);          // 10초마다 자동 갱신
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) poll(); });
+}
+</script>
+</body>
+</html>

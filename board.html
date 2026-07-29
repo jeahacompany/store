@@ -88,8 +88,14 @@ label{display:block; font-size:14px; color:var(--sub); margin:10px 0 4px}
     <a onclick="doLogout()">로그아웃</a>
   </div>
   <div class="grid">
-    <div><!-- 왼쪽: 예약 -->
-      <div class="card">
+    <div><!-- 왼쪽: 웨이팅 · 예약 -->
+      <div class="card" style="border-color:#FFD8A8">
+        <h2>⏳ 웨이팅 <span class="badge a" id="waitCnt">0</span>
+          <span class="sub" id="waitExtra" style="font-weight:400"></span>
+          <button class="btn sm" style="margin-left:auto" onclick="openWait()">+ 대기 등록</button></h2>
+        <div id="waitList"><div class="sub">불러오는 중...</div></div>
+      </div>
+      <div class="card" style="margin-top:14px">
         <h2>📅 오늘 예약 <span class="badge b" id="resvCnt">0</span>
           <span class="sub" id="resvExtra" style="font-weight:400"></span>
           <button class="btn sm" style="margin-left:auto" onclick="openResv()">+ 예약 등록</button></h2>
@@ -143,6 +149,23 @@ label{display:block; font-size:14px; color:var(--sub); margin:10px 0 4px}
     </div>
   </div>
 </div>
+<!-- 대기 등록 모달 -->
+<div class="modal-bg hidden" id="waitModal">
+  <div class="modal" style="max-width:460px">
+    <h2>대기 등록</h2>
+    <div class="sub" style="margin-bottom:8px">손님이 QR로 직접 등록할 수도 있어요. 여기선 대신 등록합니다.</div>
+    <div class="grid2">
+      <div><label>전화번호</label><input id="wmPhone" inputmode="numeric" style="width:100%; font-size:20px" placeholder="01012345678"></div>
+      <div><label>인원</label><input id="wmPeople" inputmode="numeric" type="number" value="2" style="width:100%; font-size:20px"></div>
+    </div>
+    <label>메모</label><input id="wmMemo" style="width:100%" placeholder="예: 아기의자, 창가 희망">
+    <div style="margin-top:16px; display:flex; gap:8px">
+      <button class="btn" style="flex:1" onclick="saveWait()">등록</button>
+      <button class="btn ghost" onclick="$('waitModal').classList.add('hidden')">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- 포인트 적립 모달 -->
 <div class="modal-bg hidden" id="earnModal">
   <div class="modal" style="max-width:520px">
@@ -209,7 +232,64 @@ async function doLogout(){ try{ await api('logout', TOKEN); }catch(e){} localSto
 
 async function loadAll(){
   $('hdDate').textContent = new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'});
-  loadResv(); loadNotices(); loadSold(); loadTasksB(); loadWork(); loadSn();
+  loadWait(); loadResv(); loadNotices(); loadSold(); loadTasksB(); loadWork(); loadSn();
+}
+
+/* ---------- 웨이팅 ---------- */
+let WAITS = [];
+async function loadWait(){
+  try{
+    const r = await api('waitList', TOKEN);
+    WAITS = r.rows;
+    $('waitCnt').textContent = r.waiting;
+    $('waitExtra').textContent = ' 입장 ' + r.entered + ' · 노쇼 ' + r.noshow + ' · 팀당 평균 ' + r.avg_min + '분';
+    const live = WAITS.filter(w => w.status === '대기' || w.status === '호출');
+    $('waitList').innerHTML = live.map((w, i) =>
+      '<div class="row" style="align-items:center">'
+      + '<span style="font-size:26px; font-weight:800; width:52px; color:'+(w.status==='호출'?'var(--green)':'var(--brand)')+'">'+w.wait_no+'</span>'
+      + '<span style="flex:1">'
+        + '<b style="font-size:18px">'+w.people+'명</b> '
+        + '<span class="sub">'+esc(w.phone_masked)+'</span>'
+        + (w.is_member ? ' <span class="badge b">회원</span>' : '')
+        + (w.source==='QR' ? ' <span class="badge">QR</span>' : '')
+        + (w.status==='호출' ? ' <span class="badge g">호출됨</span>' : '')
+        + (w.memo ? '<div class="sub">'+esc(w.memo)+'</div>' : '')
+        + '<div class="sub">' + waitMin(w.created_at) + '분 대기중</div>'
+      + '</span>'
+      + '<span style="white-space:nowrap">'
+        + (w.status==='대기'
+            ? '<button class="btn sm green" onclick="setWait(\''+w.id+'\',\'호출\')">호출</button> '
+            : '<button class="btn sm green" onclick="setWait(\''+w.id+'\',\'입장\')">입장</button> ')
+        + '<button class="btn sm ghost" onclick="callPhone(\''+w.id+'\')">📞</button> '
+        + '<button class="btn sm red" onclick="setWait(\''+w.id+'\',\'노쇼\')">노쇼</button> '
+        + '<button class="btn sm ghost" onclick="setWait(\''+w.id+'\',\'취소\')">취소</button>'
+      + '</span></div>'
+    ).join('') || '<div class="sub">대기 팀 없음</div>';
+  }catch(e){ $('waitList').innerHTML = '<div class="sub">'+esc(e.message)+'</div>'; }
+}
+function waitMin(t){ return Math.max(0, Math.round((Date.now() - new Date(t).getTime())/60000)); }
+function callPhone(id){
+  const w = WAITS.find(x => x.id === id); if(!w) return;
+  if(confirm(w.phone_full + ' 로 전화를 걸까요?')) location.href = 'tel:' + w.phone_full;
+}
+async function setWait(id, st){
+  if((st==='노쇼'||st==='취소') && !confirm(st+' 처리할까요?')) return;
+  try{ await api('waitSet', TOKEN, id, st); toast(st+' 처리'); loadWait(); }
+  catch(e){ toast(e.message); }
+}
+function openWait(){
+  $('wmPhone').value=''; $('wmPeople').value='2'; $('wmMemo').value='';
+  $('waitModal').classList.remove('hidden');
+  setTimeout(()=>$('wmPhone').focus(), 100);
+}
+async function saveWait(){
+  try{
+    const r = await api('waitAdd', TOKEN, { phone:$('wmPhone').value.replace(/[^0-9]/g,''),
+      people:+$('wmPeople').value||2, memo:$('wmMemo').value.trim() });
+    $('waitModal').classList.add('hidden');
+    toast(r.wait_no + '번으로 등록했어요');
+    loadWait();
+  }catch(e){ toast(e.message); }
 }
 
 /* 예약 */
