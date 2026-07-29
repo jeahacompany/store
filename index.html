@@ -1207,7 +1207,8 @@ const TABS = ['today','ai','cal','staff','shift','att','labor','tasks','board','
 const TITLES = {today:'오늘', ai:'AI 비서', cal:'캘린더', staff:'직원', shift:'근무표', att:'근태', labor:'인건비표', tasks:'오더', board:'업무보드',
   manual:'매뉴얼', info:'매장정보', cust:'고객·포인트', cash:'자금', sales:'매출', dep:'입금', exp:'지출', settle:'월 정산', inb:'입고 명세서', vendor:'거래처', stock:'재고', price:'단가 변동', logs:'시스템 로그', setup:'설정'};
 // 직책 — 매장에서 부르는 그대로
-const POSITIONS = ['점장','매니저','홀','셰프','부셰프','찬모','주방보조','세척'];
+// 홀 3 + 주방 6 — 바 담당은 주방 소속(숙련자), 셀프바 양 조절 = 원가 조절
+const POSITIONS = ['점장','매니저','홀','셰프','부셰프','바 담당','찬모','주방보조','세척'];
 const SHIFT_TARGET = { weekday: 4, weekend: 6 };   // 홀 목표 인원
 // 영업시간 — 평일 11:00~15:00 / 브레이크 15:00~17:00 / 17:00~21:00, 주말 10:30~21:00 풀
 // 근무는 오픈 준비 30분 전 ~ 마감 정리 30분 후 기준
