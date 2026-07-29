@@ -92,7 +92,8 @@ label{display:block; font-size:14px; color:var(--sub); margin:10px 0 4px}
       <div class="card" style="border-color:#FFD8A8">
         <h2>⏳ 웨이팅 <span class="badge a" id="waitCnt">0</span>
           <span class="sub" id="waitExtra" style="font-weight:400"></span>
-          <button class="btn sm" style="margin-left:auto" onclick="openWait()">+ 대기 등록</button></h2>
+          <button class="btn sm ghost" style="margin-left:auto" onclick="useCoupon()">🎟 쿠폰 사용</button>
+          <button class="btn sm" onclick="openWait()">+ 대기 등록</button></h2>
         <div id="waitList"><div class="sub">불러오는 중...</div></div>
       </div>
       <div class="card" style="margin-top:14px">
@@ -242,7 +243,9 @@ async function loadWait(){
     const r = await api('waitList', TOKEN);
     WAITS = r.rows;
     $('waitCnt').textContent = r.waiting;
-    $('waitExtra').textContent = ' 입장 ' + r.entered + ' · 노쇼 ' + r.noshow + ' · 팀당 평균 ' + r.avg_min + '분';
+    $('waitExtra').textContent = ' 입장 ' + r.entered + ' · 노쇼 ' + r.noshow + ' · 평균 ' + r.avg_min + '분'
+      + (r.coupon_issued > 0 ? ' · 쿠폰 ' + (+r.coupon_issued).toLocaleString('ko-KR') + '원 발행('
+          + (+r.coupon_used).toLocaleString('ko-KR') + '원 사용)' : '');
     const live = WAITS.filter(w => w.status === '대기' || w.status === '호출');
     $('waitList').innerHTML = live.map((w, i) =>
       '<div class="row" style="align-items:center">'
@@ -253,8 +256,11 @@ async function loadWait(){
         + (w.is_member ? ' <span class="badge b">회원</span>' : '')
         + (w.source==='QR' ? ' <span class="badge">QR</span>' : '')
         + (w.status==='호출' ? ' <span class="badge g">호출됨</span>' : '')
+        + (w.geo_ok === false ? ' <span class="badge r">위치미확인</span>' : '')
         + (w.memo ? '<div class="sub">'+esc(w.memo)+'</div>' : '')
-        + '<div class="sub">' + waitMin(w.created_at) + '분 대기중</div>'
+        + '<div class="sub">' + waitMin(w.created_at) + '분 대기중'
+          + (w.geo_ok ? ' · 지금 입장 시 쿠폰 ' + (Math.min(Math.floor(waitMin(w.created_at)/30)*500, 2000)).toLocaleString('ko-KR') + '원' : '')
+          + '</div>'
       + '</span>'
       + '<span style="white-space:nowrap">'
         + (w.status==='대기'
@@ -274,8 +280,24 @@ function callPhone(id){
 }
 async function setWait(id, st){
   if((st==='노쇼'||st==='취소') && !confirm(st+' 처리할까요?')) return;
-  try{ await api('waitSet', TOKEN, id, st); toast(st+' 처리'); loadWait(); }
-  catch(e){ toast(e.message); }
+  try{
+    const r = await api('waitSet', TOKEN, id, st);
+    if(st === '입장' && r.coupon_amt > 0){
+      alert('🎟 할인쿠폰 발행!\n\n' + (+r.coupon_amt).toLocaleString('ko-KR') + '원 · 번호 ' + r.coupon_code
+        + '\n\n손님 폰 화면에도 떴어요. 계산하실 때 이 번호로 할인해 주세요.');
+    } else { toast(st+' 처리'); }
+    loadWait();
+  }catch(e){ toast(e.message); }
+}
+async function useCoupon(){
+  const code = prompt('손님이 보여준 쿠폰 번호 6자리를 입력하세요');
+  if(!code) return;
+  try{
+    const r = await api('waitCouponUse', TOKEN, code.replace(/[^0-9]/g,''));
+    alert('✔ 쿠폰 사용 처리 완료\n\n' + (+r.amount).toLocaleString('ko-KR') + '원 할인\n('
+      + r.wait_no + '번 · ' + r.people + '명)');
+    loadWait();
+  }catch(e){ alert(e.message); }
 }
 function openWait(){
   $('wmPhone').value=''; $('wmPeople').value='2'; $('wmMemo').value='';

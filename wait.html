@@ -80,6 +80,14 @@ details summary{ cursor:pointer; font-weight:600 }
     <div class="nowbox" id="hNow"><span class="dot"></span>대기 현황 확인 중...</div>
   </div>
 
+  <div class="card" style="background:#FFF9DB; border-color:#FFE066; text-align:center">
+    <div style="font-size:19px; font-weight:700">기다려주셔서 감사합니다 🙏</div>
+    <div style="margin-top:6px; font-size:16px" id="couponNotice">
+      <b>30분마다 500원</b> 할인쿠폰을 드려요
+    </div>
+    <div class="sub" style="margin-top:4px" id="couponSub">계산하실 때 이 화면을 보여주시면 바로 할인됩니다 (당일만 사용 가능)</div>
+  </div>
+
   <div class="card">
     <label>전화번호 <span style="color:var(--red)">*</span></label>
     <input type="tel" id="phone" inputmode="numeric" placeholder="010 1234 5678" autocomplete="tel">
@@ -143,6 +151,24 @@ details summary{ cursor:pointer; font-weight:600 }
     <div style="font-size:40px" id="dIcon">✅</div>
     <div style="font-size:20px; font-weight:700; margin-top:6px" id="dTitle">입장 완료</div>
     <div class="sub" id="dMsg" style="margin-top:6px"></div>
+  </div>
+
+  <!-- 대기 중: 쿠폰 적립 진행 상황 -->
+  <div id="cpPending" class="card hidden" style="text-align:center; background:#FFF9DB; border-color:#FFE066">
+    <div class="sub">지금까지 <b id="cpMin">0</b>분 기다리셨어요</div>
+    <div style="font-size:15px; margin-top:6px" id="cpPendTxt">조금만 더 기다리시면 할인쿠폰이 발행돼요</div>
+  </div>
+
+  <!-- 입장 후: 확정된 쿠폰 -->
+  <div id="cpBox" class="card hidden" style="text-align:center; background:#FFF4E6; border-color:#FFD8A8">
+    <div style="font-size:16px; font-weight:700" id="cpThanks">기다려주셔서 감사합니다</div>
+    <div style="font-size:38px; font-weight:800; color:var(--brand); margin:8px 0" id="cpAmt">0원</div>
+    <div class="sub">할인쿠폰 번호</div>
+    <div style="font-size:34px; font-weight:800; letter-spacing:4px; font-variant-numeric:tabular-nums" id="cpCode">------</div>
+    <div class="sub" style="margin-top:8px">계산하실 때 <b>이 번호를 보여주세요</b><br>오늘 하루만 사용 가능해요</div>
+    <div id="cpUsed" class="hidden" style="margin-top:10px; padding:10px; background:#E9ECEF; border-radius:10px; font-weight:700">
+      ✔ 사용 완료된 쿠폰이에요
+    </div>
   </div>
 
   <div id="ptsBox" class="card hidden" style="text-align:center; background:#FFF9DB; border-color:#FFE066">
@@ -219,6 +245,10 @@ async function loadPublic(){
     $('mStore').textContent = r.store_name || '매장';
     document.title = (r.store_name||'매장') + ' 웨이팅';
     if(r.join_bonus > 0) $('bonusTxt').textContent = (+r.join_bonus).toLocaleString('ko-KR')+'P';
+    $('couponNotice').innerHTML = '<b>30분마다 ' + (+r.coupon_per30).toLocaleString('ko-KR') + '원</b> 할인쿠폰을 드려요'
+      + ' <span class="sub">(최대 ' + (+r.coupon_max).toLocaleString('ko-KR') + '원)</span>';
+    if(r.has_gps) $('couponSub').innerHTML = '계산하실 때 이 화면을 보여주시면 바로 할인됩니다 (당일만 사용 가능)<br>'
+      + '<b>매장 앞에서</b> 등록해주셔야 쿠폰이 발행돼요';
     $('hNow').innerHTML = r.waiting > 0
       ? '<span class="dot"></span>현재 대기 <b>' + r.waiting + '팀</b> · 예상 <b>' + r.eta + '분</b>'
       : '<span class="dot"></span>지금은 <b>대기 없이 바로 입장</b> 가능해요!';
@@ -236,13 +266,30 @@ async function loadPublic(){
   }catch(e){ $('loading').textContent = e.message; }
 })();
 
+/* 위치 확인 — 매장 앞에서 등록했는지 (거절해도 대기는 됨, 쿠폰만 제외) */
+function getPos(){
+  return new Promise(resolve => {
+    if(!navigator.geolocation) return resolve(null);
+    let done = false;
+    const t = setTimeout(() => { if(!done){ done = true; resolve(null); } }, 6000);
+    navigator.geolocation.getCurrentPosition(
+      p => { if(!done){ done = true; clearTimeout(t); resolve({lat:p.coords.latitude, lng:p.coords.longitude}); } },
+      () => { if(!done){ done = true; clearTimeout(t); resolve(null); } },
+      { enableHighAccuracy:true, timeout:6000, maximumAge:30000 });
+  });
+}
+
 async function join(){
   $('err').classList.add('hidden');
   const phone = $('phone').value.replace(/[^0-9]/g,'');
   if(phone.length < 10){ fail('전화번호를 정확히 입력해주세요.'); return; }
   $('btnJoin').disabled = true;
+  $('btnJoin').textContent = '위치 확인 중...';
   try{
+    const pos = await getPos();
+    $('btnJoin').textContent = '등록 중...';
     const r = await api('waitJoin', STORE, { phone, people:PEOPLE,
+      lat: pos ? pos.lat : '', lng: pos ? pos.lng : '',
       consent_basic:$('c1').checked, consent_mkt:$('c2').checked });
     // 주소에 토큰을 남겨둬야 새로고침·재접속해도 내 순번이 유지된다
     history.replaceState(null, '', location.pathname + '?t=' + r.token);
@@ -254,7 +301,7 @@ async function join(){
     render(r);
     show('myView');
     startTimer();
-  }catch(e){ fail(e.message); $('btnJoin').disabled = false; }
+  }catch(e){ fail(e.message); $('btnJoin').disabled = false; $('btnJoin').textContent = '대기 등록하기'; }
 }
 function fail(m){ $('err').textContent = m; $('err').classList.remove('hidden'); }
 
@@ -263,10 +310,29 @@ function render(r){
   $('mNo').textContent = r.wait_no;
   $('mPeople').textContent = r.people + '명';
   if(r.store_name) $('mStore').textContent = r.store_name;
-  const st = r.status;
+  const st = r.status, live = (st === '대기' || st === '호출');
   $('callBox').classList.toggle('hidden', st !== '호출');
-  $('waitBox').classList.toggle('hidden', st !== '대기' && st !== '호출');
-  $('doneBox').classList.toggle('hidden', st === '대기' || st === '호출');
+  $('waitBox').classList.toggle('hidden', !live);
+  $('doneBox').classList.toggle('hidden', live);
+
+  // 쿠폰: 대기 중엔 진행 상황, 입장 후엔 확정 번호
+  const amt = +r.coupon_amt || 0, pend = +r.coupon_pending || 0, per30 = +r.coupon_per30 || 500;
+  $('cpPending').classList.toggle('hidden', !(live && r.geo_ok));
+  if(live && r.geo_ok){
+    $('cpMin').textContent = r.waited_min;
+    const nextMin = 30 - (r.waited_min % 30);
+    $('cpPendTxt').innerHTML = pend > 0
+      ? '지금 입장하시면 <b style="color:var(--brand)">' + pend.toLocaleString('ko-KR') + '원</b> 할인쿠폰이 발행돼요'
+        + (pend < (+r.coupon_max) ? '<br><span class="sub">' + nextMin + '분 더 기다리시면 ' + (pend+per30).toLocaleString('ko-KR') + '원으로 올라가요</span>' : '')
+      : '<b>' + nextMin + '분</b> 더 기다리시면 ' + per30.toLocaleString('ko-KR') + '원 할인쿠폰이 발행돼요';
+  }
+  $('cpBox').classList.toggle('hidden', !(amt > 0 && !live));
+  if(amt > 0 && !live){
+    $('cpThanks').textContent = r.waited_min + '분 기다려주셔서 감사합니다 🙏';
+    $('cpAmt').textContent = amt.toLocaleString('ko-KR') + '원';
+    $('cpCode').textContent = r.coupon_code || '------';
+    $('cpUsed').classList.toggle('hidden', !r.coupon_used);
+  }
   if(st === '대기' || st === '호출'){
     $('mAhead').textContent = r.ahead;
     $('mEta').textContent = Math.max(0, (+r.ahead) * (+r.avg_min || 8));
