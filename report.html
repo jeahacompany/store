@@ -47,6 +47,13 @@ body{margin:0; background:var(--bg); color:var(--ink); font-size:var(--fs); line
   display:flex; align-items:center; justify-content:center; font-size:22px; flex:0 0 auto}
 .acct .t{flex:1; min-width:0}
 .acct .t b{font-size:19px} .acct .t .s{font-size:14px; color:var(--sub)}
+.acct .t .no{margin-top:3px; font-size:17px; color:#495057; cursor:pointer; display:flex;
+  align-items:center; gap:8px; flex-wrap:wrap}
+.acct .t .no b{font-size:18px; font-weight:800; letter-spacing:.3px; font-variant-numeric:tabular-nums;
+  color:var(--ink); word-break:break-all}
+.acct .t .no .cp{background:var(--bg); border:1px solid var(--line); border-radius:8px;
+  padding:2px 9px; font-size:13px; color:var(--sub); flex:0 0 auto}
+.acct .t .no:active .cp{background:var(--brand); color:#fff; border-color:var(--brand)}
 .acct .amt{font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap}
 
 .bar{margin:14px 0 0}
@@ -139,7 +146,7 @@ body{margin:0; background:var(--bg); color:var(--ink); font-size:var(--fs); line
 
     <div class="card" id="acctCard">
       <h2>🏦 통장별 잔액</h2>
-      <div class="note">통장마다 얼마 남아있는지 보여드립니다</div>
+      <div class="note">통장마다 얼마 남아있는지 보여드립니다 · <b>계좌번호를 누르면 복사</b>됩니다</div>
       <div id="rAccts"></div>
     </div>
 
@@ -243,10 +250,16 @@ function render(){
   // 통장
   const A = d.accounts || [];
   $('acctCard').classList.toggle('hidden', !A.length);
-  $('rAccts').innerHTML = A.map(a =>
+  $('rAccts').innerHTML = A.map((a, i) =>
     '<div class="acct"><div class="ic">🏦</div>'
     + '<div class="t"><b>' + esc(a.name) + '</b>'
-    + '<div class="s">' + esc(a.bank||'') + ' ' + esc(a.tail||'') + '</div></div>'
+    + (a.number
+        ? '<div class="no" onclick="copyAcct(' + i + ')" title="눌러서 복사">'
+          + esc(a.bank||'') + ' <b>' + esc(a.number) + '</b>'
+          + '<span class="cp" id="cp' + i + '">복사</span></div>'
+        : '<div class="s">' + esc(a.bank||'') + '</div>')
+    + (a.memo ? '<div class="s">' + esc(a.memo) + '</div>' : '')
+    + '</div>'
     + '<div class="amt' + ((+a.balance||0) < 0 ? ' outC' : '') + '">' + won(a.balance) + '</div></div>'
   ).join('');
 
@@ -312,6 +325,29 @@ function renderFlows(){
   $('flowMore').textContent = '전체 보기 (' + F.length + '건)';
 }
 function showAllFlows(){ SHOW_ALL = true; renderFlows(); }
+
+// 계좌번호 눌러서 복사 (어른들이 손으로 옮겨 적지 않게)
+function copyAcct(i){
+  const a = (DATA.accounts || [])[i];
+  if(!a || !a.number) return;
+  const txt = (a.bank ? a.bank + ' ' : '') + a.number;
+  const done = () => {
+    const el = $('cp' + i);
+    if(!el) return;
+    el.textContent = '복사됨 ✓';
+    setTimeout(() => { el.textContent = '복사'; }, 1600);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(done).catch(() => fallback(txt, done));
+  }else fallback(txt, done);
+}
+function fallback(txt, done){
+  const t = document.createElement('textarea');
+  t.value = txt; t.style.position = 'fixed'; t.style.opacity = '0';
+  document.body.appendChild(t); t.select();
+  try{ document.execCommand('copy'); done(); }catch(e){ alert(txt); }
+  document.body.removeChild(t);
+}
 
 function kdate(s){
   const d = new Date(s + 'T00:00:00');
