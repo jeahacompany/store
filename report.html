@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>순창담 본점 · 진행 현황</title>
+<meta property="og:title" content="순창담 본점 · 진행 현황">
+<meta property="og:description" content="공사 일정과 자금 현황을 한눈에 보실 수 있습니다.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+<style>
+:root{
+  --brand:#F26522; --ink:#20242E; --sub:#6C757D; --line:#E9ECEF;
+  --bg:#F7F8FA; --card:#fff; --in:#2B8A3E; --out:#E03131;
+  --fs:19px;
+}
+*{box-sizing:border-box; -webkit-text-size-adjust:100%}
+body{margin:0; background:var(--bg); color:var(--ink); font-size:var(--fs); line-height:1.55;
+  font-family:Pretendard,-apple-system,BlinkMacSystemFont,'Malgun Gothic',sans-serif}
+.wrap{max-width:760px; margin:0 auto; padding:0 14px 60px}
+
+.hero{background:var(--ink); color:#fff; padding:26px 20px 22px; text-align:center}
+.hero .nm{font-size:15px; color:#AEB4C0; letter-spacing:2px}
+.hero h1{margin:6px 0 2px; font-size:30px; font-weight:800}
+.hero .dd{margin-top:14px; display:inline-block; background:var(--brand); border-radius:999px;
+  padding:9px 22px; font-size:22px; font-weight:800}
+.hero .od{margin-top:8px; font-size:15px; color:#AEB4C0}
+.hero .clock{margin-top:10px; font-size:14px; color:#8A90A0; font-variant-numeric:tabular-nums}
+
+.card{background:var(--card); border:1px solid var(--line); border-radius:18px;
+  padding:20px 18px; margin-top:14px}
+.card h2{margin:0 0 4px; font-size:21px; font-weight:800; display:flex; align-items:center; gap:8px}
+.card .note{color:var(--sub); font-size:15px; margin-bottom:14px}
+
+.big{font-size:40px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-1px; line-height:1.15}
+.mid{font-size:26px; font-weight:800; font-variant-numeric:tabular-nums}
+.inC{color:var(--in)} .outC{color:var(--out)}
+
+.two{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px}
+.two .box{background:var(--bg); border-radius:14px; padding:14px}
+.two .box .lb{font-size:15px; color:var(--sub); margin-bottom:4px}
+
+.acct{display:flex; align-items:center; gap:12px; padding:15px 0; border-bottom:1px solid var(--line)}
+.acct:last-child{border-bottom:none}
+.acct .ic{width:44px; height:44px; border-radius:12px; background:#FFF0E6; color:var(--brand);
+  display:flex; align-items:center; justify-content:center; font-size:22px; flex:0 0 auto}
+.acct .t{flex:1; min-width:0}
+.acct .t b{font-size:19px} .acct .t .s{font-size:14px; color:var(--sub)}
+.acct .amt{font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap}
+
+.bar{margin:14px 0 0}
+.bar .row{margin-bottom:14px}
+.bar .lb{display:flex; justify-content:space-between; font-size:17px; margin-bottom:6px}
+.bar .lb b{font-weight:700} .bar .lb span{font-variant-numeric:tabular-nums; font-weight:700}
+.bar .track{height:14px; background:var(--line); border-radius:999px; overflow:hidden}
+.bar .fill{height:100%; border-radius:999px; background:var(--brand)}
+.bar .pc{font-size:14px; color:var(--sub); margin-top:3px}
+
+.flow{display:flex; align-items:flex-start; gap:12px; padding:15px 0; border-bottom:1px solid var(--line)}
+.flow:last-child{border-bottom:none}
+.flow .dt{width:58px; flex:0 0 auto; font-size:14px; color:var(--sub); font-variant-numeric:tabular-nums; padding-top:3px}
+.flow .body{flex:1; min-width:0}
+.flow .body b{font-size:18px}
+.flow .body .m{font-size:15px; color:var(--sub); word-break:break-all}
+.flow .v{font-size:20px; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap; padding-top:1px}
+.tag{display:inline-block; background:var(--bg); border-radius:8px; padding:2px 9px; font-size:14px; color:var(--sub)}
+
+.sch{display:flex; gap:12px; padding:16px 0; border-bottom:1px solid var(--line)}
+.sch:last-child{border-bottom:none}
+.sch .day{width:66px; flex:0 0 auto; text-align:center; background:var(--bg); border-radius:12px; padding:8px 0}
+.sch .day .m{font-size:13px; color:var(--sub)} .sch .day .d{font-size:22px; font-weight:800; line-height:1.1}
+.sch .day .w{font-size:12px; color:var(--sub)}
+.sch .b{flex:1; min-width:0}
+.sch .b b{font-size:19px}
+.sch .b .m{font-size:15px; color:var(--sub)}
+.sch.done{opacity:.5}
+.sch.done .b b{text-decoration:line-through}
+.st{display:inline-block; border-radius:999px; padding:2px 10px; font-size:14px; font-weight:700; margin-left:6px}
+.st.now{background:#FFF0E6; color:var(--brand)} .st.will{background:#E7F5FF; color:#1971C2}
+.st.ok{background:#EBFBEE; color:var(--in)}
+
+.foot{text-align:center; color:var(--sub); font-size:14px; margin-top:26px; line-height:1.8}
+.err{background:#fff; border:1px solid var(--line); border-radius:18px; padding:40px 20px;
+  text-align:center; margin-top:60px}
+.err .e{font-size:44px} .err b{display:block; margin-top:12px; font-size:21px}
+.err p{color:var(--sub); font-size:16px}
+.load{text-align:center; padding:80px 0; color:var(--sub)}
+.more{display:block; width:100%; margin-top:14px; padding:14px; border:1px solid var(--line);
+  background:#fff; border-radius:12px; font-size:17px; font-weight:700; color:var(--sub); cursor:pointer;
+  font-family:inherit}
+.hidden{display:none}
+@media (max-width:480px){
+  :root{--fs:18px}
+  .hero h1{font-size:26px} .big{font-size:34px}
+  .two{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div id="loadBox" class="load">불러오는 중입니다…</div>
+
+<div id="errBox" class="wrap hidden">
+  <div class="err">
+    <div class="e">🔒</div>
+    <b id="errMsg">주소가 올바르지 않습니다</b>
+    <p>사장님께 링크를 다시 받아주세요.</p>
+  </div>
+</div>
+
+<div id="main" class="hidden">
+  <div class="hero">
+    <div class="nm">순창담</div>
+    <h1 id="hStore">본점</h1>
+    <div id="hDd" class="dd"></div>
+    <div id="hOd" class="od"></div>
+    <div id="hClock" class="clock"></div>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      <h2>💰 지금 남은 돈</h2>
+      <div class="note">들어온 돈에서 나간 돈을 뺀 금액입니다</div>
+      <div id="rBal" class="big">-</div>
+      <div class="two">
+        <div class="box"><div class="lb">들어온 돈 (누적)</div><div id="rIn" class="mid inC">-</div></div>
+        <div class="box"><div class="lb">나간 돈 (누적)</div><div id="rOut" class="mid outC">-</div></div>
+      </div>
+    </div>
+
+    <div class="card" id="acctCard">
+      <h2>🏦 통장별 잔액</h2>
+      <div class="note">통장마다 얼마 남아있는지 보여드립니다</div>
+      <div id="rAccts"></div>
+    </div>
+
+    <div class="card" id="spentCard">
+      <h2>📊 어디에 썼나</h2>
+      <div class="note">나간 돈을 항목별로 모았습니다</div>
+      <div id="rSpent" class="bar"></div>
+    </div>
+
+    <div class="card" id="schCard">
+      <h2>📅 일정</h2>
+      <div class="note">공사·준비 일정입니다. 사장님이 적으면 여기에 바로 올라옵니다</div>
+      <div id="rSch"></div>
+    </div>
+
+    <div class="card" id="flowCard">
+      <h2>🧾 입출금 기록</h2>
+      <div class="note">최근에 오간 돈을 하나씩 적어둔 것입니다</div>
+      <div id="rFlows"></div>
+      <button id="flowMore" class="more hidden" onclick="showAllFlows()">전체 보기</button>
+    </div>
+
+    <div class="foot">
+      순창담 본점 · 이 화면은 <b>보기 전용</b>입니다<br>
+      <span id="fUpd"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://zcjvriedzememkiltqfa.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjanZyaWVkemVtZW1raWx0cWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMjg2MTIsImV4cCI6MjA5OTYwNDYxMn0.2nZh82xFUNORqcKObAHUnz8K5EjjL-Nym0T4YkDHxMk';
+const $ = id => document.getElementById(id);
+const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const CODE = new URLSearchParams(location.search).get('c') || location.hash.replace('#','');
+let DATA = null, SHOW_ALL = false, SKEW = 0;
+
+function won(n){ return '₩' + Math.abs(+n||0).toLocaleString('ko-KR'); }
+// 어른들 보시기 편하게 "1억 2,340만원" 처럼도 같이 적음
+function easy(n){
+  const v = Math.abs(+n||0);
+  if(v >= 100000000){
+    const eok = Math.floor(v/100000000), man = Math.round((v%100000000)/10000);
+    return eok + '억' + (man ? ' ' + man.toLocaleString('ko-KR') + '만' : '') + '원';
+  }
+  if(v >= 10000) return Math.round(v/10000).toLocaleString('ko-KR') + '만원';
+  return v.toLocaleString('ko-KR') + '원';
+}
+function bigMoney(n, el){
+  const neg = (+n||0) < 0;
+  el.innerHTML = (neg ? '-' : '') + won(n)
+    + '<div style="font-size:17px; font-weight:600; color:var(--sub); margin-top:2px">'
+    + (neg?'-':'') + easy(n) + '</div>';
+}
+
+async function load(){
+  if(!CODE){ fail('주소에 코드가 없습니다'); return; }
+  try{
+    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/store_api', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON},
+      body: JSON.stringify({ p_fn:'reportPublic', p_args:[CODE] })
+    });
+    const d = await res.json();
+    if(!d || d.ok === false) throw new Error((d && d.error) || '불러올 수 없습니다');
+    DATA = d.result;
+    render();
+  }catch(e){ fail(e.message); }
+}
+function fail(msg){
+  $('loadBox').classList.add('hidden');
+  $('errMsg').textContent = msg;
+  $('errBox').classList.remove('hidden');
+}
+
+function render(){
+  const d = DATA;
+  $('loadBox').classList.add('hidden');
+  $('main').classList.remove('hidden');
+  $('hStore').textContent = d.store || '본점';
+
+  // D-day
+  if(d.dday === null || d.dday === undefined){
+    $('hDd').textContent = '준비 중';
+  }else if(d.dday > 0){
+    $('hDd').textContent = '오픈까지 ' + d.dday + '일';
+  }else if(d.dday === 0){
+    $('hDd').textContent = '오늘 오픈!';
+  }else{
+    $('hDd').textContent = '오픈 ' + Math.abs(d.dday) + '일째';
+  }
+  $('hOd').textContent = d.open_date ? '목표 ' + kdate(d.open_date) : '';
+  SKEW = new Date(d.now).getTime() - Date.now();
+  tick(); setInterval(tick, 1000);
+
+  bigMoney(d.balance, $('rBal'));
+  $('rBal').className = 'big ' + ((+d.balance||0) < 0 ? 'outC' : '');
+  $('rIn').textContent  = won(d.inSum) + ' (' + easy(d.inSum) + ')';
+  $('rOut').textContent = won(d.outSum) + ' (' + easy(d.outSum) + ')';
+
+  // 통장
+  const A = d.accounts || [];
+  $('acctCard').classList.toggle('hidden', !A.length);
+  $('rAccts').innerHTML = A.map(a =>
+    '<div class="acct"><div class="ic">🏦</div>'
+    + '<div class="t"><b>' + esc(a.name) + '</b>'
+    + '<div class="s">' + esc(a.bank||'') + ' ' + esc(a.tail||'') + '</div></div>'
+    + '<div class="amt' + ((+a.balance||0) < 0 ? ' outC' : '') + '">' + won(a.balance) + '</div></div>'
+  ).join('');
+
+  // 어디에 썼나
+  const S = d.spent || [];
+  const top = S.length ? Math.max(...S.map(x => +x.amount||0)) : 0;
+  const tot = S.reduce((a,x) => a + (+x.amount||0), 0);
+  $('spentCard').classList.toggle('hidden', !S.length);
+  $('rSpent').innerHTML = S.map(x =>
+    '<div class="row"><div class="lb"><b>' + esc(x.category) + '</b><span>' + won(x.amount) + '</span></div>'
+    + '<div class="track"><div class="fill" style="width:' + (top ? (x.amount*100/top).toFixed(1) : 0) + '%"></div></div>'
+    + '<div class="pc">' + easy(x.amount) + (tot ? ' · 전체의 ' + (x.amount*100/tot).toFixed(0) + '%' : '') + '</div></div>'
+  ).join('');
+
+  // 일정 — 다가오는 것 먼저, 지난 건 아래
+  const SC = (d.schedule || []).slice();
+  const soon = SC.filter(x => x.state !== '완료');
+  const past = SC.filter(x => x.state === '완료').reverse();
+  $('schCard').classList.toggle('hidden', !SC.length);
+  $('rSch').innerHTML = (soon.map(schRow).join('') || '<div class="note">등록된 일정이 없습니다</div>')
+    + (past.length ? '<div class="note" style="margin:18px 0 0">지난 일정</div>' + past.map(schRow).join('') : '');
+
+  renderFlows();
+  $('fUpd').textContent = kdate(d.today) + ' 기준 · 새로고침하면 최신 내용이 보입니다';
+}
+
+function schRow(x){
+  const dt = new Date(x.ev_date + 'T00:00:00');
+  const W = ['일','월','화','수','목','금','토'];
+  const st = x.state === '완료' ? '<span class="st ok">완료</span>'
+           : x.state === '진행중' ? '<span class="st now">진행중</span>'
+           : '<span class="st will">' + (x.dleft === 0 ? '오늘' : 'D-' + x.dleft) + '</span>';
+  const range = x.end_date && x.end_date !== x.ev_date ? ' ~ ' + kdate(x.end_date) : '';
+  return '<div class="sch' + (x.state === '완료' ? ' done' : '') + '">'
+    + '<div class="day"><div class="m">' + (dt.getMonth()+1) + '월</div>'
+    + '<div class="d">' + dt.getDate() + '</div>'
+    + '<div class="w">' + W[dt.getDay()] + '</div></div>'
+    + '<div class="b"><b>' + esc(x.title) + '</b>' + st
+    + (x.category ? ' <span class="tag">' + esc(x.category) + '</span>' : '')
+    + (range ? '<div class="m">' + range + '까지</div>' : '')
+    + (x.memo ? '<div class="m">' + esc(x.memo) + '</div>' : '')
+    + '</div></div>';
+}
+
+function renderFlows(){
+  const F = DATA.flows || [];
+  const list = SHOW_ALL ? F : F.slice(0, 12);
+  $('flowCard').classList.toggle('hidden', !F.length);
+  $('rFlows').innerHTML = list.map(f => {
+    const isIn = f.direction === '입금';
+    const dt = new Date(f.flow_date + 'T00:00:00');
+    return '<div class="flow"><div class="dt">' + (dt.getMonth()+1) + '/' + dt.getDate() + '</div>'
+      + '<div class="body"><b>' + esc(f.category) + '</b>'
+      + (f.account ? ' <span class="tag">' + esc(f.account) + '</span>' : '')
+      + (f.memo ? '<div class="m">' + esc(f.memo) + '</div>' : '')
+      + '</div>'
+      + '<div class="v ' + (isIn ? 'inC' : 'outC') + '">' + (isIn ? '+' : '-') + won(f.amount) + '</div></div>';
+  }).join('');
+  $('flowMore').classList.toggle('hidden', SHOW_ALL || F.length <= 12);
+  $('flowMore').textContent = '전체 보기 (' + F.length + '건)';
+}
+function showAllFlows(){ SHOW_ALL = true; renderFlows(); }
+
+function kdate(s){
+  const d = new Date(s + 'T00:00:00');
+  const W = ['일','월','화','수','목','금','토'];
+  return d.getFullYear() + '년 ' + (d.getMonth()+1) + '월 ' + d.getDate() + '일 (' + W[d.getDay()] + ')';
+}
+function tick(){
+  const t = new Date(Date.now() + SKEW);
+  const p = n => String(n).padStart(2,'0');
+  $('hClock').textContent = t.getFullYear() + '. ' + (t.getMonth()+1) + '. ' + t.getDate()
+    + '  ' + p(t.getHours()) + ':' + p(t.getMinutes()) + ':' + p(t.getSeconds());
+}
+
+load();
+</script>
+</body>
+</html>

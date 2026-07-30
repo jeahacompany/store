@@ -1269,6 +1269,13 @@
         <div class="card" style="border-color:#FFD8A8">
           <h2>🔗 우리 매장 시스템 전체 지도</h2>
           <div class="sub">화면마다 주소가 달라요. <b>[QR]</b>은 손님·거래처에게 보여줄 것, <b>[복사]</b>는 태블릿·폰에 붙여넣을 것.</div>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:12px;
+               background:#FFF9F5; border-radius:10px; padding:12px">
+            <b style="font-size:15px">🎯 오픈 목표일</b>
+            <input type="date" id="odInput" style="width:170px">
+            <button class="btn sm" onclick="saveOpenDate()">저장</button>
+            <span class="sub">보고 페이지에 <b>"오픈까지 N일"</b> 로 크게 표시됩니다</span>
+          </div>
         </div>
         <div id="linkGroups"></div>
       </div>
@@ -3035,10 +3042,23 @@ function renderPrice(){
 }
 
 /* ---------- 연결 주소 (전체 지도) ---------- */
+async function saveOpenDate(){
+  try{ await api('openDateSave', TOKEN, $('odInput').value); toast('오픈 목표일을 저장했어요'); }
+  catch(e){ alert(e.message); }
+}
+async function resetReportCode(){
+  if(!confirm('공유 주소를 새로 만들까요?\n\n지금까지 보내드린 링크는 전부 안 열립니다.\n(잘못 보냈을 때만 쓰세요)')) return;
+  try{ await api('reportCodeReset', TOKEN); toast('새 주소를 만들었어요. 다시 보내주세요'); loadLinks(); }
+  catch(e){ alert(e.message); }
+}
+
 async function loadLinks(){
   const base = location.origin + location.pathname.replace(/[^/]*$/,'');
   let sid = STORE_ID, pos = '';
   try{ const st = await api('storeGet', TOKEN); sid = st.storeId || ''; pos = st.posKey || ''; STORE_ID = sid; }catch(e){}
+  let rc = '', od = '';
+  try{ const r = await api('reportCodeGet', TOKEN); rc = r.code || ''; od = r.open_date || ''; }catch(e){}
+  $('odInput').value = od || '';
 
   const G = [
     { title:'🙋 손님용 — QR로 만들어 매장에 두세요', color:'#FFD8A8', rows:[
@@ -3066,6 +3086,11 @@ async function loadLinks(){
         who:'거래처 사장님', desc:'사업자등록증·통장사본·정산담당자를 직접 입력. 사업자번호로 명세서와 자동 연결돼요.' },
     ]},
   ];
+  if(rc) G.splice(2, 0, { title:'👨‍👩‍👧 가족·투자자·점주용 — 카톡으로 보내세요', color:'#E5DBFF', rows:[
+    { icon:'📈', name:'진행 현황 보고 페이지', url: base+'report.html?c='+rc, qr:true, share:true,
+      who:'부모님·투자자·점주 (로그인 없음)',
+      desc:'통장별 잔액·입출금 기록·공사 일정을 큰 글씨로 보여줍니다. 캘린더에 적으면 여기 자동 반영. 보기 전용이라 아무것도 못 바꿉니다.' },
+  ]});
   if(pos) G.push({ title:'⚙️ 시스템 — 외부 업체 전달용', color:'#FFE3E3', rows:[
     { icon:'💳', name:'포스 결제 연동 주소', url: SUPABASE_URL+'/functions/v1/pos-hook?key='+pos, secret:true,
       who:'포스 업체 담당자', desc:'결제될 때마다 이 주소로 보내달라고 요청하세요. 태블릿에 금액이 뜨고 번호만 누르면 적립됩니다.' },
@@ -3087,6 +3112,8 @@ async function loadLinks(){
         + '<button class="btn sm" onclick="linkCopy('+gi+','+ri+')">복사</button>'
         + (r.qr ? '<button class="btn sm ghost" onclick="linkQr('+gi+','+ri+')">QR</button>' : '')
         + (r.secret ? '' : '<button class="btn sm ghost" onclick="window.open(\''+r.url+'\',\'_blank\')">열기</button>')
+        + (r.share ? '<button class="btn sm ghost" onclick="resetReportCode()" '
+            + 'title="지금 링크를 무효화하고 새 주소를 만듭니다">주소 새로 만들기</button>' : '')
       + '</div></div>'
     ).join('') + '</div>').join('');
   LINK_G = G;
