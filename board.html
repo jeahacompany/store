@@ -488,7 +488,7 @@ async function loadWait(){
       + ' · 노쇼 ' + r.noshow + ' · 취소 ' + (r.cancelled||0)
       + ' · 쿠폰 ' + (+r.coupon_issued).toLocaleString('ko-KR') + '원 발행 / '
       + (+r.coupon_used).toLocaleString('ko-KR') + '원 사용';
-    if(!$('view-wait').classList.contains('hidden')) renderWaitFull();
+    renderWaitFull();   // 탭을 안 열어도 미리 그려둠 ("불러오는 중"에 멈추지 않게)
   }catch(e){ loadErr(['waitList','waitFull'], e); }
 }
 function waitMin(t){ return Math.max(0, Math.round((Date.now() - new Date(t).getTime())/60000)); }
