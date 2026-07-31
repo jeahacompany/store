@@ -108,7 +108,7 @@ a.kakao{ display:block; text-align:center; background:#FEE500; color:#191919; pa
     </div>
 
     <button class="btn" id="btnJoin" onclick="join()">가입하고 포인트 받기</button>
-    <button class="btn ghost" onclick="lookup()">이미 회원이에요 — 포인트 조회</button>
+    <button class="btn ghost" onclick="show('lookView')">이미 회원이에요 — 포인트 조회</button>
     <div class="err hidden" id="err"></div>
 
     <details>
@@ -122,6 +122,26 @@ a.kakao{ display:block; text-align:center; background:#FEE500; color:#191919; pa
         <b>6. 제3자 제공</b> — 제공하지 않습니다
       </p>
     </details>
+  </div>
+</div>
+
+<!-- 포인트 조회 (번호만) -->
+<div id="lookView" class="hidden">
+  <div class="hero">
+    <div style="font-size:15px; opacity:.95" id="lStore">매장</div>
+    <div style="font-size:20px; font-weight:700; margin-top:8px">⭐ 내 포인트 조회</div>
+    <div style="font-size:14.5px; opacity:.95; margin-top:6px">가입하신 전화번호만 넣어주세요</div>
+  </div>
+
+  <div class="card">
+    <label>전화번호</label>
+    <input type="tel" id="lPhone" inputmode="numeric" placeholder="010-1234-5678"
+           autocomplete="tel" maxlength="13" enterkeyhint="search">
+    <div class="sub" style="margin-top:6px">숫자만 누르시면 <b>-</b> 는 자동으로 들어갑니다.</div>
+
+    <button class="btn" id="btnLook" onclick="lookup()" style="margin-top:18px">포인트 확인하기</button>
+    <button class="btn ghost" onclick="show('joinView')">← 돌아가기</button>
+    <div class="err hidden" id="lErr"></div>
   </div>
 </div>
 
@@ -159,7 +179,16 @@ async function api(fn, ...args){
   if(!data || data.ok === false) throw new Error((data && data.error) || '서버 오류');
   return data.result;
 }
-function show(v){ ['loading','joinView','doneView'].forEach(x => $(x).classList.toggle('hidden', x!==v)); }
+function show(v){
+  ['loading','joinView','lookView','doneView'].forEach(x => $(x).classList.toggle('hidden', x!==v));
+  window.scrollTo({top:0});
+  if(v === 'lookView'){
+    $('lErr').classList.add('hidden');
+    // 가입칸에 이미 친 번호가 있으면 그대로 옮겨줌
+    if($('phone').value && !$('lPhone').value) $('lPhone').value = $('phone').value;
+    setTimeout(() => $('lPhone').focus(), 100);
+  }
+}
 
 // 전화번호 자동 하이픈
 $('phone').addEventListener('input', e => {
@@ -221,6 +250,7 @@ let INFO = null;
   try{
     INFO = await api('custStoreInfo', STORE);
     $('hStore').textContent = INFO.name || '매장';
+    $('lStore').textContent = INFO.name || '매장';
     $('hRate').textContent = INFO.rate ?? 3;
     document.title = (INFO.name||'매장') + ' 포인트 적립';
     $('hBonus').textContent = INFO.join_bonus > 0
@@ -254,14 +284,19 @@ async function join(){
 }
 function fail(m){ $('err').textContent = m; $('err').classList.remove('hidden'); }
 
+function lookFail(m){ $('lErr').textContent = m; $('lErr').classList.remove('hidden'); }
+
 async function lookup(){
-  $('err').classList.add('hidden');
-  const phone = $('phone').value.replace(/[^0-9]/g,'');
-  if(phone.length < 10){ fail('전화번호를 입력하면 포인트를 알려드려요.'); return; }
+  $('lErr').classList.add('hidden');
+  const phone = $('lPhone').value.replace(/[^0-9]/g,'');
+  if(phone.length < 10){ lookFail('전화번호를 정확히 입력해주세요.'); return; }
+  $('btnLook').disabled = true;
   try{
     const r = await api('custLookup', STORE, { phone });
     if(!r.found){
-      fail('아직 가입되지 않은 번호예요. 위에서 가입하시면 ' + (+r.join_bonus).toLocaleString('ko-KR') + 'P를 드려요!');
+      lookFail('아직 가입되지 않은 번호예요. 돌아가서 가입하시면 '
+        + (+r.join_bonus).toLocaleString('ko-KR') + 'P를 드려요!');
+      $('btnLook').disabled = false;
       return;
     }
     $('dIcon').textContent = '⭐';
@@ -271,8 +306,20 @@ async function lookup(){
     $('dUse').textContent = (+r.min_use).toLocaleString('ko-KR') + 'P부터 매장에서 현금처럼 쓸 수 있어요. (적립 ' + r.rate + '%)';
     if(r.kakao_url){ $('dKakao').href = r.kakao_url; $('dKakao').classList.remove('hidden'); }
     show('doneView');
-  }catch(e){ fail(e.message); }
+    $('btnLook').disabled = false;
+  }catch(e){ lookFail(e.message); $('btnLook').disabled = false; }
 }
+
+/* 조회 화면 — 번호 자동 하이픈 + 엔터로 바로 조회 */
+$('lPhone').addEventListener('input', e => {
+  let v = e.target.value.replace(/[^0-9]/g,'').slice(0,11);
+  if(v.length > 7) v = v.slice(0,3)+'-'+v.slice(3,7)+'-'+v.slice(7);
+  else if(v.length > 3) v = v.slice(0,3)+'-'+v.slice(3);
+  e.target.value = v;
+});
+$('lPhone').addEventListener('keydown', e => {
+  if(e.key === 'Enter'){ e.preventDefault(); lookup(); }
+});
 </script>
 </body>
 </html>
