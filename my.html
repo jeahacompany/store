@@ -121,6 +121,11 @@ a.kakao{ display:block; text-align:center; background:#FEE500; color:#191919; pa
     <button class="btn ghost" onclick="show('lookView')">이미 회원이에요 — 포인트 조회</button>
     <div class="err hidden" id="err"></div>
 
+    <details id="dPolicy" class="hidden">
+      <summary>포인트 사용정책 보기</summary>
+      <p id="dPolicyBody" style="white-space:pre-wrap"></p>
+    </details>
+
     <details>
       <summary>개인정보 처리방침 보기</summary>
       <p>
@@ -177,6 +182,11 @@ a.kakao{ display:block; text-align:center; background:#FEE500; color:#191919; pa
       오실 때마다 조금씩 쌓아드릴게요.<br>
       <span class="sub">다음에도 꼭 다시 뵙겠습니다 🙏</span>
     </div>
+    <details id="rPolicy" class="hidden" style="text-align:left">
+      <summary>포인트 사용정책 보기</summary>
+      <p id="rPolicyBody" style="white-space:pre-wrap"></p>
+    </details>
+
     <a class="kakao hidden" id="dKakao" href="#" target="_blank">💬 카카오 채널 추가하고 혜택 받기</a>
     <button class="btn ghost" onclick="location.reload()">다른 번호로 가입</button>
   </div>
@@ -270,6 +280,10 @@ let INFO = null;
     INFO = await api('custStoreInfo', STORE);
     $('hStore').textContent = INFO.name || '매장';
     $('lStore').textContent = INFO.name || '매장';
+    if(INFO.policy){
+      $('dPolicyBody').textContent = INFO.policy;
+      $('dPolicy').classList.remove('hidden');
+    }
     $('hRate').textContent = INFO.rate ?? 3;
     document.title = (INFO.name||'매장') + ' 포인트 적립';
     $('hBonus').textContent = INFO.join_bonus > 0
@@ -298,11 +312,19 @@ async function join(){
     $('dPts').textContent = (+r.balance).toLocaleString('ko-KR');
     $('dUse').textContent = (+r.min_use).toLocaleString('ko-KR') + 'P부터 매장에서 현금처럼 쓸 수 있어요.';
     if(r.kakao_url){ $('dKakao').href = r.kakao_url; $('dKakao').classList.remove('hidden'); }
-    renderSince(r, r.store_name);
+    renderSince(r, r.store_name); renderPolicy(r);
     show('doneView');
   }catch(e){ fail(e.message); $('btnJoin').disabled = false; }
 }
 function fail(m){ $('err').textContent = m; $('err').classList.remove('hidden'); }
+
+/* 결과 화면에도 정책 붙이기 */
+function renderPolicy(r){
+  const txt = (r && r.policy) || (INFO && INFO.policy) || '';
+  if(!txt){ $('rPolicy').classList.add('hidden'); return; }
+  $('rPolicyBody').textContent = txt;
+  $('rPolicy').classList.remove('hidden');
+}
 
 /* 함께한 날 — 가입일부터 오늘까지 */
 function renderSince(r, storeName){
@@ -370,7 +392,7 @@ async function lookup(){
     $('dPts').textContent = (+r.balance).toLocaleString('ko-KR');
     $('dUse').textContent = (+r.min_use).toLocaleString('ko-KR') + 'P부터 매장에서 현금처럼 쓸 수 있어요. (적립 ' + r.rate + '%)';
     if(r.kakao_url){ $('dKakao').href = r.kakao_url; $('dKakao').classList.remove('hidden'); }
-    renderSince(r, r.store_name);
+    renderSince(r, r.store_name); renderPolicy(r);
     show('doneView');
     $('btnLook').disabled = false;
   }catch(e){ lookFail(e.message); $('btnLook').disabled = false; }

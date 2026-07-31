@@ -56,6 +56,12 @@ label{display:block; font-size:12px; color:var(--sub); margin:10px 0 4px}
 .sprow:active .cp{background:#F26522; color:#fff}
 .spnotice{background:#FFF9DB; border:1px solid #FFE066; border-radius:12px; padding:12px 14px;
   margin-bottom:10px; font-size:15px; line-height:1.6; white-space:pre-wrap}
+.ptnum{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px}
+.ptnum > div{background:#FFF9DB; border-radius:12px; padding:12px 8px; text-align:center}
+.ptnum .k{display:block; font-size:12.5px; color:#868E96; margin-bottom:2px}
+.ptnum b{font-size:20px; color:#F26522}
+.ptrule{white-space:pre-wrap; font-size:15px; line-height:1.8; background:#F8F9FA;
+  border-radius:12px; padding:14px; border-left:4px solid #F26522}
 .row:last-child{border-bottom:0}
 .badge{display:inline-block; font-size:13px; font-weight:600; padding:4px 10px; border-radius:999px; background:var(--gray-bg); color:#495057; white-space:nowrap}
 .badge.g{background:var(--green-bg); color:var(--green)} .badge.r{background:var(--red-bg); color:var(--red)} .badge.a{background:var(--amber-bg); color:var(--amber)}
@@ -195,6 +201,12 @@ a.link{color:var(--brand); text-decoration:none; font-size:13.5px; cursor:pointe
         <h2>🏪 가게 기본정보</h2>
         <div class="sub" style="margin-bottom:8px">손님이 물어보면 여기 보고 답하세요. <b>누르면 복사</b>됩니다.</div>
         <div id="spBox"><div class="sub">불러오는 중...</div></div>
+      </div>
+
+      <div class="card" style="border-color:#FFE066">
+        <h2>⭐ 포인트 사용정책</h2>
+        <div class="sub" style="margin-bottom:8px">손님이 물으면 <b>이대로만</b> 안내하세요. 임의로 봐주면 안 됩니다.</div>
+        <div id="ptBox"><div class="sub">불러오는 중...</div></div>
       </div>
       <div class="card">
         <h2>매뉴얼</h2>
@@ -582,8 +594,24 @@ function spFallback(t, done){
   document.body.removeChild(a);
 }
 
+function loadPointPolicy(){
+  try{
+    const p = SP || {};
+    const r = { rate: p.point_rate, join_bonus: p.join_bonus,
+                min_use: p.point_min_use, policy: p.point_policy };
+    const H = [];
+    H.push('<div class="ptnum">'
+      + '<div><span class="k">적립률</span><b>' + (+r.rate) + '%</b></div>'
+      + '<div><span class="k">가입 보너스</span><b>' + (+r.join_bonus).toLocaleString('ko-KR') + 'P</b></div>'
+      + '<div><span class="k">사용 최소</span><b>' + (+r.min_use).toLocaleString('ko-KR') + 'P</b></div>'
+      + '</div>');
+    if(r.policy) H.push('<div class="ptrule">' + esc(r.policy) + '</div>');
+    $('ptBox').innerHTML = H.join('');
+  }catch(e){ $('ptBox').innerHTML = '<div class="sub">' + esc(e.message) + '</div>'; }
+}
+
 async function loadInfos(){
-  loadProfile();
+  loadProfile().then(loadPointPolicy);   // 기본정보를 먼저 받아야 포인트 정책도 나옴
   try{
     const list = await api('myInfos', TOKEN);
     let html = '', cat = null;
