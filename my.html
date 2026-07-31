@@ -51,6 +51,16 @@ details summary{ cursor:pointer; font-weight:600 }
 details p{ margin-top:8px; line-height:1.6 }
 a.kakao{ display:block; text-align:center; background:#FEE500; color:#191919; padding:16px; border-radius:12px;
   font-weight:700; text-decoration:none; margin-top:12px }
+/* 함께한 날 카운터 */
+.since{ margin-top:18px; padding:16px 14px; border-radius:14px;
+  background:linear-gradient(135deg,#FFF4EC,#FFE8D6); border:1px solid #FFD8A8 }
+.since .lbl{ font-size:14.5px; color:#B8621B; font-weight:600 }
+.since .days{ margin-top:2px; color:var(--brand); font-weight:800; line-height:1.1;
+  font-size:38px; font-variant-numeric:tabular-nums; letter-spacing:-1px }
+.since .days .unit{ font-size:19px; margin-left:2px }
+.since .from{ margin-top:6px; font-size:14px; color:#9C6B3F }
+.since .mile{ margin-top:10px; padding-top:10px; border-top:1px dashed #FFD8A8;
+  font-size:14.5px; color:#B8621B; font-weight:600; line-height:1.6 }
 </style>
 </head>
 <body>
@@ -153,6 +163,15 @@ a.kakao{ display:block; text-align:center; background:#FEE500; color:#191919; pa
     <div style="margin:18px 0 6px" class="sub">현재 포인트</div>
     <div class="pts"><span id="dPts">0</span>P</div>
     <div class="sub" style="margin-top:10px" id="dUse"></div>
+
+    <!-- 함께한 날 -->
+    <div id="dSince" class="since hidden">
+      <div class="lbl" id="dSinceLbl">함께한 지</div>
+      <div class="days"><span id="dDays">1</span><span class="unit">일째</span></div>
+      <div class="from" id="dFrom"></div>
+      <div class="mile hidden" id="dMile"></div>
+    </div>
+
     <div style="margin-top:18px; padding-top:16px; border-top:1px dashed var(--line); font-size:15.5px; line-height:1.8">
       이제 <b>저희 집 단골</b>이세요 😊<br>
       오실 때마다 조금씩 쌓아드릴게요.<br>
@@ -279,10 +298,49 @@ async function join(){
     $('dPts').textContent = (+r.balance).toLocaleString('ko-KR');
     $('dUse').textContent = (+r.min_use).toLocaleString('ko-KR') + 'P부터 매장에서 현금처럼 쓸 수 있어요.';
     if(r.kakao_url){ $('dKakao').href = r.kakao_url; $('dKakao').classList.remove('hidden'); }
+    renderSince(r, r.store_name);
     show('doneView');
   }catch(e){ fail(e.message); $('btnJoin').disabled = false; }
 }
 function fail(m){ $('err').textContent = m; $('err').classList.remove('hidden'); }
+
+/* 함께한 날 — 가입일부터 오늘까지 */
+function renderSince(r, storeName){
+  const box = $('dSince');
+  if(!r || !r.days || !r.joined){ box.classList.add('hidden'); return; }
+  const d = +r.days, nm = storeName || '저희';
+  box.classList.remove('hidden');
+  $('dSinceLbl').textContent = nm + '과 인연을 맺은 지';
+
+  // 1년이 넘으면 "1년 32일째" 로
+  const yr = Math.floor(d / 365), rest = d % 365;
+  $('dDays').textContent = yr > 0
+    ? yr + '년 ' + (rest ? rest.toLocaleString('ko-KR') : '0')
+    : d.toLocaleString('ko-KR');
+  document.querySelector('#dSince .unit').textContent = '일째';
+
+  const jd = new Date(r.joined + 'T00:00:00');
+  const W = ['일','월','화','수','목','금','토'];
+  $('dFrom').textContent = jd.getFullYear() + '년 ' + (jd.getMonth()+1) + '월 ' + jd.getDate()
+    + '일 (' + W[jd.getDay()] + ') 부터';
+
+  // 기념일 한 마디
+  const mile = $('dMile');
+  let msg = '';
+  if(d === 1)                      msg = '🌱 오늘이 첫날이에요. 잘 부탁드립니다!';
+  else if(d < 7)                   msg = '반가운 마음이 아직 그대로예요 😊';
+  else if(d === 100)               msg = '🎉 오늘이 딱 100일! 오시면 살짝 챙겨드릴게요.';
+  else if(d === 365)               msg = '🎂 오늘로 딱 1년! 정말 감사합니다.';
+  else if(d % 365 === 0)           msg = '🎂 오늘로 ' + (d/365) + '년째! 늘 감사합니다.';
+  else if(d < 100)                 msg = '100일까지 ' + (100 - d) + '일 남았어요 🎯';
+  else if(d < 365)                 msg = '1주년까지 ' + (365 - d) + '일 남았어요 🎂';
+  else {
+    const next = (yr + 1) * 365 - d;
+    msg = (yr + 1) + '주년까지 ' + next + '일 남았어요 🎂';
+  }
+  mile.textContent = msg;
+  mile.classList.toggle('hidden', !msg);
+}
 
 function lookFail(m){ $('lErr').textContent = m; $('lErr').classList.remove('hidden'); }
 
@@ -305,6 +363,7 @@ async function lookup(){
     $('dPts').textContent = (+r.balance).toLocaleString('ko-KR');
     $('dUse').textContent = (+r.min_use).toLocaleString('ko-KR') + 'P부터 매장에서 현금처럼 쓸 수 있어요. (적립 ' + r.rate + '%)';
     if(r.kakao_url){ $('dKakao').href = r.kakao_url; $('dKakao').classList.remove('hidden'); }
+    renderSince(r, r.store_name);
     show('doneView');
     $('btnLook').disabled = false;
   }catch(e){ lookFail(e.message); $('btnLook').disabled = false; }
