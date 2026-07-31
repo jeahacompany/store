@@ -101,7 +101,7 @@ details summary{ cursor:pointer; font-weight:600 }
 
   <div class="card">
     <label>전화번호 <span style="color:var(--red)">*</span></label>
-    <input type="tel" id="phone" inputmode="numeric" placeholder="010 1234 5678" autocomplete="tel">
+    <input type="tel" id="phone" inputmode="numeric" placeholder="010-1234-5678" autocomplete="tel" maxlength="13" enterkeyhint="done">
     <div class="sub" style="margin-top:6px">호명해도 안 계실 때 연락드려요.</div>
 
     <label>인원 <span style="color:var(--red)">*</span></label>
@@ -248,6 +248,10 @@ $('phone').addEventListener('input', e => {
   if(v.length > 7) v = v.slice(0,3)+'-'+v.slice(3,7)+'-'+v.slice(7);
   else if(v.length > 3) v = v.slice(0,3)+'-'+v.slice(3);
   e.target.value = v;
+  if(v.length === 13) e.target.blur();      // 다 치면 키패드 내려서 인원 버튼이 보이게
+});
+$('phone').addEventListener('keydown', e => {
+  if(e.key === 'Enter'){ e.preventDefault(); e.target.blur(); }
 });
 // 인원 버튼
 $('peopleBox').innerHTML = [1,2,3,4,5,6,8,10].map(n =>

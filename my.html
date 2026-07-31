@@ -26,6 +26,13 @@ label{ display:block; font-size:14.5px; color:var(--sub); margin:12px 0 6px; fon
 input[type=text],input[type=tel]{ width:100%; padding:14px; border:1px solid var(--line); border-radius:12px;
   font-size:17px; font-family:inherit; background:#fff }
 input:focus{ outline:none; border-color:var(--brand) }
+.bsel{ display:grid; grid-template-columns:1.3fr 1fr 1fr; gap:8px }
+.bsel select{ width:100%; padding:14px 10px; border:1px solid var(--line); border-radius:12px;
+  font-size:17px; font-family:inherit; background:#fff; color:var(--txt,#1B1D22);
+  -webkit-appearance:none; appearance:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' stroke='%23868E96' stroke-width='2' fill='none'/></svg>");
+  background-repeat:no-repeat; background-position:right 12px center }
+.bsel select:focus{ outline:none; border-color:var(--brand) }
 .btn{ display:block; width:100%; padding:16px; border:none; border-radius:12px; background:var(--brand); color:#fff;
   font-size:17px; font-weight:700; font-family:inherit; cursor:pointer; margin-top:18px }
 .btn:disabled{ opacity:.5 }
@@ -68,16 +75,23 @@ a.kakao{ display:block; text-align:center; background:#FEE500; color:#191919; pa
     </div>
 
     <label>전화번호 <span style="color:var(--red)">*</span></label>
-    <input type="tel" id="phone" inputmode="numeric" placeholder="010 1234 5678" autocomplete="tel">
-    <div class="sub" style="margin-top:6px">적립·조회에만 쓰고, 광고 문자로 귀찮게 하지 않을게요.</div>
+    <input type="tel" id="phone" inputmode="numeric" placeholder="010-1234-5678" autocomplete="tel"
+           maxlength="13" enterkeyhint="next">
+    <div class="sub" style="margin-top:6px">숫자만 누르시면 <b>-</b> 는 자동으로 들어갑니다.
+      적립·조회에만 쓰고, 광고 문자로 귀찮게 하지 않을게요.</div>
 
     <label>이름 (선택)</label>
-    <input type="text" id="name" placeholder="어떻게 불러드릴까요?" autocomplete="name">
+    <input type="text" id="name" placeholder="어떻게 불러드릴까요?" autocomplete="name" enterkeyhint="next">
     <div class="sub" style="margin-top:6px">성함을 알면 다음에 더 반갑게 맞이할 수 있어요 😊</div>
 
-    <label>생일 (선택 · 월일 4자리)</label>
-    <input type="text" id="birth" inputmode="numeric" placeholder="0315" maxlength="4">
-    <div class="sub" style="margin-top:6px">🎂 <b>생일에 축하 선물을 보내드려요!</b> 그 달에 오시면 특별히 챙겨드릴게요.</div>
+    <label>생일 (선택)</label>
+    <div class="bsel">
+      <select id="bYear"></select>
+      <select id="bMonth"></select>
+      <select id="bDay"></select>
+    </div>
+    <div class="sub" style="margin-top:6px">🎂 <b>생일에 축하 선물을 보내드려요!</b> 그 달에 오시면 특별히 챙겨드릴게요.
+      <br>연도는 몰라도 괜찮아요 — 월·일만 골라주셔도 됩니다.</div>
 
     <label class="chk"><input type="checkbox" id="c1">
       <span><b>[필수]</b> 개인정보 수집·이용 동의<br>
@@ -154,7 +168,53 @@ $('phone').addEventListener('input', e => {
   if(v.length > 7) v = v.slice(0,3)+'-'+v.slice(3,7)+'-'+v.slice(7);
   else if(v.length > 3) v = v.slice(0,3)+'-'+v.slice(3);
   e.target.value = v;
+  // 번호를 다 채우면 자동으로 다음 칸으로
+  if(v.length === 13) $('name').focus();
 });
+
+/* 생일 — 연도까지 고르게 */
+(function buildBirth(){
+  const y = $('bYear'), m = $('bMonth'), d = $('bDay');
+  const thisYear = new Date().getFullYear();
+  y.innerHTML = '<option value="">연도 (모름)</option>'
+    + Array.from({length: thisYear - 1929}, (_, i) => thisYear - i)
+        .map(v => '<option value="'+v+'">'+v+'년</option>').join('');
+  m.innerHTML = '<option value="">월</option>'
+    + Array.from({length:12}, (_, i) => i+1).map(v => '<option value="'+v+'">'+v+'월</option>').join('');
+  const fillDays = () => {
+    const mm = +m.value, yy = +y.value || 2024;         // 연도 모르면 윤년 기준으로 29일까지
+    const last = mm ? new Date(yy, mm, 0).getDate() : 31;
+    const cur = d.value;
+    d.innerHTML = '<option value="">일</option>'
+      + Array.from({length:last}, (_, i) => i+1).map(v => '<option value="'+v+'">'+v+'일</option>').join('');
+    if(cur && +cur <= last) d.value = cur;
+  };
+  fillDays();
+  m.addEventListener('change', fillDays);
+  y.addEventListener('change', fillDays);
+})();
+// MMDD 로 변환 (월·일 둘 다 골랐을 때만)
+function birthMMDD(){
+  const m = $('bMonth').value, d = $('bDay').value;
+  if(!m || !d) return '';
+  return String(m).padStart(2,'0') + String(d).padStart(2,'0');
+}
+
+/* 엔터 치면 다음 칸으로 — 마지막 칸에서는 바로 가입 */
+(function enterFlow(){
+  const order = ['phone','name','bYear','bMonth','bDay'];
+  order.forEach((id, i) => {
+    const el = $(id);
+    if(!el) return;
+    el.addEventListener('keydown', e => {
+      if(e.key !== 'Enter') return;
+      e.preventDefault();
+      const next = order.slice(i+1).map(x => $(x)).find(Boolean);
+      if(next) next.focus();
+      else { const b = $('btnJoin'); if(b && !b.disabled) b.click(); }
+    });
+  });
+})();
 
 let INFO = null;
 (async () => {
@@ -177,7 +237,8 @@ async function join(){
   if(!$('c1').checked){ fail('필수 동의에 체크해주세요.'); return; }
   $('btnJoin').disabled = true;
   try{
-    const r = await api('custJoin', STORE, { phone, name:$('name').value.trim(), birth:$('birth').value.trim(),
+    const r = await api('custJoin', STORE, { phone, name:$('name').value.trim(),
+      birth: birthMMDD(), birth_year: $('bYear').value,
       consent_basic:true, consent_mkt:$('c2').checked });
     $('dIcon').textContent = r.is_new ? '🎉' : '👋';
     const nm = r.name ? r.name + '님' : '';
