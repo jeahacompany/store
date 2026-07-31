@@ -382,6 +382,12 @@ function showView(v, btn){
   if(v==='wait') renderWaitFull();
 }
 function showViewByName(v){ showView(v, document.querySelector('.vtab[data-v="'+v+'"]')); }
+function fmtDate(s){
+  if(!s) return '-';
+  const d = new Date(String(s).length <= 10 ? s + 'T00:00:00' : s);
+  if(isNaN(d)) return String(s);
+  return (d.getMonth()+1) + '/' + d.getDate();
+}
 function fmtDateTime(s){
   const d = new Date(s);
   return d.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'}) + ' '
@@ -483,7 +489,7 @@ async function loadWait(){
       + ' · 쿠폰 ' + (+r.coupon_issued).toLocaleString('ko-KR') + '원 발행 / '
       + (+r.coupon_used).toLocaleString('ko-KR') + '원 사용';
     if(!$('view-wait').classList.contains('hidden')) renderWaitFull();
-  }catch(e){ $('waitList').innerHTML = '<div class="sub">'+esc(e.message)+'</div>'; }
+  }catch(e){ loadErr(['waitList','waitFull'], e); }
 }
 function waitMin(t){ return Math.max(0, Math.round((Date.now() - new Date(t).getTime())/60000)); }
 function callPhone(id){
@@ -565,7 +571,7 @@ async function loadResv(){
     $('resvListFull').innerHTML = $('resvList').innerHTML;
     $('resvCnt2').textContent = active.length + '팀';
     const vr = $('vcResv'); vr.textContent = active.length || ''; vr.classList.toggle('hidden', !active.length);
-  }catch(e){ $('resvList').innerHTML = '<div class="sub">'+esc(e.message)+'</div>'; }
+  }catch(e){ loadErr(['resvList','resvListFull'], e); }
 }
 function openResv(){
   $('rmId').value=''; $('rmTitle').textContent='예약 등록';
@@ -713,8 +719,17 @@ async function loadTasksB(){
       + (t.status==='done'?' <span class="badge g">완료</span>':'')
       + (t.body?'<div class="sub">'+esc(t.body)+'</div>':'')+'</div></div>'
     ).join('') : '<div class="sub">등록된 할 일이 없어요.</div>';
-  }catch(e){}
+  }catch(e){ loadErr(['taskList','taskListFull','lateList','lateListFull'], e); }
 }
+
+// 로딩 중 오류가 나면 "불러오는 중..."에 멈추지 않고 이유를 보여줌
+function loadErr(ids, e){
+  const msg = '<div class="sub" style="color:#E03131">불러오지 못했어요 — ' + esc(e && e.message || e)
+    + ' <button class="btn sm ghost" onclick="location.reload()">다시</button></div>';
+  ids.forEach(id => { const el = $(id); if(el && /불러오는 중/.test(el.textContent)) el.innerHTML = msg; });
+  console.error(e);
+}
+
 async function doneTask(id, cb){
   cb.disabled = true;
   try{ await api('taskDone', TOKEN, id); toast('완료!'); loadTasksB(); }
