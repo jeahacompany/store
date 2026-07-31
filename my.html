@@ -92,9 +92,13 @@ a.kakao{ display:block; text-align:center; background:#FEE500; color:#191919; pa
     </div>
     <div class="sub" style="margin-top:6px">🎂 <b>생일에 축하 선물을 보내드려요!</b> 그 달에 오시면 특별히 챙겨드릴게요.</div>
 
-    <label class="chk" style="margin-top:18px"><input type="checkbox" id="c2">
-      <span><b>혜택·이벤트 소식 받기</b><br>
-        <span class="sub">할인·신메뉴 소식을 문자로 보내드려요. 체크 안 하셔도 적립은 그대로 됩니다.</span></span></label>
+    <label class="chk" style="margin-top:18px"><input type="checkbox" id="c1" checked>
+      <span><b>[필수]</b> 개인정보 수집·이용 동의<br>
+        <span class="sub">전화번호를 포인트 적립·조회 목적으로만 사용하며, 마지막 방문 후 3년이 지나면 파기합니다.</span></span></label>
+
+    <label class="chk"><input type="checkbox" id="c2">
+      <span><b>[선택]</b> 혜택·이벤트 안내 수신 동의<br>
+        <span class="sub">할인·신메뉴 소식을 문자로 보내드려요. 동의하지 않아도 적립은 정상적으로 됩니다.</span></span></label>
 
     <div style="margin-top:16px; padding:14px; background:#FFF9DB; border:1px solid #FFE066; border-radius:12px;
       text-align:center; font-size:15.5px; line-height:1.75">
@@ -103,12 +107,7 @@ a.kakao{ display:block; text-align:center; background:#FEE500; color:#191919; pa
       <span class="sub">정성껏 준비해서 오래 뵙겠습니다</span>
     </div>
 
-    <div class="sub" style="margin-top:16px; text-align:center; line-height:1.7">
-      아래 버튼을 누르시면 <b>개인정보 수집·이용</b>에 동의하시는 것으로 봅니다.<br>
-      전화번호는 <b>포인트 적립·조회에만</b> 쓰고, 마지막 방문 후 3년이 지나면 파기합니다.
-    </div>
-
-    <button class="btn" id="btnJoin" onclick="join()">동의하고 가입 — 포인트 받기</button>
+    <button class="btn" id="btnJoin" onclick="join()">가입하고 포인트 받기</button>
     <button class="btn ghost" onclick="lookup()">이미 회원이에요 — 포인트 조회</button>
     <div class="err hidden" id="err"></div>
 
@@ -234,7 +233,7 @@ async function join(){
   $('err').classList.add('hidden');
   const phone = $('phone').value.replace(/[^0-9]/g,'');
   if(phone.length < 10){ fail('전화번호를 정확히 입력해주세요.'); return; }
-  // 필수 동의는 버튼 문구("동의하고 가입")로 대체 — 손님이 누르는 순간 동의
+  if(!$('c1').checked){ fail('필수 동의에 체크해주세요.'); return; }
   $('btnJoin').disabled = true;
   try{
     const r = await api('custJoin', STORE, { phone, name:$('name').value.trim(),
