@@ -45,6 +45,17 @@ label{display:block; font-size:12px; color:var(--sub); margin:10px 0 4px}
 .center{text-align:center}
 .bigtime{font-size:34px; font-weight:800; letter-spacing:0; font-variant-numeric:tabular-nums}
 .row{display:flex; justify-content:space-between; align-items:center; gap:8px; padding:11px 0; border-bottom:1px solid #F1F2F4; font-size:15px}
+.sprow{display:flex; gap:10px; padding:13px 0; border-bottom:1px solid #F1F2F4; font-size:16px; align-items:flex-start}
+.sprow:last-child{border-bottom:none}
+.sprow[onclick]{cursor:pointer}
+.sprow .lb{width:88px; flex:0 0 auto; color:#868E96; font-size:14px; padding-top:2px}
+.sprow .vl{flex:1; font-weight:700; word-break:break-all; white-space:pre-wrap; display:flex;
+  align-items:flex-start; gap:8px; justify-content:space-between}
+.sprow .cp{flex:0 0 auto; background:#F1F3F5; border-radius:7px; padding:2px 8px;
+  font-size:12px; font-weight:600; color:#868E96}
+.sprow:active .cp{background:#F26522; color:#fff}
+.spnotice{background:#FFF9DB; border:1px solid #FFE066; border-radius:12px; padding:12px 14px;
+  margin-bottom:10px; font-size:15px; line-height:1.6; white-space:pre-wrap}
 .row:last-child{border-bottom:0}
 .badge{display:inline-block; font-size:13px; font-weight:600; padding:4px 10px; border-radius:999px; background:var(--gray-bg); color:#495057; white-space:nowrap}
 .badge.g{background:var(--green-bg); color:var(--green)} .badge.r{background:var(--red-bg); color:var(--red)} .badge.a{background:var(--amber-bg); color:var(--amber)}
@@ -180,6 +191,11 @@ a.link{color:var(--brand); text-decoration:none; font-size:13.5px; cursor:pointe
 
     <!-- 더보기 (매뉴얼 + 매장정보 + 내정보) -->
     <div id="tab-more" class="hidden">
+      <div class="card" style="border-color:#FFD8A8">
+        <h2>🏪 가게 기본정보</h2>
+        <div class="sub" style="margin-bottom:8px">손님이 물어보면 여기 보고 답하세요. <b>누르면 복사</b>됩니다.</div>
+        <div id="spBox"><div class="sub">불러오는 중...</div></div>
+      </div>
       <div class="card">
         <h2>매뉴얼</h2>
         <div class="sub" style="margin-bottom:6px">내 역할에 해당하는 업무 안내예요.</div>
@@ -517,7 +533,57 @@ async function loadManuals(){
     ).join('') : '등록된 매뉴얼이 아직 없어요.';
   }catch(e){ $('manualList').textContent = e.message; }
 }
+/* 가게 기본정보 — 손님 물음에 바로 답하는 카드 */
+let SP = null;
+async function loadProfile(){
+  try{
+    SP = await api('storeProfile', TOKEN);
+    const p = SP, H = [];
+    const row = (lb, val, copy) => val
+      ? '<div class="sprow"' + (copy ? ' onclick="spCopy(\''+encodeURIComponent(copy)+'\')"' : '') + '>'
+        + '<span class="lb">' + lb + '</span>'
+        + '<span class="vl">' + esc(val) + (copy ? '<span class="cp">복사</span>' : '') + '</span></div>'
+      : '';
+    const addr = [p.addr, p.addr_detail].filter(Boolean).join(' ');
+    H.push(row('대표전화', p.tel, p.tel));
+    H.push(row('휴대폰', p.mobile, p.mobile));
+    H.push(row('주소', addr, addr));
+    H.push(row('찾아오는 길', p.directions, p.directions));
+    H.push(row('주차', p.parking));
+    if(p.acct_no) H.push(row('입금 계좌',
+      [p.bank, p.acct_no, p.acct_holder ? '('+p.acct_holder+')' : ''].filter(Boolean).join(' '),
+      [p.bank, p.acct_no].filter(Boolean).join(' ')));
+    H.push(row('평일 영업', p.hours_weekday));
+    H.push(row('주말 영업', p.hours_weekend));
+    H.push(row('브레이크', p.break_time));
+    H.push(row('휴무일', p.holiday));
+    H.push(row('좌석', p.seats));
+    if(p.wifi_ssid) H.push(row('와이파이', p.wifi_ssid + (p.wifi_pw ? '  /  ' + p.wifi_pw : ''), p.wifi_pw || p.wifi_ssid));
+    H.push(row('사업자번호', p.biz_no, p.biz_no));
+    H.push(row('대표자', p.ceo));
+    const body = H.filter(Boolean).join('');
+    $('spBox').innerHTML = (p.notice_pub
+        ? '<div class="spnotice">' + esc(p.notice_pub) + '</div>' : '')
+      + (body || '<div class="sub">아직 등록된 정보가 없어요. 사장님께 말씀드리세요.</div>');
+  }catch(e){ $('spBox').innerHTML = '<div class="sub">' + esc(e.message) + '</div>'; }
+}
+function spCopy(enc){
+  const t = decodeURIComponent(enc);
+  const done = () => toast('복사했어요: ' + t);
+  if(navigator.clipboard && navigator.clipboard.writeText)
+    navigator.clipboard.writeText(t).then(done).catch(() => spFallback(t, done));
+  else spFallback(t, done);
+}
+function spFallback(t, done){
+  const a = document.createElement('textarea');
+  a.value = t; a.style.position='fixed'; a.style.opacity='0';
+  document.body.appendChild(a); a.select();
+  try{ document.execCommand('copy'); done(); }catch(e){ alert(t); }
+  document.body.removeChild(a);
+}
+
 async function loadInfos(){
+  loadProfile();
   try{
     const list = await api('myInfos', TOKEN);
     let html = '', cat = null;

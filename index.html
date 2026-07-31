@@ -66,6 +66,9 @@
   tbody tr:last-child td { border-bottom:none; }
   tbody tr:hover { background:#FFF9F5; }
   .table-scroll { overflow-x:auto; }
+  .sp-sec{ margin:18px 0 8px; font-size:15px; font-weight:800; color:#20242E;
+    padding-bottom:6px; border-bottom:2px solid #F1F3F5 }
+  .sp-sec:first-of-type{ margin-top:4px }
   /* 손익계산서 (엑셀형 시트) */
   table.book { border-collapse:separate; border-spacing:0; font-size:14px; min-width:100%; white-space:nowrap }
   table.book td, table.book th { border-bottom:1px solid #E9ECEF; border-right:1px solid #E9ECEF; padding:7px 10px }
@@ -453,6 +456,66 @@
 
       <!-- 매장정보 -->
       <div id="tab-info" class="hidden">
+        <div class="card" style="border-color:#FFD8A8">
+          <h2>🏪 가게 기본정보
+            <button class="btn sm" style="margin-left:auto" onclick="spSave()">저장</button></h2>
+          <div class="sub" style="margin-bottom:12px">손님·거래처가 물어보는 것들이에요.
+            여기 적어두면 <b>직원 앱과 현황판에서 누구나 바로 확인</b>하고, 눌러서 복사해 보낼 수 있어요.</div>
+
+          <div class="sp-sec">📇 사업자</div>
+          <div class="grid2">
+            <div><label>간판 상호</label><input id="spSign" style="width:100%" placeholder="순창담 본점"></div>
+            <div><label>대표자</label><input id="spCeo" style="width:100%" placeholder="박지호"></div>
+            <div><label>사업자등록번호</label><input id="spBiz" style="width:100%" placeholder="000-00-00000"></div>
+            <div><label>개업(오픈)일</label><input type="date" id="spOpen" style="width:100%" disabled
+                 title="연결 주소 탭에서 바꿉니다"></div>
+          </div>
+
+          <div class="sp-sec">☎️ 연락처</div>
+          <div class="grid2">
+            <div><label>매장 대표전화</label><input id="spTel" style="width:100%" placeholder="061-000-0000"></div>
+            <div><label>대표 휴대폰</label><input id="spMobile" style="width:100%" placeholder="010-0000-0000"></div>
+          </div>
+
+          <div class="sp-sec">📍 주소</div>
+          <div class="grid2">
+            <div><label>우편번호</label><input id="spZip" style="width:100%" placeholder="00000"></div>
+            <div><label>주소</label><input id="spAddr" style="width:100%" placeholder="전북 순창군 ..."></div>
+            <div><label>상세주소</label><input id="spAddr2" style="width:100%" placeholder="1층"></div>
+            <div><label>주차 안내</label><input id="spPark" style="width:100%" placeholder="예: 건물 뒤 20대 무료"></div>
+          </div>
+          <label>찾아오는 길 <span class="sub">— 손님에게 문자로 보낼 문구</span></label>
+          <textarea id="spDir" placeholder="예: 순창공설운동장 정문 맞은편, 농협 옆 건물 1층입니다."></textarea>
+
+          <div class="sp-sec">💳 입금 계좌 <span class="sub">— 손님·거래처가 계좌이체 물어볼 때</span></div>
+          <div class="grid2">
+            <div><label>은행</label><input id="spBank" style="width:100%" placeholder="농협"></div>
+            <div><label>계좌번호</label><input id="spAcct" style="width:100%" placeholder="000-0000-0000-00"></div>
+            <div><label>예금주</label><input id="spHolder" style="width:100%" placeholder="박지호"></div>
+          </div>
+
+          <div class="sp-sec">🕐 영업</div>
+          <div class="grid2">
+            <div><label>평일 영업시간</label><input id="spHwd" style="width:100%" placeholder="11:00 ~ 21:00"></div>
+            <div><label>주말 영업시간</label><input id="spHwe" style="width:100%" placeholder="10:30 ~ 21:00"></div>
+            <div><label>브레이크타임</label><input id="spBreak" style="width:100%" placeholder="평일 15:00 ~ 17:00 / 주말 없음"></div>
+            <div><label>휴무일</label><input id="spHoliday" style="width:100%" placeholder="예: 연중무휴 / 매주 월요일"></div>
+            <div><label>좌석수</label><input id="spSeats" style="width:100%" placeholder="예: 60석 (룸 2개 포함)"></div>
+            <div><label>카카오 채널 주소</label><input id="spKakao" style="width:100%" placeholder="http://pf.kakao.com/..."></div>
+          </div>
+
+          <div class="sp-sec">📶 와이파이 <span class="sub">— 손님이 제일 많이 물어봐요</span></div>
+          <div class="grid2">
+            <div><label>와이파이 이름</label><input id="spWifi" style="width:100%" placeholder="SUNCHANGDAM"></div>
+            <div><label>와이파이 비번</label><input id="spWifiPw" style="width:100%" placeholder="00000000"></div>
+          </div>
+
+          <label style="margin-top:14px">손님 안내 문구 <span class="sub">— 자주 답하는 내용을 미리 적어두세요</span></label>
+          <textarea id="spNotice" placeholder="예: 무한리필 성인 16,900원 / 만 5세 이하 무료 / 포장 불가 / 반려동물 동반 불가"></textarea>
+
+          <div style="margin-top:14px"><button class="btn" onclick="spSave()">저장</button></div>
+        </div>
+
         <div class="card">
           <h2>매장 정보 등록</h2>
           <div class="sub" style="margin-bottom:6px">포스기 번호, AS 연락처, 와이파이 비번 등. "직원 공개"를 끄면 관리자만 봐요.</div>
@@ -2248,7 +2311,30 @@ async function delManual(id){
 
 /* ---------- 매장정보 ---------- */
 let INFOS = [];
+/* ===== 가게 기본정보 ===== */
+const SP_MAP = {
+  spSign:'sign_name', spCeo:'ceo', spBiz:'biz_no', spTel:'tel', spMobile:'mobile',
+  spZip:'zipcode', spAddr:'addr', spAddr2:'addr_detail', spPark:'parking', spDir:'directions',
+  spBank:'bank', spAcct:'acct_no', spHolder:'acct_holder',
+  spHwd:'hours_weekday', spHwe:'hours_weekend', spBreak:'break_time', spHoliday:'holiday',
+  spSeats:'seats', spKakao:'kakao_url', spWifi:'wifi_ssid', spWifiPw:'wifi_pw', spNotice:'notice_pub'
+};
+async function loadProfile(){
+  try{
+    const p = await api('storeProfile', TOKEN);
+    Object.entries(SP_MAP).forEach(([el, key]) => { if($(el)) $(el).value = p[key] || ''; });
+    if($('spOpen')) $('spOpen').value = p.open_date || '';
+  }catch(e){}
+}
+async function spSave(){
+  const body = {};
+  Object.entries(SP_MAP).forEach(([el, key]) => { if($(el)) body[key] = $(el).value.trim(); });
+  try{ await api('storeProfileSave', TOKEN, body); toast('가게 기본정보를 저장했어요'); }
+  catch(e){ alert(e.message); }
+}
+
 async function loadInfos(){
+  loadProfile();
   try{
     INFOS = await api('infoList', TOKEN);
     $('infoBody').innerHTML = INFOS.map(x =>
