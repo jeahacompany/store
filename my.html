@@ -314,10 +314,17 @@ function renderSince(r, storeName){
 
   // 1년이 넘으면 "1년 32일째" 로
   const yr = Math.floor(d / 365), rest = d % 365;
-  $('dDays').textContent = yr > 0
-    ? yr + '년 ' + (rest ? rest.toLocaleString('ko-KR') : '0')
-    : d.toLocaleString('ko-KR');
-  document.querySelector('#dSince .unit').textContent = '일째';
+  const unit = document.querySelector('#dSince .unit');
+  if(yr > 0 && rest === 0){          // 딱 1년, 2년…
+    $('dDays').textContent = yr;
+    unit.textContent = '년째';
+  }else if(yr > 0){
+    $('dDays').textContent = yr + '년 ' + rest.toLocaleString('ko-KR');
+    unit.textContent = '일째';
+  }else{
+    $('dDays').textContent = d.toLocaleString('ko-KR');
+    unit.textContent = '일째';
+  }
 
   const jd = new Date(r.joined + 'T00:00:00');
   const W = ['일','월','화','수','목','금','토'];
