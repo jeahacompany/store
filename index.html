@@ -73,6 +73,20 @@
   .signwrap.drawn .signline{ display:none }
   .signview{ border:1px solid #E9ECEF; border-radius:10px; background:#fff; padding:6px; display:inline-block }
   .signview img{ height:60px; display:block }
+  .clauselist{ display:grid; gap:8px; margin-top:6px; max-height:340px; overflow:auto; padding-right:4px }
+  .clz{ border:1px solid #E9ECEF; border-radius:11px; padding:11px 13px; background:#FAFBFC }
+  .clz.on{ background:#FFF7F2; border-color:#FFD8A8 }
+  .clz .hd{ display:flex; align-items:center; gap:8px; font-size:14.5px; font-weight:700; cursor:pointer }
+  .clz .hd input{ width:19px; height:19px; accent-color:#F26522; flex:0 0 auto }
+  .clz .lg{ font-size:11px; font-weight:700; border-radius:5px; padding:2px 7px }
+  .clz .lg.ok{ background:#EBFBEE; color:#2B8A3E }
+  .clz .lg.cond{ background:#FFF4E6; color:#E8590C }
+  .clz .why{ font-size:13px; color:#6C757D; margin-top:5px; padding-left:27px; line-height:1.55 }
+  .clz .note{ font-size:12.5px; color:#B8621B; margin-top:5px; padding-left:27px; line-height:1.6;
+    background:#FFF9DB; border-radius:7px; padding:8px 10px }
+  .clz .body{ display:none; font-size:13px; color:#495057; margin-top:7px; padding:9px 11px;
+    background:#fff; border:1px solid #E9ECEF; border-radius:7px; line-height:1.7; white-space:pre-wrap }
+  .clz.open .body{ display:block }
   .ctdays{ display:grid; gap:6px; margin-top:6px }
   .ctday{ display:grid; grid-template-columns:78px 1fr 1fr 74px; gap:6px; align-items:center;
     padding:7px 9px; border:1px solid #E9ECEF; border-radius:10px; background:#FAFBFC }
@@ -757,6 +771,15 @@
 
         <!-- 근로계약서 -->
         <div id="lg-ct">
+          <div class="card">
+            <h2>👤 직원별 받아야 할 것
+              <button class="btn sm ghost" style="margin-left:auto" onclick="loadChecklist()">↻ 새로고침</button></h2>
+            <div class="sub">서류·계약서·인적사항을 한 줄로 봅니다. <b>✖</b> 는 아직 안 받은 것이에요.</div>
+            <div class="table-scroll" style="margin-top:10px"><table><thead><tr>
+              <th>이름</th><th>신분증</th><th>통장사본</th><th>보건증</th><th>주소</th><th>계좌</th><th>근로계약서</th>
+            </tr></thead><tbody id="ckBody"></tbody></table></div>
+          </div>
+
           <div class="card" id="ctMissCard" style="border-color:#FFC9C9; display:none">
             <h2>⚠️ 계약서 없는 직원 <span class="badge r" id="ctMissCnt">0</span></h2>
             <div class="sub">근로기준법 제17조 — 근로계약서를 <b>서면으로 작성해 교부</b>해야 합니다.
@@ -932,6 +955,9 @@
           <label><input type="checkbox" id="ctIns3" checked> 고용보험</label>
           <label><input type="checkbox" id="ctIns4" checked> 산재보험</label>
         </div>
+
+        <label style="margin-top:16px">특약 조항 <span class="sub">— 체크한 것만 계약서에 들어갑니다</span></label>
+        <div id="ctClauses" class="clauselist"></div>
 
         <div id="ctChecks" style="margin-top:14px"></div>
 
@@ -3552,7 +3578,63 @@ function lgTab(t, btn){
   });
   if(t === 'og') loadOrigins();
 }
-async function loadLegal(){ await loadContracts(); if(LG_TAB === 'og') loadOrigins(); }
+let CLAUSES = [];
+async function loadLegal(){
+  try{ CLAUSES = await api('clauseList', TOKEN); }catch(e){}
+  await loadContracts();
+  loadChecklist();
+  if(LG_TAB === 'og') loadOrigins();
+}
+
+/* 직원별 받아야 할 것 */
+async function loadChecklist(){
+  try{
+    const rows = await api('staffChecklist', TOKEN);
+    const ok = v => v ? '<span class="badge g">✔</span>' : '<span class="badge r">✖</span>';
+    $('ckBody').innerHTML = rows.map(r => {
+      let ct;
+      if(r.contract === '완료')      ct = '<span class="badge g">✔ 서명완료</span>';
+      else if(r.contract === '서명대기') ct = '<span class="badge a">직원 서명 대기</span>';
+      else if(r.contract === '작성중')  ct = '<span class="badge">작성중</span>';
+      else ct = '<span class="badge r">✖ 없음</span>';
+      // 보건증 만료 임박 경고
+      let hx = ok(r.doc_health);
+      if(r.doc_health && r.health_exp){
+        const left = Math.round((new Date(r.health_exp) - new Date()) / 86400000);
+        if(left < 0)       hx = '<span class="badge r">만료됨</span>';
+        else if(left < 30) hx = '<span class="badge a">'+left+'일 남음</span>';
+      }
+      return '<tr><td><b>'+esc(r.name)+'</b> <span class="sub">'+esc(r.position||'')+'</span></td>'
+        + '<td>'+ok(r.doc_id)+'</td><td>'+ok(r.doc_bank)+'</td><td>'+hx+'</td>'
+        + '<td>'+ok(r.has_addr)+'</td><td>'+ok(r.has_acct)+'</td><td>'+ct+'</td></tr>';
+    }).join('') || '<tr><td colspan="7" class="sub">재직 중인 직원이 없어요.</td></tr>';
+  }catch(e){}
+}
+
+function ctClauseHtml(picked){
+  const set = new Set(picked || []);
+  return CLAUSES.map(c => {
+    const on = picked ? set.has(c.title) : c.on_default;
+    const lg = c.legal === '유효'
+      ? '<span class="lg ok">법적 유효</span>'
+      : '<span class="lg cond">조건부 — 주의</span>';
+    return '<div class="clz'+(on?' on':'')+'" data-id="'+c.id+'" data-title="'+esc(c.title)+'">'
+      + '<label class="hd"><input type="checkbox" '+(on?'checked':'')+' onchange="ctClauseToggle(this)">'
+        + esc(c.title) + lg + '</label>'
+      + (c.why ? '<div class="why">'+esc(c.why)+'</div>' : '')
+      + (c.legal_note ? '<div class="note">⚖️ '+c.legal_note+'</div>' : '')
+      + '<div class="why" style="cursor:pointer; color:var(--brand)" onclick="this.parentElement.classList.toggle(\'open\')">▾ 계약서에 들어갈 문장 보기</div>'
+      + '<div class="body">'+esc(c.body)+'</div>'
+      + '</div>';
+  }).join('');
+}
+function ctClauseToggle(cb){
+  cb.closest('.clz').classList.toggle('on', cb.checked);
+}
+function ctPickedClauseIds(){
+  return [...document.querySelectorAll('#ctClauses .clz')]
+    .filter(el => el.querySelector('input').checked).map(el => el.dataset.id);
+}
 
 async function loadContracts(){
   try{
@@ -3642,6 +3724,7 @@ async function ctOpen(id, staffId, staffName){
       $('ctIns3').checked = c.ins_employ;  $('ctIns4').checked = c.ins_accident;
       $('ctTitle').textContent = '근로계약서 — ' + (c.status||'');
       $('ctSignBtn').style.display = c.emp_sign ? 'none' : '';
+      $('ctClauses').innerHTML = ctClauseHtml((c.clauses||[]).map(x => x.title));
       CT_VIEW = g;
     }catch(e){ alert(e.message); return; }
   }else{
@@ -3654,6 +3737,7 @@ async function ctOpen(id, staffId, staffName){
     $('ctPayDay').value = '매월 10일'; $('ctProbM').value = 0; $('ctProbR').value = 100;
     $('ctBonus').value = ''; $('ctAllow').value = '';
     [1,2,3,4].forEach(i => $('ctIns'+i).checked = true);
+    $('ctClauses').innerHTML = ctClauseHtml(null);
     $('ctTitle').textContent = '근로계약서 작성';
     $('ctSignBtn').style.display = '';
     CT_VIEW = null;
@@ -3684,6 +3768,8 @@ async function ctSave(){
   try{
     const r = await api('contractSave', TOKEN, b);
     $('ctId').value = r.id;
+    // 고른 특약 조항을 계약서에 붙임 (서명 뒤엔 못 바꿈)
+    try{ await api('contractClauses', TOKEN, { id:r.id, ids:ctPickedClauseIds() }); }catch(e){}
     const cks = r.checks || [];
     $('ctChecks').innerHTML = cks.length
       ? '<div style="border-radius:12px; overflow:hidden">' + cks.map(c =>
@@ -3767,6 +3853,12 @@ function ctPreview(){
       + row('9. 근로계약서 교부', '사업주는 근로계약을 체결함과 동시에 본 계약서를 사본하여 근로자의 교부요구와 관계없이 근로자에게 교부함 (근로기준법 제17조 이행)')
       + row('10. 기 타', '이 계약에 정함이 없는 사항은 근로기준법령에 의함')
       + '</table>'
+      + ((c.clauses && c.clauses.length)
+          ? '<h2 style="font-size:17px; margin:22px 0 8px">특 약 사 항</h2>'
+            + '<table>' + c.clauses.map((cl, i) =>
+                '<tr><th style="width:170px">제'+(i+1)+'조 '+esc(cl.title)+'</th><td>'+esc(cl.body)+'</td></tr>'
+              ).join('') + '</table>'
+          : '')
       + '<div style="text-align:center; margin:26px 0; font-size:15px">'
         + (c.wrk_sign_at ? fmtDate(String(c.wrk_sign_at).slice(0,10)) : fmtDate(localDate())) + '</div>'
       + '<div class="sig">'
