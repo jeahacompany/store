@@ -73,6 +73,20 @@
   .signwrap.drawn .signline{ display:none }
   .signview{ border:1px solid #E9ECEF; border-radius:10px; background:#fff; padding:6px; display:inline-block }
   .signview img{ height:60px; display:block }
+  .grid3{ display:grid; grid-template-columns:repeat(3,1fr); gap:0 12px }
+  .daypick{ display:flex; gap:7px; margin-top:6px; flex-wrap:wrap }
+  .daypick button{ width:46px; height:46px; border-radius:50%; border:2px solid #E9ECEF; background:#fff;
+    font-size:15px; font-weight:700; color:#868E96; cursor:pointer; font-family:inherit }
+  .daypick button.on{ background:var(--brand); border-color:var(--brand); color:#fff }
+  .foldbox{ margin-top:14px; border:1px solid #E9ECEF; border-radius:12px; overflow:hidden }
+  .foldbox .foldhd{ width:100%; display:flex; align-items:center; gap:10px; padding:13px 15px;
+    background:#FAFBFC; border:none; font-family:inherit; font-size:14.5px; font-weight:700;
+    cursor:pointer; text-align:left; color:#20242E }
+  .foldbox .foldhd .sub{ font-weight:400; flex:1; font-size:12.5px }
+  .foldbox .foldhd .ar{ transition:.2s; color:#868E96 }
+  .foldbox.open .foldhd .ar{ transform:rotate(180deg) }
+  .foldbox .foldbd{ display:none; padding:14px 15px; border-top:1px solid #E9ECEF }
+  .foldbox.open .foldbd{ display:block }
   .emptype{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:6px }
   .emptype .et{ border:2px solid #E9ECEF; border-radius:12px; padding:12px 10px; text-align:center;
     cursor:pointer; background:#FAFBFC; margin:0; display:block }
@@ -938,48 +952,74 @@
         <div id="ctTypeNote" class="typenote"></div>
 
         <div class="grid2">
-          <div><label>계약 시작일 *</label><input type="date" id="ctStart" style="width:100%"></div>
-          <div><label>계약 종료일 <span class="sub">— 비우면 기간의 정함 없음(정규직)</span></label>
-            <input type="date" id="ctEnd" style="width:100%"></div>
-          <div><label>근무 장소</label><input id="ctPlace" style="width:100%" placeholder="순창담 본점"></div>
-          <div><label>업무 내용</label><input id="ctDuty" style="width:100%" placeholder="홀 서비스 / 주방 조리"></div>
+          <div><label>시작일 *</label><input type="date" id="ctStart" style="width:100%"></div>
+          <div><label>업무 <span class="sub">— 무슨 일을 하나요</span></label>
+            <input id="ctDuty" style="width:100%" placeholder="홀 서비스"></div>
         </div>
 
-        <label style="margin-top:14px">근무 요일·시간 <span class="sub">— 체크한 요일만 계약에 들어갑니다</span></label>
-        <div id="ctDays" class="ctdays"></div>
-        <div class="sub" style="margin-top:6px">주 소정근로시간 <b id="ctHours" style="font-size:16px; color:var(--brand)">0</b>시간</div>
+        <label style="margin-top:14px">근무 요일 <span class="sub">— 눌러서 켜고 끄세요</span></label>
+        <div class="daypick" id="ctDayPick"></div>
+
+        <div class="grid3" style="margin-top:10px">
+          <div><label>출근</label><input type="time" id="ctFrom" value="11:00" style="width:100%" oninput="ctSimpleApply()"></div>
+          <div><label>퇴근</label><input type="time" id="ctTo" value="20:00" style="width:100%" oninput="ctSimpleApply()"></div>
+          <div><label>휴게 (분)</label><input type="number" id="ctRest" value="60" min="0" step="10" style="width:100%" oninput="ctSimpleApply()"></div>
+        </div>
+        <div class="sub" style="margin-top:7px; display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+          주 소정근로시간 <b id="ctHours" style="font-size:17px; color:var(--brand)">0</b>시간
+          <button class="btn sm ghost" style="padding:5px 10px" onclick="ctToggleDetailDays()">
+            <span id="ctDayModeTxt">요일마다 다르게</span></button>
+        </div>
+        <div id="ctDays" class="ctdays hidden"></div>
 
         <div class="grid2" style="margin-top:12px">
-          <div><label>주휴일</label><select id="ctHoliday" style="width:100%">
-            <option value="0">일요일</option><option value="1">월요일</option><option value="2">화요일</option>
-            <option value="3">수요일</option><option value="4">목요일</option><option value="5">금요일</option>
-            <option value="6">토요일</option></select></div>
           <div id="ctPayTypeWrap"><label>임금 형태</label><select id="ctPayType" style="width:100%" onchange="ctCalc()">
             <option value="hourly">시급</option><option value="monthly">월급</option></select></div>
-          <div id="ctPayWrap"><label>금액 (원)</label><input id="ctPay" type="text" inputmode="numeric" oninput="mFmt(this); ctCalc()" style="width:100%"></div>
+          <div id="ctPayWrap"><label>금액 (원) *</label><input id="ctPay" type="text" inputmode="numeric" oninput="mFmt(this); ctCalc()" style="width:100%" placeholder="10,500"></div>
           <div id="ctDailyWrap" class="hidden"><label>일당 (원) *</label>
             <input id="ctDaily" type="text" inputmode="numeric" oninput="mFmt(this); ctCalc()" style="width:100%" placeholder="150,000"></div>
-          <div><label>임금 지급일</label><input id="ctPayDay" style="width:100%" value="매월 10일"></div>
-          <div id="ctProbWrap1"><label>수습기간 (개월)</label><input id="ctProbM" type="number" min="0" max="3" value="0" style="width:100%" oninput="ctCalc()"></div>
-          <div id="ctProbWrap2"><label>수습기간 임금 (%)</label><input id="ctProbR" type="number" min="90" max="100" value="100" style="width:100%" oninput="ctCalc()"></div>
         </div>
 
-        <label style="margin-top:12px">상여금·수당 (선택)</label>
-        <div class="grid2">
-          <div><input id="ctBonus" style="width:100%" placeholder="상여금 (없으면 비움)"></div>
-          <div><input id="ctAllow" style="width:100%" placeholder="기타 수당 (식대 등)"></div>
+        <!-- 여기부터는 안 건드려도 되는 것들 -->
+        <div class="foldbox">
+          <button class="foldhd" onclick="this.parentElement.classList.toggle('open')">
+            <span>⚙️ 자세한 설정</span>
+            <span class="sub" id="ctMoreSum">종료일·수습·상여·4대보험 — 기본값 그대로 두셔도 됩니다</span>
+            <span class="ar">▾</span>
+          </button>
+          <div class="foldbd">
+            <div class="grid2">
+              <div><label>계약 종료일 <span class="sub">— 비우면 기간 정함 없음</span></label>
+                <input type="date" id="ctEnd" style="width:100%"></div>
+              <div><label>근무 장소</label><input id="ctPlace" style="width:100%" placeholder="순창담 본점"></div>
+              <div><label>주휴일</label><select id="ctHoliday" style="width:100%">
+                <option value="0">일요일</option><option value="1">월요일</option><option value="2">화요일</option>
+                <option value="3">수요일</option><option value="4">목요일</option><option value="5">금요일</option>
+                <option value="6">토요일</option></select></div>
+              <div><label>임금 지급일</label><input id="ctPayDay" style="width:100%" value="매월 10일"></div>
+              <div id="ctProbWrap1"><label>수습기간 (개월)</label><input id="ctProbM" type="number" min="0" max="3" value="0" style="width:100%" oninput="ctCalc()"></div>
+              <div id="ctProbWrap2"><label>수습기간 임금 (%)</label><input id="ctProbR" type="number" min="90" max="100" value="100" style="width:100%" oninput="ctCalc()"></div>
+              <div><input id="ctBonus" style="width:100%" placeholder="상여금 (없으면 비움)"></div>
+              <div><input id="ctAllow" style="width:100%" placeholder="기타 수당 (식대 등)"></div>
+            </div>
+            <label style="margin-top:12px">4대보험</label>
+            <div style="display:flex; gap:14px; flex-wrap:wrap; font-size:14px">
+              <label><input type="checkbox" id="ctIns1" checked> 국민연금</label>
+              <label><input type="checkbox" id="ctIns2" checked> 건강보험</label>
+              <label><input type="checkbox" id="ctIns3" checked> 고용보험</label>
+              <label><input type="checkbox" id="ctIns4" checked> 산재보험</label>
+            </div>
+          </div>
         </div>
 
-        <label style="margin-top:12px">사회보험 <span class="sub">— 4대보험 가입 여부</span></label>
-        <div style="display:flex; gap:14px; flex-wrap:wrap; font-size:14px">
-          <label><input type="checkbox" id="ctIns1" checked> 국민연금</label>
-          <label><input type="checkbox" id="ctIns2" checked> 건강보험</label>
-          <label><input type="checkbox" id="ctIns3" checked> 고용보험</label>
-          <label><input type="checkbox" id="ctIns4" checked> 산재보험</label>
+        <div class="foldbox">
+          <button class="foldhd" onclick="this.parentElement.classList.toggle('open')">
+            <span>📜 특약 조항</span>
+            <span class="sub" id="ctClauseSum">권장 조항이 자동으로 들어갑니다</span>
+            <span class="ar">▾</span>
+          </button>
+          <div class="foldbd"><div id="ctClauses" class="clauselist"></div></div>
         </div>
-
-        <label style="margin-top:16px">특약 조항 <span class="sub">— 체크한 것만 계약서에 들어갑니다</span></label>
-        <div id="ctClauses" class="clauselist"></div>
 
         <div id="ctChecks" style="margin-top:14px"></div>
 
@@ -3665,7 +3705,16 @@ function ctTypeChange(){
   if(t !== 'regular'){ $('ctProbM').value = 0; $('ctProbR').value = 100; }
   // 조항 목록도 유형에 맞게 다시
   $('ctClauses').innerHTML = ctClauseHtml(null);
-  ctCalc();
+  ctClauseSum();
+  ctSimpleApply();
+}
+
+/* 특약 요약 한 줄 — 펼치지 않아도 몇 개 들어가는지 보이게 */
+function ctClauseSum(){
+  const all = document.querySelectorAll('#ctClauses .clz').length;
+  const on = [...document.querySelectorAll('#ctClauses .clz input')].filter(i => i.checked).length;
+  const el = $('ctClauseSum');
+  if(el) el.textContent = all ? ('권장 ' + on + '개가 자동으로 들어갑니다 (전체 ' + all + '개 중)') : '';
 }
 
 function ctClauseHtml(picked){
@@ -3688,6 +3737,7 @@ function ctClauseHtml(picked){
 }
 function ctClauseToggle(cb){
   cb.closest('.clz').classList.toggle('on', cb.checked);
+  ctClauseSum();
 }
 function ctPickedClauseIds(){
   return [...document.querySelectorAll('#ctClauses .clz')]
@@ -3723,6 +3773,57 @@ async function loadContracts(){
           + (c.status==='완료'?'보기':'수정')+'</button></td></tr>';
     }).join('') || '<tr><td colspan="7" class="sub">아직 작성한 계약서가 없어요.</td></tr>';
   }catch(e){ toast(e.message); }
+}
+
+/* 간단 모드 — 요일 동그라미 + 시간 한 벌 */
+let CT_DETAIL = false;
+function ctDayPickHtml(days){
+  const on = new Set((days||[]).map(d => +d.d));
+  return WD.map((w,i) =>
+    '<button type="button" class="'+(on.has(i)?'on':'')+'" data-d="'+i+'" onclick="ctDayTap(this)">'+w+'</button>'
+  ).join('');
+}
+function ctDayTap(btn){ btn.classList.toggle('on'); ctSimpleApply(); }
+function ctPickedDays(){
+  return [...document.querySelectorAll('#ctDayPick button.on')].map(b => +b.dataset.d);
+}
+/* 간단 모드에서 고른 요일 + 시간을 상세 7줄에 반영 */
+function ctSimpleApply(){
+  if(CT_DETAIL){ ctCalc(); return; }
+  const picked = new Set(ctPickedDays());
+  const from = $('ctFrom').value, to = $('ctTo').value, rest = +$('ctRest').value || 0;
+  document.querySelectorAll('#ctDays .ctday').forEach(el => {
+    const d = +el.querySelector('input[type=checkbox]').dataset.d;
+    el.querySelector('input[type=checkbox]').checked = picked.has(d);
+    el.querySelector('.cf').value = from;
+    el.querySelector('.ct2').value = to;
+    el.querySelector('.cr').value = rest;
+  });
+  ctCalc();
+}
+function ctToggleDetailDays(){
+  CT_DETAIL = !CT_DETAIL;
+  $('ctDays').classList.toggle('hidden', !CT_DETAIL);
+  $('ctDayModeTxt').textContent = CT_DETAIL ? '← 간단하게' : '요일마다 다르게';
+  // 간단 → 상세로 갈 때 지금 값 그대로 옮겨줌
+  if(CT_DETAIL) ctSimpleApplyOnce();
+  else { ctSyncPickFromDetail(); ctSimpleApply(); }
+}
+function ctSimpleApplyOnce(){
+  const picked = new Set(ctPickedDays());
+  const from = $('ctFrom').value, to = $('ctTo').value, rest = +$('ctRest').value || 0;
+  document.querySelectorAll('#ctDays .ctday').forEach(el => {
+    const cb = el.querySelector('input[type=checkbox]');
+    cb.checked = picked.has(+cb.dataset.d);
+    if(cb.checked){ el.querySelector('.cf').value = from; el.querySelector('.ct2').value = to; el.querySelector('.cr').value = rest; }
+  });
+  ctCalc();
+}
+/* 상세에서 고친 요일을 동그라미에 반영 */
+function ctSyncPickFromDetail(){
+  const days = ctGetDays();
+  $('ctDayPick').innerHTML = ctDayPickHtml(days);
+  if(days.length){ $('ctFrom').value = days[0].from; $('ctTo').value = days[0].to; $('ctRest').value = days[0].rest; }
 }
 
 function ctDaysHtml(days){
@@ -3772,6 +3873,14 @@ async function ctOpen(id, staffId, staffName){
       $('ctStart').value = c.start_date || ''; $('ctEnd').value = c.end_date || '';
       $('ctPlace').value = c.work_place || ''; $('ctDuty').value = c.duty || '';
       $('ctDays').innerHTML = ctDaysHtml(c.work_days || []);
+      // 요일마다 시간이 같으면 간단 모드, 다르면 상세 모드로 연다
+      const wd = c.work_days || [];
+      const same = wd.length <= 1 || wd.every(d => d.from === wd[0].from && d.to === wd[0].to && (d.rest||0) === (wd[0].rest||0));
+      $('ctDayPick').innerHTML = ctDayPickHtml(wd);
+      if(wd.length){ $('ctFrom').value = wd[0].from; $('ctTo').value = wd[0].to; $('ctRest').value = wd[0].rest || 0; }
+      CT_DETAIL = !same;
+      $('ctDays').classList.toggle('hidden', same);
+      $('ctDayModeTxt').textContent = same ? '요일마다 다르게' : '← 간단하게';
       $('ctHoliday').value = c.holiday_day ?? 0;
       $('ctPayType').value = c.pay_type || 'hourly';
       $('ctPay').value = (+c.base_pay||0).toLocaleString('ko-KR');
@@ -3786,6 +3895,7 @@ async function ctOpen(id, staffId, staffName){
       ctTypeChange();
       $('ctDaily').value = (+c.daily_pay||0) ? (+c.daily_pay).toLocaleString('ko-KR') : '';
       $('ctClauses').innerHTML = ctClauseHtml((c.clauses||[]).map(x => x.title));
+      ctClauseSum();
       CT_VIEW = g;
     }catch(e){ alert(e.message); return; }
   }else{
@@ -3794,6 +3904,12 @@ async function ctOpen(id, staffId, staffName){
     $('ctStart').value = localDate(); $('ctEnd').value = '';
     $('ctPlace').value = '순창담 본점'; $('ctDuty').value = '';
     $('ctDays').innerHTML = ctDaysHtml([]);
+    // 새 계약서 기본값: 월~금 11:00~20:00 휴게 60분
+    CT_DETAIL = false;
+    $('ctDays').classList.add('hidden');
+    $('ctDayModeTxt').textContent = '요일마다 다르게';
+    $('ctDayPick').innerHTML = ctDayPickHtml([1,2,3,4,5].map(d => ({d:d})));
+    $('ctFrom').value = '11:00'; $('ctTo').value = '20:00'; $('ctRest').value = 60;
     $('ctHoliday').value = 0; $('ctPayType').value = 'hourly'; $('ctPay').value = '';
     $('ctPayDay').value = '매월 10일'; $('ctProbM').value = 0; $('ctProbR').value = 100;
     $('ctBonus').value = ''; $('ctAllow').value = '';
