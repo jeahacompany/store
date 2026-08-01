@@ -30,6 +30,50 @@ body{margin:0; font-family:Pretendard,-apple-system,'Malgun Gothic',sans-serif; 
 .signwrap.drawn .signline{display:none}
 .ctrow{padding:12px 0; border-bottom:1px solid #F1F2F4}
 .ctrow:last-child{border-bottom:none}
+/* 근로계약서 전문 */
+.ctbg{position:fixed; inset:0; background:#F4F5F7; z-index:95; display:flex; flex-direction:column}
+.ctsheet{display:flex; flex-direction:column; height:100%; max-width:640px; width:100%; margin:0 auto; background:#fff}
+.cthead{display:flex; align-items:center; padding:14px 16px; background:#20242E; color:#fff;
+  font-size:17px; font-weight:700; flex:none}
+.cthead button{margin-left:auto; background:none; border:none; color:#AEB4C0; font-size:22px; cursor:pointer; padding:0 4px}
+.ctbody{flex:1; overflow-y:auto; padding:18px 16px 30px; -webkit-overflow-scrolling:touch}
+.ctop{text-align:center; padding-bottom:16px; border-bottom:2px solid #20242E; margin-bottom:16px}
+.ctop .ctitle{font-size:24px; font-weight:800; letter-spacing:-.5px}
+.ctop .ctype{font-size:14px; color:#868E96; margin-top:4px}
+.cparty{display:grid; gap:8px; background:#F8F9FA; border-radius:12px; padding:13px 15px; margin-bottom:18px; font-size:15px}
+.cparty .l{display:inline-block; width:54px; color:#868E96; font-size:13px}
+.csec{padding:13px 0; border-bottom:1px solid #F1F2F4}
+.csec .ct{font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px; margin-bottom:6px}
+.csec .ct .no{background:#20242E; color:#fff; border-radius:6px; padding:2px 8px; font-size:12px; flex:none}
+.csec .cv{font-size:15.5px; line-height:1.7; color:#2B2F38; padding-left:2px}
+.csec .cv.small{font-size:14px; line-height:1.75; color:#495057}
+.csec .kv{display:flex; gap:10px; font-size:14.5px; margin-top:5px; color:#495057}
+.csec .kv span{color:#868E96; width:70px; flex:none}
+.csec .pay{font-size:17px}
+.csec .pay b{color:#F26522; font-size:20px}
+.csec .dlist{margin-top:2px}
+.csec .drow{display:flex; gap:12px; padding:6px 0; font-size:15px; border-bottom:1px dashed #F1F2F4}
+.csec .drow:last-child{border-bottom:none}
+.csec .drow b{width:56px; flex:none}
+.csec .rst{color:#868E96; font-size:13px}
+.csec .tot{margin-top:8px; padding-top:8px; border-top:1px solid #E9ECEF; font-size:15px}
+.csec .tot b{color:#F26522; font-size:17px}
+.csec .warn{margin-top:7px; background:#FFF9DB; border:1px solid #FFE066; border-radius:8px;
+  padding:9px 11px; font-size:13.5px; line-height:1.6}
+.csec .ok{margin-top:7px; background:#EBFBEE; border:1px solid #B2F2BB; border-radius:8px;
+  padding:9px 11px; font-size:13.5px; line-height:1.6; color:#2B8A3E}
+.csub{margin:22px 0 4px; font-size:16px; font-weight:800; padding-bottom:8px; border-bottom:2px solid #20242E}
+.csign{display:grid; gap:12px; margin-top:22px}
+.csign .one{border:1px solid #E9ECEF; border-radius:12px; padding:13px 15px; min-height:96px}
+.csign .l{display:block; font-size:13px; color:#868E96; margin-bottom:6px}
+.csign img{height:56px; display:block}
+.csign .none{color:#CED4DA; font-size:14px}
+.csign .t{display:block; font-size:11.5px; color:#ADB5BD; margin-top:6px}
+.cfoot{margin-top:24px}
+.cfoot .notice{background:#FFF4EC; border:1px solid #FFD8A8; border-radius:12px; padding:13px 15px;
+  font-size:14.5px; line-height:1.7; margin-bottom:12px}
+.cfoot .done{background:#EBFBEE; border:1px solid #B2F2BB; border-radius:12px; padding:14px;
+  text-align:center; font-size:15px; font-weight:700; color:#2B8A3E; margin-bottom:12px}
 h1{font-size:20px; margin:0 0 4px; font-weight:700; letter-spacing:-.3px}
 h1 b{color:var(--brand)}
 h2{font-size:17px; margin:0 0 10px; font-weight:700; letter-spacing:-.2px}
@@ -638,14 +682,18 @@ async function loadMyContracts(){
       const st = c.status === '완료' ? '<span class="badge g">✔ 서명 완료</span>'
                : need ? '<span class="badge r">서명해주세요</span>'
                : '<span class="badge">준비 중</span>';
+      const pay = c.emp_type === 'daily'
+        ? '일급 ' + (+c.daily_pay||0).toLocaleString('ko-KR') + '원'
+        : (c.pay_type === 'hourly' ? '시급 ' : '월급 ') + (+c.base_pay||0).toLocaleString('ko-KR') + '원';
+      const typ = { regular:'직원', parttime:'알바', daily:'일용직' }[c.emp_type] || '직원';
       return '<div style="padding:12px 0; border-bottom:1px solid #F1F2F4">'
         + '<div style="font-size:16px; font-weight:700">'
-          + fmtDate(c.start_date) + (c.end_date ? ' ~ ' + fmtDate(c.end_date) : ' ~ 기간없음') + ' ' + st + '</div>'
-        + '<div class="b" style="margin-top:3px">주 ' + (+c.week_hours) + '시간 · '
-          + (c.pay_type === 'hourly' ? '시급 ' : '월급 ') + (+c.base_pay).toLocaleString('ko-KR') + '원</div>'
+          + fmtDate(c.start_date) + (c.end_date ? ' ~ ' + fmtDate(c.end_date) : ' ~ 기간없음')
+          + ' <span class="badge">' + typ + '</span> ' + st + '</div>'
+        + '<div class="b" style="margin-top:3px">주 ' + (+c.week_hours) + '시간 · ' + pay + '</div>'
         + '<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap">'
-          + '<button class="btn sm ghost" onclick="myCtView(\'' + c.id + '\')">내용 보기</button>'
-          + (need ? '<button class="btn sm" onclick="myCtSign(\'' + c.id + '\')">✍ 서명하기</button>' : '')
+          + '<button class="btn sm ' + (need ? '' : 'ghost') + '" onclick="myCtView(\'' + c.id + '\')">'
+          + (need ? '내용 확인하고 서명하기' : '계약서 보기') + '</button>'
         + '</div></div>';
     }).join('');
 
@@ -663,26 +711,117 @@ async function loadMyContracts(){
     }
   }catch(e){}
 }
+/* 근로계약서 전문 보기 */
+const ET_KO = { regular:'직원 (기간의 정함 없음)', parttime:'알바 (단시간근로자)', daily:'일용직 (1일 단위)' };
+let CT_CUR = null;
+
 async function myCtView(id){
   try{
     const g = await api('contractGet', TOKEN, id);
-    const c = g.c;
-    const days = (c.work_days||[]).map(d =>
-      WDN[d.d] + ' ' + d.from + '~' + d.to + (d.rest ? ' (휴게 ' + d.rest + '분)' : '')).join('\n');
-    alert('【 근로계약서 】\n\n'
-      + '사업주: ' + g.store.name + ' (' + (g.store.ceo||'') + ')\n'
-      + '근로자: ' + g.staff.name + '\n\n'
-      + '계약기간: ' + c.start_date + (c.end_date ? ' ~ ' + c.end_date : ' ~ 기간의 정함 없음') + '\n'
-      + '근무장소: ' + (c.work_place||'-') + '\n'
-      + '업무내용: ' + (c.duty||'-') + '\n\n'
-      + '근무시간\n' + days + '\n주 ' + (+c.week_hours) + '시간\n'
-      + '주휴일: 매주 ' + WDN[c.holiday_day||0] + '요일\n\n'
-      + '임금: ' + (c.pay_type==='hourly'?'시급 ':'월급 ') + (+c.base_pay).toLocaleString('ko-KR') + '원\n'
-      + '지급일: ' + c.pay_day + '\n'
-      + '지급방법: ' + c.pay_method + '\n\n'
-      + '사회보험: ' + [c.ins_pension&&'국민연금', c.ins_health&&'건강보험',
-                       c.ins_employ&&'고용보험', c.ins_accident&&'산재보험'].filter(Boolean).join(', '));
+    CT_CUR = g;
+    const c = g.c, s = g.staff, st = g.store;
+    const money = n => (+n||0).toLocaleString('ko-KR') + '원';
+
+    const days = (c.work_days||[]).length
+      ? (c.work_days||[]).map(d =>
+          '<div class="drow"><b>'+WDN[d.d]+'요일</b><span>'+d.from+' ~ '+d.to
+          + (d.rest ? ' <span class="rst">휴게 '+d.rest+'분</span>' : '') + '</span></div>').join('')
+      : '<div class="sub">근무일이 지정되지 않았습니다</div>';
+
+    const ins = [c.ins_pension&&'국민연금', c.ins_health&&'건강보험',
+                 c.ins_employ&&'고용보험', c.ins_accident&&'산재보험'].filter(Boolean).join(' · ') || '해당 없음';
+
+    const sec = (n, t, v) => '<div class="csec"><div class="ct"><span class="no">'+n+'</span>'+t+'</div>'
+                            + '<div class="cv">'+v+'</div></div>';
+
+    let H = '';
+    H += '<div class="ctop">'
+       + '<div class="ctitle">표준근로계약서</div>'
+       + '<div class="ctype">'+(ET_KO[c.emp_type]||ET_KO.regular)+'</div>'
+       + '</div>';
+
+    H += '<div class="cparty">'
+       + '<div><span class="l">사업주</span><b>'+esc(st.name)+'</b>'
+         + (st.ceo ? ' <span class="sub">대표 '+esc(st.ceo)+'</span>' : '') + '</div>'
+       + '<div><span class="l">근로자</span><b>'+esc(s.name)+'</b>'
+         + (s.position ? ' <span class="sub">'+esc(s.position)+'</span>' : '') + '</div>'
+       + '</div>';
+
+    H += sec(1, '근로계약기간',
+      '<b>'+fmtDate(c.start_date)+'</b> 부터 '
+      + (c.end_date ? '<b>'+fmtDate(c.end_date)+'</b> 까지' : '<b>기간의 정함 없음</b>')
+      + (c.probation_months ? '<div class="warn">수습기간 '+c.probation_months+'개월 · 이 기간 임금은 '
+          + c.probation_rate + '%</div>' : ''));
+
+    H += sec(2, '근무 장소', esc(c.work_place || '-'));
+    H += sec(3, '업무 내용', esc(c.duty || '-'));
+
+    H += sec(4, '근무일 · 근무시간',
+      '<div class="dlist">'+days+'</div>'
+      + '<div class="tot">주 소정근로시간 <b>'+(+c.week_hours)+'시간</b></div>');
+
+    H += sec(5, '주휴일', '매주 <b>'+WDN[c.holiday_day||0]+'요일</b>'
+      + ((+c.week_hours) >= 15
+          ? '<div class="ok">주 15시간 이상이라 <b>주휴수당</b>이 지급됩니다</div>'
+          : '<div class="sub" style="margin-top:5px">주 15시간 미만은 주휴수당·연차가 발생하지 않습니다</div>'));
+
+    H += sec(6, '임금',
+      '<div class="pay">' + (c.emp_type === 'daily'
+          ? '일급 <b>'+money(c.daily_pay)+'</b>'
+          : (c.pay_type==='hourly'?'시급 ':'월급 ') + '<b>'+money(c.base_pay)+'</b>') + '</div>'
+      + '<div class="kv"><span>상여금</span>'+(c.bonus ? esc(c.bonus) : '없음')+'</div>'
+      + (c.allowance ? '<div class="kv"><span>기타 수당</span>'+esc(c.allowance)+'</div>' : '')
+      + '<div class="kv"><span>지급일</span>'+esc(c.pay_day)+'</div>'
+      + '<div class="kv"><span>지급방법</span>'+esc(c.pay_method)+'</div>'
+      + (c.emp_type === 'daily' && (+c.daily_pay) > 150000
+          ? '<div class="warn">일급 15만원 초과분에 소득세 6%(지방소득세 별도)가 공제됩니다</div>' : ''));
+
+    H += sec(7, '연차유급휴가', '근로기준법에서 정하는 바에 따라 부여합니다');
+    H += sec(8, '사회보험', ins);
+    H += sec(9, '계약서 교부',
+      '사업주는 본 계약서를 근로자에게 교부합니다. <b>이 앱에서 언제든 다시 볼 수 있습니다.</b>');
+    H += sec(10, '기타', '이 계약에 정함이 없는 사항은 근로기준법령에 따릅니다');
+
+    if((c.clauses||[]).length){
+      H += '<div class="csub">특약사항</div>';
+      (c.clauses||[]).forEach((cl, i) => {
+        H += '<div class="csec"><div class="ct"><span class="no">제'+(i+1)+'조</span>'+esc(cl.title)+'</div>'
+           + '<div class="cv small">'+esc(cl.body)+'</div></div>';
+      });
+    }
+
+    // 서명 상태
+    H += '<div class="csign">'
+       + '<div class="one"><span class="l">사업주</span>'
+         + (c.emp_sign ? '<img src="'+c.emp_sign+'">' : '<span class="none">서명 전</span>')
+         + (c.emp_sign_at ? '<span class="t">'+new Date(c.emp_sign_at).toLocaleString('ko-KR')+'</span>' : '')
+       + '</div>'
+       + '<div class="one"><span class="l">근로자 ('+esc(s.name)+')</span>'
+         + (c.wrk_sign ? '<img src="'+c.wrk_sign+'">' : '<span class="none">아직 서명하지 않았습니다</span>')
+         + (c.wrk_sign_at ? '<span class="t">'+new Date(c.wrk_sign_at).toLocaleString('ko-KR')+'</span>' : '')
+       + '</div></div>';
+
+    const need = c.emp_sign && !c.wrk_sign;
+    H += '<div class="cfoot">'
+       + (need
+          ? '<div class="notice">아래 내용을 모두 확인하셨다면 서명해주세요.<br>'
+            + '서명하면 이 계약서의 사본이 보관되고, 언제든 다시 볼 수 있습니다.</div>'
+            + '<button class="btn" style="width:100%" onclick="myCtSign(\''+c.id+'\')">✍ 서명하기</button>'
+          : c.wrk_sign
+            ? '<div class="done">✔ 서명이 완료된 계약서입니다</div>'
+            : '<div class="notice">사업주 서명을 기다리는 중입니다.</div>')
+       + '<button class="btn ghost" style="width:100%; margin-top:8px" onclick="ctClose()">닫기</button>'
+       + '</div>';
+
+    $('ctViewBody').innerHTML = H;
+    $('ctViewModal').classList.remove('hidden');
+    $('ctViewBody').scrollTop = 0;
+    document.body.style.overflow = 'hidden';
   }catch(e){ alert(e.message); }
+}
+function ctClose(){
+  $('ctViewModal').classList.add('hidden');
+  document.body.style.overflow = '';
 }
 /* 서명 패드 */
 let SG_ID = null, SG_CTX = null, SG_DRAW = false, SG_ANY = false;
@@ -731,6 +870,8 @@ async function sgDone(){
     $('sgModal').classList.add('hidden');
     toast('서명이 완료되었어요');
     loadMyContracts();
+    // 계약서 화면이 열려 있으면 서명이 찍힌 상태로 다시 그림
+    if(!$('ctViewModal').classList.contains('hidden')) myCtView(SG_ID);
   }catch(e){ alert(e.message); }
 }
 
@@ -856,6 +997,17 @@ async function changePw(){
   show('loginView');
 })();
 </script>
+<!-- 근로계약서 전문 -->
+<div id="ctViewModal" class="ctbg hidden">
+  <div class="ctsheet">
+    <div class="cthead">
+      <span>근로계약서</span>
+      <button onclick="ctClose()">✕</button>
+    </div>
+    <div id="ctViewBody" class="ctbody"></div>
+  </div>
+</div>
+
 <!-- 손글씨 서명 -->
 <div id="sgModal" class="sgbg hidden">
   <div class="sgbox">
