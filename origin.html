@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>원산지 표시판</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<style>
+:root{ --ink:#111; --line:#333; }
+*{ box-sizing:border-box; margin:0; padding:0 }
+body{ font-family:Pretendard,"Malgun Gothic",sans-serif; color:var(--ink); background:#F1F3F5; padding:20px }
+.sheet{ background:#fff; width:210mm; min-height:297mm; margin:0 auto; padding:16mm 14mm;
+  box-shadow:0 4px 24px rgba(0,0,0,.12) }
+h1{ text-align:center; font-size:34px; font-weight:900; letter-spacing:-1px;
+  border:4px solid var(--line); padding:14px; margin-bottom:6px }
+.who{ text-align:center; font-size:15px; color:#444; margin-bottom:16px }
+table{ width:100%; border-collapse:collapse; font-size:19px }
+th,td{ border:2px solid var(--line); padding:12px 14px; text-align:left }
+th{ background:#EEE; font-weight:800; text-align:center }
+td.cat{ text-align:center; font-weight:700; background:#F8F9FA; width:96px; font-size:17px }
+td.item{ font-weight:800; width:170px }
+td.origin{ font-weight:900; font-size:22px }
+td.detail{ color:#444; font-size:16px }
+.foot{ margin-top:16px; font-size:13.5px; color:#444; line-height:1.9; border-top:1px dashed #999; padding-top:12px }
+.tools{ max-width:210mm; margin:0 auto 14px; display:flex; gap:8px; flex-wrap:wrap }
+.tools button{ padding:12px 20px; font-size:15px; font-weight:700; border:none; border-radius:10px;
+  background:#F26522; color:#fff; cursor:pointer; font-family:inherit }
+.tools button.g{ background:#fff; color:#333; border:1px solid #CED4DA }
+.warn{ background:#FFF5F5; border:2px solid #FFC9C9; border-radius:10px; padding:14px; margin-bottom:14px;
+  font-size:15px; line-height:1.7; max-width:210mm; margin-left:auto; margin-right:auto }
+.err{ max-width:520px; margin:80px auto; background:#fff; border-radius:16px; padding:40px; text-align:center }
+@media print{
+  body{ background:#fff; padding:0 }
+  .sheet{ box-shadow:none; width:auto; min-height:auto; margin:0; padding:10mm }
+  .tools,.warn{ display:none }
+  @page{ size:A4; margin:8mm }
+}
+</style>
+</head>
+<body>
+
+<div id="tools" class="tools" style="display:none">
+  <button onclick="window.print()">🖨 인쇄하기 (A4)</button>
+  <button class="g" onclick="location.reload()">↻ 새로고침</button>
+  <span style="align-self:center; font-size:14px; color:#666">인쇄해서 손님이 잘 보이는 곳에 붙여주세요</span>
+</div>
+
+<div id="warn" class="warn" style="display:none"></div>
+
+<div id="sheet" class="sheet" style="display:none">
+  <h1>원산지 표시판</h1>
+  <div class="who" id="who"></div>
+  <table><thead><tr><th style="width:96px">구분</th><th style="width:170px">품목</th><th>메뉴·부위</th><th style="width:210px">원산지</th></tr></thead>
+    <tbody id="rows"></tbody></table>
+  <div class="foot" id="foot"></div>
+</div>
+
+<div id="err" class="err" style="display:none">
+  <div style="font-size:44px">🔒</div>
+  <b style="display:block; margin-top:12px; font-size:20px" id="errMsg">주소가 올바르지 않습니다</b>
+  <p style="color:#868E96; margin-top:6px">관리자 화면에서 다시 열어주세요.</p>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://zcjvriedzememkiltqfa.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjanZyaWVkemVtZW1raWx0cWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMjg2MTIsImV4cCI6MjA5OTYwNDYxMn0.2nZh82xFUNORqcKObAHUnz8K5EjjL-Nym0T4YkDHxMk';
+const $ = id => document.getElementById(id);
+const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const CODE = new URLSearchParams(location.search).get('c') || '';
+
+(async () => {
+  if(!CODE){ fail('주소에 코드가 없습니다'); return; }
+  try{
+    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/store_api', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON},
+      body: JSON.stringify({ p_fn:'originBoard', p_args:[CODE] })
+    });
+    const d = await res.json();
+    if(!d || d.ok === false) throw new Error((d && d.error) || '불러올 수 없습니다');
+    render(d.result);
+  }catch(e){ fail(e.message); }
+})();
+
+function fail(m){ $('errMsg').textContent = m; $('err').style.display = ''; }
+
+function render(r){
+  $('tools').style.display = ''; $('sheet').style.display = '';
+  $('who').innerHTML = '<b>' + esc(r.store) + '</b>'
+    + (r.ceo ? ' · 대표 ' + esc(r.ceo) : '')
+    + (r.addr ? '<br>' + esc(r.addr) : '');
+
+  const rows = r.rows || [];
+  if(!rows.length){
+    $('warn').style.display = '';
+    $('warn').innerHTML = '⚠️ <b>표시할 항목이 없습니다.</b><br>'
+      + '관리자 → 계약·원산지 → 원산지 표시판에서 <b>원산지를 입력</b>해주세요. '
+      + '원산지 미표시는 1천만원 이하 과태료 대상입니다.';
+  }
+  $('rows').innerHTML = rows.map(x =>
+    '<tr><td class="cat">' + esc(x.category) + '</td>'
+    + '<td class="item">' + esc(x.item) + '</td>'
+    + '<td class="detail">' + esc(x.detail || '-') + (x.note ? '<br><span style="font-size:14px">' + esc(x.note) + '</span>' : '') + '</td>'
+    + '<td class="origin">' + esc(x.origin) + '</td></tr>'
+  ).join('');
+
+  const d = new Date(r.today + 'T00:00:00');
+  $('foot').innerHTML =
+    '· 본 표시판은 「농수산물의 원산지 표시 등에 관한 법률」에 따라 게시합니다.<br>'
+    + '· 원산지가 변경되면 <b>즉시</b> 표시 내용을 수정합니다.<br>'
+    + '· 쇠고기는 식육의 종류(한우·육우·젖소)를 함께 표시합니다.<br>'
+    + '<b>표시일: ' + d.getFullYear() + '년 ' + (d.getMonth()+1) + '월 ' + d.getDate() + '일</b>';
+  document.title = r.store + ' 원산지 표시판';
+}
+</script>
+</body>
+</html>
