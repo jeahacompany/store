@@ -74,6 +74,22 @@ body{margin:0; font-family:Pretendard,-apple-system,'Malgun Gothic',sans-serif; 
   font-size:14.5px; line-height:1.7; margin-bottom:12px}
 .cfoot .done{background:#EBFBEE; border:1px solid #B2F2BB; border-radius:12px; padding:14px;
   text-align:center; font-size:15px; font-weight:700; color:#2B8A3E; margin-bottom:12px}
+.cfoot .legal{background:#F8F9FA; border:1px solid #E9ECEF; border-radius:12px; padding:13px 15px;
+  font-size:13.5px; line-height:1.75; color:#495057; margin-bottom:12px}
+.cfoot .legal .t{font-size:12px; color:#868E96}
+/* 인쇄하면 계약서만 A4로 나가게 */
+@media print{
+  body{background:#fff}
+  body > *{display:none !important}
+  #ctViewModal{display:block !important; position:static; background:#fff}
+  #ctViewModal .ctsheet{max-width:none; height:auto; display:block}
+  #ctViewModal .cthead{display:none !important}
+  #ctViewModal .ctbody{overflow:visible; padding:0; height:auto}
+  #ctViewModal .cfoot{display:none !important}
+  .csec{break-inside:avoid}
+  .csign{break-inside:avoid}
+  @page{size:A4; margin:14mm}
+}
 h1{font-size:20px; margin:0 0 4px; font-weight:700; letter-spacing:-.3px}
 h1 b{color:var(--brand)}
 h2{font-size:17px; margin:0 0 10px; font-weight:700; letter-spacing:-.2px}
@@ -809,6 +825,13 @@ async function myCtView(id){
             + '<button class="btn" style="width:100%" onclick="myCtSign(\''+c.id+'\')">✍ 서명하기</button>'
           : c.wrk_sign
             ? '<div class="done">✔ 서명이 완료된 계약서입니다</div>'
+              + '<div class="legal">이 화면이 <b>근로기준법 제17조에 따른 계약서 교부</b>입니다. '
+              + '(같은 법이 정한 서면에는 전자문서가 포함됩니다)<br>'
+              + '아래 버튼으로 <b>내 폰·PC에 저장하거나 인쇄</b>해 보관하실 수 있고, '
+              + '이 앱에서도 언제든 다시 보실 수 있습니다.'
+              + (c.issued_at ? '<br><span class="t">교부일시 ' + new Date(c.issued_at).toLocaleString('ko-KR') + '</span>' : '')
+              + '</div>'
+              + '<button class="btn" style="width:100%" onclick="ctPrint()">📄 저장 · 인쇄하기</button>'
             : '<div class="notice">사업주 서명을 기다리는 중입니다.</div>')
        + '<button class="btn ghost" style="width:100%; margin-top:8px" onclick="ctClose()">닫기</button>'
        + '</div>';
@@ -823,6 +846,8 @@ function ctClose(){
   $('ctViewModal').classList.add('hidden');
   document.body.style.overflow = '';
 }
+/* 근로자가 직접 저장·인쇄 (전자문서 교부 요건 — 출력·보존 가능해야 함) */
+function ctPrint(){ window.print(); }
 /* 서명 패드 */
 let SG_ID = null, SG_CTX = null, SG_DRAW = false, SG_ANY = false;
 function myCtSign(id){
