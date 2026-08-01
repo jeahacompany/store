@@ -19,6 +19,17 @@ body{margin:0; font-family:Pretendard,-apple-system,'Malgun Gothic',sans-serif; 
 .wrap{max-width:520px; margin:0 auto; min-height:100vh; padding-bottom:80px}
 .hidden{display:none!important}
 .card{background:var(--card); border:1px solid var(--line); border-radius:13px; padding:16px; margin:12px}
+/* 서명 패드 */
+.sgbg{position:fixed; inset:0; background:rgba(15,17,22,.55); z-index:90; display:flex;
+  align-items:center; justify-content:center; padding:14px}
+.sgbox{background:#fff; border-radius:16px; padding:20px; width:100%; max-width:520px; max-height:92vh; overflow:auto}
+.sgbox h3{font-size:19px; margin:0 0 4px}
+.signwrap{position:relative; border:2px dashed #CED4DA; border-radius:12px; background:#fff; overflow:hidden; margin-top:12px}
+.signwrap canvas{display:block; width:100%; height:180px; touch-action:none}
+.signline{position:absolute; left:0; right:0; bottom:10px; text-align:center; font-size:13px; color:#ADB5BD; pointer-events:none}
+.signwrap.drawn .signline{display:none}
+.ctrow{padding:12px 0; border-bottom:1px solid #F1F2F4}
+.ctrow:last-child{border-bottom:none}
 h1{font-size:20px; margin:0 0 4px; font-weight:700; letter-spacing:-.3px}
 h1 b{color:var(--brand)}
 h2{font-size:17px; margin:0 0 10px; font-weight:700; letter-spacing:-.2px}
@@ -637,6 +648,19 @@ async function loadMyContracts(){
           + (need ? '<button class="btn sm" onclick="myCtSign(\'' + c.id + '\')">✍ 서명하기</button>' : '')
         + '</div></div>';
     }).join('');
+
+    // 계약서에 들어갈 내 정보가 비어 있으면 먼저 채우라고 안내
+    if(rows.some(c => !c.wrk_signed)){
+      const miss = [];
+      if(!($('meAddr').value || '').trim())  miss.push('주소');
+      if(!($('mePhone').value || '').trim()) miss.push('연락처');
+      if(miss.length){
+        $('myCtBox').insertAdjacentHTML('afterbegin',
+          '<div style="background:#FFF9DB; border:1px solid #FFE066; border-radius:10px; padding:12px; margin-bottom:10px; font-size:14.5px; line-height:1.6">'
+          + '📌 계약서에 들어갈 <b>' + miss.join('·') + '</b>가 비어 있어요.<br>'
+          + '아래 <b>내 정보</b>에서 채우고 저장한 뒤 서명해주세요.</div>');
+      }
+    }
   }catch(e){}
 }
 async function myCtView(id){
@@ -660,10 +684,51 @@ async function myCtView(id){
                        c.ins_employ&&'고용보험', c.ins_accident&&'산재보험'].filter(Boolean).join(', '));
   }catch(e){ alert(e.message); }
 }
-async function myCtSign(id){
-  if(!confirm('계약 내용을 모두 확인하셨나요?\n\n"확인"을 누르면 전자서명이 되고, 계약서 사본이 보관됩니다.\n\n※ 먼저 [내용 보기]로 꼭 읽어보세요.')) return;
+/* 서명 패드 */
+let SG_ID = null, SG_CTX = null, SG_DRAW = false, SG_ANY = false;
+function myCtSign(id){
+  if(!confirm('계약 내용을 모두 확인하셨나요?\n\n※ 먼저 [내용 보기]로 꼭 읽어보세요.\n확인을 누르면 서명 화면이 열립니다.')) return;
+  SG_ID = id;
+  $('sgWho').textContent = (ME && ME.name ? ME.name + ' 님, ' : '') + '아래 칸에 서명해주세요';
+  $('sgModal').classList.remove('hidden');
+  setTimeout(sgInit, 50);
+}
+function sgInit(){
+  const c = $('signPad');
+  SG_CTX = c.getContext('2d');
+  sgClear();
+  if(c.dataset.ready) return;
+  c.dataset.ready = '1';
+  const pos = e => {
+    const r = c.getBoundingClientRect(), t = e.touches ? e.touches[0] : e;
+    return { x:(t.clientX - r.left) * (c.width / r.width), y:(t.clientY - r.top) * (c.height / r.height) };
+  };
+  const start = e => { e.preventDefault(); SG_DRAW = true; SG_ANY = true;
+    c.parentElement.classList.add('drawn');
+    const p = pos(e); SG_CTX.beginPath(); SG_CTX.moveTo(p.x, p.y); };
+  const move = e => { if(!SG_DRAW) return; e.preventDefault();
+    const p = pos(e); SG_CTX.lineTo(p.x, p.y); SG_CTX.stroke(); };
+  const end = () => { SG_DRAW = false; };
+  c.addEventListener('mousedown', start); c.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  c.addEventListener('touchstart', start, {passive:false});
+  c.addEventListener('touchmove', move, {passive:false});
+  c.addEventListener('touchend', end);
+}
+function sgClear(){
+  const c = $('signPad');
+  SG_CTX.clearRect(0,0,c.width,c.height);
+  SG_CTX.fillStyle = '#fff'; SG_CTX.fillRect(0,0,c.width,c.height);
+  SG_CTX.strokeStyle = '#111'; SG_CTX.lineWidth = 5;
+  SG_CTX.lineCap = 'round'; SG_CTX.lineJoin = 'round';
+  SG_ANY = false; c.parentElement.classList.remove('drawn');
+}
+async function sgDone(){
+  if(!SG_ANY){ alert('서명을 그려주세요.'); return; }
+  const png = $('signPad').toDataURL('image/png');
   try{
-    await api('contractSignWrk', TOKEN, { id: id, sign: '전자서명 ' + (ME&&ME.name||'') + ' ' + new Date().toISOString() });
+    await api('contractSignWrk', TOKEN, { id: SG_ID, sign: png });
+    $('sgModal').classList.add('hidden');
     toast('서명이 완료되었어요');
     loadMyContracts();
   }catch(e){ alert(e.message); }
@@ -791,5 +856,25 @@ async function changePw(){
   show('loginView');
 })();
 </script>
+<!-- 손글씨 서명 -->
+<div id="sgModal" class="sgbg hidden">
+  <div class="sgbox">
+    <h3>✍ 근로계약서 서명</h3>
+    <div class="sub" id="sgWho"></div>
+    <div class="signwrap">
+      <canvas id="signPad" width="900" height="360"></canvas>
+      <div class="signline">여기에 손가락으로 서명해주세요</div>
+    </div>
+    <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap">
+      <button class="btn" style="flex:1" onclick="sgDone()">✔ 서명 완료</button>
+      <button class="btn ghost" onclick="sgClear()">지우기</button>
+      <button class="btn ghost" onclick="document.getElementById('sgModal').classList.add('hidden')">취소</button>
+    </div>
+    <div class="sub" style="margin-top:10px; background:#F8F9FA; border-radius:8px; padding:10px; line-height:1.6">
+      ⚖️ 이 서명은 <b>전자서명</b>으로 법적 효력이 있습니다.<br>
+      서명 시각과 접속 정보가 함께 기록되며, 계약서 사본은 언제든 이 앱에서 볼 수 있습니다.
+    </div>
+  </div>
+</div>
 </body>
 </html>

@@ -66,6 +66,13 @@
   tbody tr:last-child td { border-bottom:none; }
   tbody tr:hover { background:#FFF9F5; }
   .table-scroll { overflow-x:auto; }
+  .signwrap{ position:relative; border:2px dashed #CED4DA; border-radius:12px; background:#fff; overflow:hidden }
+  .signwrap canvas{ display:block; width:100%; height:170px; touch-action:none; cursor:crosshair }
+  .signline{ position:absolute; left:0; right:0; bottom:10px; text-align:center;
+    font-size:13px; color:#ADB5BD; pointer-events:none }
+  .signwrap.drawn .signline{ display:none }
+  .signview{ border:1px solid #E9ECEF; border-radius:10px; background:#fff; padding:6px; display:inline-block }
+  .signview img{ height:60px; display:block }
   .ctdays{ display:grid; gap:6px; margin-top:6px }
   .ctday{ display:grid; grid-template-columns:78px 1fr 1fr 74px; gap:6px; align-items:center;
     padding:7px 9px; border:1px solid #E9ECEF; border-radius:10px; background:#FAFBFC }
@@ -933,6 +940,24 @@
           <button class="btn ghost" onclick="ctPreview()">계약서 미리보기·인쇄</button>
           <button class="btn ghost" id="ctSignBtn" onclick="ctSignEmp()">✍ 사업주 서명</button>
           <button class="btn red ghost" id="ctDelBtn" onclick="ctDelete()">삭제</button>
+        </div>
+      </div></div>
+
+      <!-- 손글씨 서명 패드 -->
+      <div id="signModal" class="modal-bg hidden"><div class="modal" style="max-width:520px">
+        <h2 id="signTitle">서명해주세요</h2>
+        <div class="sub" id="signWho" style="margin-bottom:10px"></div>
+        <div class="signwrap">
+          <canvas id="signPad" width="900" height="340"></canvas>
+          <div class="signline">여기에 손가락(또는 마우스)으로 서명해주세요</div>
+        </div>
+        <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn" onclick="signDone()">✔ 서명 완료</button>
+          <button class="btn ghost" onclick="signClear()">지우고 다시</button>
+          <button class="btn ghost" onclick="closeModal('signModal')">취소</button>
+        </div>
+        <div class="sub" style="margin-top:10px; background:#F8F9FA; border-radius:8px; padding:10px">
+          ⚖️ 이 서명은 <b>전자서명</b>으로 법적 효력이 있습니다. 서명 시각과 접속 정보가 함께 기록됩니다.
         </div>
       </div></div>
 
@@ -3467,6 +3492,52 @@ async function unplace(id){
   try{ await api('barPlace', TOKEN, { id, zone:'', gx:'', gy:'' }); loadBar(); }
   catch(e){ alert(e.message); }
 }
+/* ===== 손글씨 서명 패드 ===== */
+let SIGN_CB = null, SIGN_CTX = null, SIGN_DRAW = false, SIGN_ANY = false;
+function signOpen(title, who, cb){
+  SIGN_CB = cb;
+  $('signTitle').textContent = title || '서명해주세요';
+  $('signWho').textContent = who || '';
+  $('signModal').classList.remove('hidden');
+  setTimeout(signInit, 50);
+}
+function signInit(){
+  const c = $('signPad');
+  SIGN_CTX = c.getContext('2d');
+  signClear();
+  if(c.dataset.ready) return;
+  c.dataset.ready = '1';
+  const pos = e => {
+    const r = c.getBoundingClientRect(), t = e.touches ? e.touches[0] : e;
+    return { x:(t.clientX - r.left) * (c.width / r.width), y:(t.clientY - r.top) * (c.height / r.height) };
+  };
+  const start = e => { e.preventDefault(); SIGN_DRAW = true; SIGN_ANY = true;
+    c.parentElement.classList.add('drawn');
+    const p = pos(e); SIGN_CTX.beginPath(); SIGN_CTX.moveTo(p.x, p.y); };
+  const move = e => { if(!SIGN_DRAW) return; e.preventDefault();
+    const p = pos(e); SIGN_CTX.lineTo(p.x, p.y); SIGN_CTX.stroke(); };
+  const end = () => { SIGN_DRAW = false; };
+  c.addEventListener('mousedown', start); c.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  c.addEventListener('touchstart', start, {passive:false});
+  c.addEventListener('touchmove', move, {passive:false});
+  c.addEventListener('touchend', end);
+}
+function signClear(){
+  const c = $('signPad');
+  SIGN_CTX.clearRect(0,0,c.width,c.height);
+  SIGN_CTX.fillStyle = '#fff'; SIGN_CTX.fillRect(0,0,c.width,c.height);
+  SIGN_CTX.strokeStyle = '#111'; SIGN_CTX.lineWidth = 4;
+  SIGN_CTX.lineCap = 'round'; SIGN_CTX.lineJoin = 'round';
+  SIGN_ANY = false; c.parentElement.classList.remove('drawn');
+}
+function signDone(){
+  if(!SIGN_ANY){ alert('서명을 그려주세요.'); return; }
+  const png = $('signPad').toDataURL('image/png');
+  closeModal('signModal');
+  if(SIGN_CB) SIGN_CB(png);
+}
+
 /* ===== 근로계약서 · 원산지 ===== */
 const WD = ['일','월','화','수','목','금','토'];
 let CTS = null, OGS = null, LG_TAB = 'ct';
@@ -3624,14 +3695,16 @@ async function ctSave(){
     loadContracts();
   }catch(e){ alert(e.message); }
 }
-async function ctSignEmp(){
+function ctSignEmp(){
   if(!$('ctId').value){ alert('먼저 저장해주세요.'); return; }
-  if(!confirm('사업주로 서명할까요?\n서명하면 직원이 앱에서 확인하고 서명할 수 있게 됩니다.')) return;
-  try{
-    await api('contractSignEmp', TOKEN, { id:$('ctId').value, sign:'서명 ' + (ME?ME.name:'') + ' ' + localDate() });
-    toast('서명했어요. 직원에게 앱에서 서명해달라고 하세요');
-    closeModal('ctModal'); loadContracts();
-  }catch(e){ alert(e.message); }
+  const who = CT_VIEW ? (CT_VIEW.store.name + ' 대표 ' + (CT_VIEW.store.ceo || '')) : '사업주';
+  signOpen('사업주 서명', who + ' 님, 여기에 서명해주세요', async (png) => {
+    try{
+      await api('contractSignEmp', TOKEN, { id:$('ctId').value, sign:png });
+      toast('서명했어요. 이제 직원이 앱에서 서명하면 완료됩니다');
+      closeModal('ctModal'); loadContracts();
+    }catch(e){ alert(e.message); }
+  });
 }
 async function ctDelete(){
   if(!$('ctId').value){ closeModal('ctModal'); return; }
@@ -3645,6 +3718,7 @@ async function saveMinWage(){
 }
 
 /* 계약서 인쇄 미리보기 */
+const isImg = s => typeof s === 'string' && s.indexOf('data:image') === 0;
 function ctPreview(){
   if(!$('ctId').value){ alert('먼저 저장해주세요.'); return; }
   api('contractGet', TOKEN, $('ctId').value).then(g => {
@@ -3666,6 +3740,10 @@ function ctPreview(){
       + '.sig{display:flex; gap:20px; margin-top:30px}'
       + '.sig > div{flex:1; border:1px solid #999; padding:14px}'
       + '.sig .t{font-weight:700; margin-bottom:8px}'
+      + '.sg{margin-top:8px; border-bottom:1px solid #999; height:64px; display:flex; align-items:flex-end}'
+      + '.sg img{height:60px}'
+      + '.sg.empty{color:#BBB; font-size:12px; align-items:center; justify-content:center}'
+      + '.sgt{font-size:11px; color:#777; margin-top:4px}'
       + '.note{font-size:12px; color:#666; margin-top:20px; line-height:1.8}'
       + '@media print{ button{display:none} }'
       + '</style></head><body>'
@@ -3697,13 +3775,20 @@ function ctPreview(){
           + '주　　소: '+esc(st.addr||'')+'<br>'
           + '전화번호: '+esc(st.tel||'')+'<br>'
           + '사업자번호: '+esc(st.biz_no||'')+'<br>'
-          + '대 표 자: '+esc(st.ceo||'')+' <b>'+(c.emp_sign?'(서명)':'(인)')+'</b></div>'
+          + '대 표 자: '+esc(st.ceo||'')+' (서명)'
+          + (isImg(c.emp_sign) ? '<div class="sg"><img src="'+c.emp_sign+'"></div>'
+                               : '<div class="sg empty">서명 전</div>')
+          + (c.emp_sign_at ? '<div class="sgt">'+new Date(c.emp_sign_at).toLocaleString('ko-KR')+'</div>' : '')
+          + '</div>'
         + '<div><div class="t">(근로자)</div>'
           + '주　　소: '+esc(s.address||'')+'<br>'
           + '연 락 처: '+esc(s.phone||'')+'<br>'
-          + '성　　명: '+esc(s.name)+' <b>'+(c.wrk_sign?'(서명)':'(인)')+'</b><br>'
-          + (c.wrk_sign_at ? '<span style="font-size:12px; color:#666">앱에서 전자서명 '
-              + new Date(c.wrk_sign_at).toLocaleString('ko-KR')+'</span>' : '')
+          + '성　　명: '+esc(s.name)+' (서명)'
+          + (isImg(c.wrk_sign) ? '<div class="sg"><img src="'+c.wrk_sign+'"></div>'
+                               : '<div class="sg empty">서명 전</div>')
+          + (c.wrk_sign_at ? '<div class="sgt">앱 전자서명 '
+              + new Date(c.wrk_sign_at).toLocaleString('ko-KR')
+              + (c.wrk_sign_ip ? ' · IP '+esc(c.wrk_sign_ip) : '') + '</div>' : '')
           + '</div>'
       + '</div>'
       + '<div class="note">※ 이 계약서는 2부를 작성하여 사업주와 근로자가 각 1부씩 보관합니다.<br>'
