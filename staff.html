@@ -145,6 +145,25 @@ label{display:block; font-size:12px; color:var(--sub); margin:10px 0 4px}
 .acc:last-child{border-bottom:0}
 .acc>button{width:100%; text-align:left; background:none; border:0; padding:13px 4px; font-size:16px; font-weight:700; cursor:pointer; display:flex; justify-content:space-between; font-family:inherit; color:var(--txt); letter-spacing:-.2px}
 .acc .body{padding:0 4px 14px; font-size:15.5px; color:#3A3F47; white-space:pre-wrap; line-height:1.7}
+/* ── 매뉴얼 읽음 ── */
+.rchk{display:inline-block; width:21px; height:21px; line-height:21px; text-align:center; border-radius:50%;
+  background:var(--brand); color:#fff; font-size:12px; font-weight:800; margin-right:7px; vertical-align:1px}
+.rchk.no{background:#fff; color:#C5CAD1; border:1.5px solid #DEE2E6; line-height:18px}
+.acc.read>button{color:#8A9099}
+.rbtn{margin-top:14px; padding-top:14px; border-top:1px dashed var(--line)}
+.rbtn .btn{width:100%; padding:14px; font-size:16px}
+.rdone{text-align:center; font-size:14.5px; font-weight:700; color:var(--green); background:#EBFBEE;
+  border-radius:10px; padding:12px}
+.mprog{margin-top:4px}
+.mbar{height:10px; border-radius:99px; background:#EDEFF2; overflow:hidden}
+.mfill{height:100%; width:0; border-radius:99px; background:linear-gradient(90deg,#F26522,#FF922B);
+  transition:width .4s ease}
+.mtxt{margin-top:9px; font-size:15px; color:var(--sub)}
+/* 탭이 6개라 글자를 살짝 줄인다 */
+.nav button{font-size:12px}
+.nav button .ico{font-size:19px}
+.ndot{position:absolute; top:6px; margin-left:2px; width:7px; height:7px; border-radius:50%; background:var(--brand)}
+.nav button{position:relative}
 .toast{position:fixed; left:50%; transform:translateX(-50%); bottom:92px; background:var(--side); color:#fff; padding:11px 19px; border-radius:999px; font-size:13.5px; opacity:0; transition:.25s; pointer-events:none; max-width:90%; z-index:99}
 .toast.show{opacity:.97}
 .err{color:var(--red); font-size:13px; margin-top:8px; min-height:18px}
@@ -266,7 +285,23 @@ a.link{color:var(--brand); text-decoration:none; font-size:13.5px; cursor:pointe
       </div>
     </div>
 
-    <!-- 더보기 (매뉴얼 + 매장정보 + 내정보) -->
+    <!-- 매뉴얼 -->
+    <div id="tab-manual" class="hidden">
+      <div class="card">
+        <h2>📖 순창담 매뉴얼</h2>
+        <div class="sub" style="margin-bottom:10px">내 직급에 해당하는 문서예요.
+          하나씩 읽고 아래 <b>[읽었습니다]</b>를 눌러주세요.</div>
+        <div class="mprog">
+          <div class="mbar"><div class="mfill" id="mpFill"></div></div>
+          <div class="mtxt"><span id="mpTxt">-</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div id="manualList" class="sub">불러오는 중...</div>
+      </div>
+    </div>
+
+    <!-- 더보기 (매장정보 + 내정보) -->
     <div id="tab-more" class="hidden">
       <div class="card" id="myCtCard" style="border-color:#FFC9C9; display:none">
         <h2>📝 내 근로계약서</h2>
@@ -284,11 +319,6 @@ a.link{color:var(--brand); text-decoration:none; font-size:13.5px; cursor:pointe
         <h2>⭐ 포인트 사용정책</h2>
         <div class="sub" style="margin-bottom:8px">손님이 물으면 <b>이대로만</b> 안내하세요. 임의로 봐주면 안 됩니다.</div>
         <div id="ptBox"><div class="sub">불러오는 중...</div></div>
-      </div>
-      <div class="card">
-        <h2>매뉴얼</h2>
-        <div class="sub" style="margin-bottom:6px">내 역할에 해당하는 업무 안내예요.</div>
-        <div id="manualList" class="sub">불러오는 중...</div>
       </div>
       <div class="card">
         <h2>매장 정보</h2>
@@ -325,6 +355,8 @@ a.link{color:var(--brand); text-decoration:none; font-size:13.5px; cursor:pointe
       <button id="nav-tasks" onclick="tab('tasks')"><span class="ico">✅</span>할일</button>
       <button id="nav-work" onclick="tab('work')"><span class="ico">💰</span>근무</button>
       <button id="nav-talk" onclick="tab('talk')"><span class="ico">💬</span>소통</button>
+      <button id="nav-manual" onclick="tab('manual')"><span class="ico">📖</span>매뉴얼
+        <span class="ndot hidden" id="navManualDot"></span></button>
       <button id="nav-more" onclick="tab('more')"><span class="ico">☰</span>더보기</button>
     </div>
   </div>
@@ -343,7 +375,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 let TOKEN = localStorage.getItem('store_staff_token') || '';
 let ME = null, TODAY = null, CLOCKED_IN = false, DOCS = null, MYDOCS = [];
-const TABS = ['home','tasks','work','talk','more'];
+const TABS = ['home','tasks','work','talk','manual','more'];
 const DOC_KINDS = [
   {key:'idcard', label:'신분증', hint:'주민등록증·운전면허증 앞면'},
   {key:'bankbook', label:'통장사본', hint:'월급 받을 계좌'},
@@ -388,7 +420,8 @@ function tab(name){
   if(name==='tasks') loadTasks();
   if(name==='work') loadWork();
   if(name==='talk'){ loadMyReqs(); loadMyLeaves(); if(!$('lrDate').value) $('lrDate').value = new Date().toLocaleDateString('sv-SE'); }
-  if(name==='more'){ loadManuals(); loadInfos(); loadMyDocs(); }
+  if(name==='manual') loadManuals();
+  if(name==='more'){ loadInfos(); loadMyDocs(); }
 }
 
 /* ---------- 시계 ---------- */
@@ -612,15 +645,58 @@ async function finishTask(id, cb){
 }
 
 /* ---------- 매뉴얼 / 정보 ---------- */
+let MANUALS = [];
 async function loadManuals(){
   try{
-    const list = await api('myManuals', TOKEN);
-    $('manualList').innerHTML = list.length ? list.map((m,i) =>
-      '<div class="acc"><button onclick="this.parentNode.querySelector(\'.body\').classList.toggle(\'hidden\')">'
-      + '<span>'+esc(m.title)+(m.position?' <span class="badge">'+esc(m.position)+'</span>':' <span class="badge g">공통</span>')+'</span><span>▾</span></button>'
-      + '<div class="body hidden">'+esc(m.body)+'</div></div>'
-    ).join('') : '등록된 매뉴얼이 아직 없어요.';
+    MANUALS = await api('myManuals2', TOKEN);
+    renderManuals();
   }catch(e){ $('manualList').textContent = e.message; }
+}
+function renderManuals(){
+  if(!MANUALS.length){
+    $('manualList').textContent = '등록된 매뉴얼이 아직 없어요.';
+    $('mpTxt').textContent = '-'; $('mpFill').style.width = '0%';
+    return;
+  }
+  const done = MANUALS.filter(m => m.is_read).length, total = MANUALS.length;
+  const pct = Math.round(done * 100 / total);
+  $('mpFill').style.width = pct + '%';
+  $('mpTxt').innerHTML = total === done
+    ? '<b style="color:var(--green)">전부 읽었어요 👏</b> ' + total + '개 완료'
+    : '<b>' + done + ' / ' + total + '</b> 읽음 · <b style="color:var(--brand)">' + (total-done) + '개</b> 남았어요';
+  // 안 읽은 게 있으면 탭에 점을 찍는다
+  const dot = $('navManualDot');
+  if(dot) dot.classList.toggle('hidden', done === total);
+
+  $('manualList').innerHTML = MANUALS.map(m =>
+      '<div class="acc'+(m.is_read?' read':'')+'">'
+    +   '<button onclick="mOpen(this)">'
+    +     '<span>'+(m.is_read?'<span class="rchk">✓</span>':'<span class="rchk no">○</span>')+esc(m.title)
+    +       (m.position ? ' <span class="badge">'+esc(m.position)+'</span>'
+                        : ' <span class="badge g">공통</span>')+'</span><span>▾</span></button>'
+    +   '<div class="body hidden">'+esc(m.body)
+    +     '<div class="rbtn">'
+    +       (m.is_read
+          ? '<div class="rdone">✓ ' + fmtReadAt(m.read_at) + ' 읽음</div>'
+          : '<button class="btn" onclick="mRead(\''+m.id+'\')">읽었습니다</button>')
+    +     '</div>'
+    +   '</div>'
+    + '</div>').join('');
+}
+function mOpen(btn){ btn.parentNode.querySelector('.body').classList.toggle('hidden'); }
+function fmtReadAt(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  return (d.getMonth()+1)+'월 '+d.getDate()+'일';
+}
+async function mRead(id){
+  try{
+    await api('manualRead', TOKEN, id);
+    const m = MANUALS.find(x => x.id === id);
+    if(m){ m.is_read = true; m.read_at = new Date().toISOString(); }
+    renderManuals();
+    toast('읽음으로 표시했어요');
+  }catch(e){ toast(e.message, true); }
 }
 /* 가게 기본정보 — 손님 물음에 바로 답하는 카드 */
 let SP = null;

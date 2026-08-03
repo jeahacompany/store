@@ -241,6 +241,12 @@
              margin-bottom:14px; }
   .docwrap > .hd { padding:16px 22px; border-bottom:1px solid var(--line); background:#FAFBFC;
                    font-size:12px; font-weight:700; letter-spacing:2px; color:var(--sub); }
+  /* 읽음 진도바 */
+  .mrbar { height:9px; border-radius:99px; background:#EDEFF2; overflow:hidden; }
+  .mrfill { height:100%; border-radius:99px; background:var(--brand); transition:width .4s ease; }
+  .mrfill.g { background:var(--green); }
+  .mrfill.a { background:var(--orange); }
+  .mrfill.r { background:var(--red); }
   @media (max-width:720px){
     .posgrid { grid-template-columns:1fr; }
     .posgrid > div:first-child { border-right:none; border-bottom:1px solid var(--line); }
@@ -864,6 +870,14 @@
             <button class="btn sm" style="margin-left:auto" onclick="posEdit()">+ 직급 추가</button></h2>
           <div class="sub">직원 등록·근무표·근로계약서가 모두 이 체계를 씁니다.
             카드 아래 <b>+ 표시를 누르면 원문 전체</b>가 펼쳐집니다. 직원앱에도 그대로 보입니다.</div>
+        </div>
+
+        <div class="card">
+          <h2>📖 매뉴얼 읽음 현황
+            <button class="btn sm ghost" style="margin-left:auto" onclick="loadReadStatus()">↻ 새로고침</button></h2>
+          <div class="sub">직원이 문서를 읽고 <b>[읽었습니다]</b>를 누르면 여기에 쌓입니다.
+            문서를 고치면 그 문서만 다시 <b>안 읽음</b>이 되니, 교육 이수 근거로 남길 수 있어요.</div>
+          <div id="mrBox" style="margin-top:12px"><div class="sub">불러오는 중...</div></div>
         </div>
 
         <div id="posCommon"></div>
@@ -3840,6 +3854,7 @@ async function loadPos(){
     ]);
     POS_DOCS = docs || [];
     renderCommonDocs();
+    loadReadStatus();
     renderPos('posHall', rows.filter(p => p.dept === '홀'));
     renderPos('posKit',  rows.filter(p => p.dept === '주방'));
   }catch(e){
@@ -3865,6 +3880,37 @@ function renderCommonDocs(){
     ? '<div class="docwrap"><div class="hd">ALL STAFF · 전 직원 공통</div>'+docToggles(rest, true)+'</div>'
     : '';
 }
+/* 매뉴얼 읽음 현황 — 누가 어디까지 읽었나 */
+async function loadReadStatus(){
+  const box = $('mrBox'); if(!box) return;
+  try{
+    const rows = await api('manualReadStatus', TOKEN) || [];
+    if(!rows.length){ box.innerHTML = '<div class="sub">재직 중인 직원이 아직 없어요.</div>'; return; }
+    box.innerHTML = '<div class="table-scroll"><table><thead><tr>'
+      + '<th>이름</th><th>직급</th><th>진도</th><th>읽음</th><th>마지막</th><th></th>'
+      + '</tr></thead><tbody>' + rows.map(r => {
+        const pct = +r.pct || 0;
+        const tone = pct === 100 ? 'g' : pct >= 50 ? 'a' : 'r';
+        return '<tr><td><b>'+esc(r.name)+'</b></td>'
+          + '<td>'+esc(r.position || '-')+'</td>'
+          + '<td style="min-width:130px"><div class="mrbar"><div class="mrfill '+tone+'" style="width:'+pct+'%"></div></div></td>'
+          + '<td><span class="badge '+tone+'">'+r.done+' / '+r.total+'</span></td>'
+          + '<td class="sub">'+(r.last_read ? new Date(r.last_read).toLocaleDateString('ko-KR') : '-')+'</td>'
+          + '<td><button class="btn sm ghost" onclick="mrDetail(\''+r.id+'\',\''+esc(r.name)+'\')">상세</button></td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }catch(e){ box.innerHTML = '<div class="sub" style="color:var(--red)">'+esc(e.message)+'</div>'; }
+}
+async function mrDetail(id, name){
+  try{
+    const rows = await api('manualReadDetail', TOKEN, id) || [];
+    const un = rows.filter(r => !r.is_read);
+    alert(name + ' — 매뉴얼 읽음 현황\n\n'
+      + '읽음 ' + (rows.length - un.length) + ' / ' + rows.length + '\n\n'
+      + (un.length ? '아직 안 읽은 문서\n' + un.map(r => '· ' + r.title).join('\n')
+                   : '모두 읽었습니다 👏'));
+  }catch(e){ toast(e.message, true); }
+}
+
 // 줄바꿈으로 구분된 텍스트 → <li> 목록
 function posLines(txt, cls){
   const items = String(txt || '').split('\n').map(s => s.trim()).filter(Boolean);
