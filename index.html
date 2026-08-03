@@ -2101,15 +2101,14 @@ function boot(){
   $('meRole').textContent = ME ? (ME.role==='owner'?'사장':ME.role==='viewer'?'투자자':'매장 관리자') : '-';
   $('meAvatar').textContent = ME ? ME.name.slice(0,1) : '·';
   show('mainView');
-  $('navLabor').style.display = (ME && ME.role==='owner') ? '' : 'none';
-  $('navLogs').style.display = (ME && ME.role==='owner') ? '' : 'none';
-  $('navCash').style.display = (ME && ME.role==='owner') ? '' : 'none';
-  $('navAi').style.display = (ME && ME.role==='owner') ? '' : 'none';
-  $('navPnl').style.display = (ME && ME.role==='owner') ? '' : 'none';
-  $('navBook').style.display = (ME && ME.role==='owner') ? '' : 'none';
-  $('navLegal').style.display = (ME && (ME.role==='owner'||ME.role==='manager')) ? '' : 'none';
-  $('navPos').style.display = (ME && (ME.role==='owner'||ME.role==='manager')) ? '' : 'none';
-  loadPositions().catch(()=>{});   // 직책 자동완성 미리 채워둔다
+  // 메뉴 하나가 없어도 로그인이 막히면 안 된다 (캐시된 옛 페이지 대비)
+  const navShow = (id, ok) => { const el = document.getElementById(id); if(el) el.style.display = ok ? '' : 'none'; };
+  const isOwner = !!(ME && ME.role==='owner');
+  const isAdmin = !!(ME && (ME.role==='owner' || ME.role==='manager'));
+  ['navLabor','navLogs','navCash','navAi','navPnl','navBook'].forEach(id => navShow(id, isOwner));
+  navShow('navLegal', isAdmin);
+  navShow('navPos',   isAdmin);
+  try{ loadPositions().catch(()=>{}); }catch(e){}   // 직책 자동완성 미리 채워둔다
   if(ME && ME.role==='viewer'){
     document.querySelectorAll('#tabbar .nav-item').forEach(n => {
       if(!['cal','settle'].includes(n.dataset.t)) n.style.display='none';
