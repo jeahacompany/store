@@ -78,6 +78,8 @@ input:focus{ outline:none; border-color:var(--brand) }
 .hben .n{ font-size:25px; font-weight:800; line-height:1.1; letter-spacing:-.5px }
 .hben .n span{ font-size:16px; font-weight:700 }
 .hben .t{ margin-top:4px; font-size:12.5px; opacity:.92; line-height:1.4 }
+.hnote{ margin-top:11px; text-align:center; font-size:13px; font-weight:600; opacity:.95;
+  background:rgba(255,255,255,.13); border-radius:10px; padding:9px 10px }
 .hero b{ font-size:30px }
 /* 카드 도입 문구 */
 .lead{ margin-top:8px; font-size:15.5px; line-height:1.7; color:#495057 }
@@ -121,13 +123,14 @@ a.kakao{ display:block; text-align:center; background:#FEE500; color:#191919; pa
     <div class="hben">
       <div class="b">
         <div class="n"><b id="hRate">3</b><span>%</span></div>
-        <div class="t">드실 때마다 적립</div>
+        <div class="t">결제금액의 3% 적립</div>
       </div>
       <div class="b">
         <div class="n" id="hBonus">1,000<span>P</span></div>
         <div class="t">가입하시면 바로</div>
       </div>
     </div>
+    <div class="hnote" id="hUse">💰 2,000P부터 현금처럼 쓸 수 있어요</div>
   </div>
 
   <div class="card">
@@ -348,6 +351,10 @@ let INFO = null;
       $('dPolicy').classList.remove('hidden');
     }
     $('hRate').textContent = INFO.rate ?? 3;
+    // 적립률·최소 사용액은 설정에서 바꾸면 여기도 같이 바뀐다
+    $('hRate').closest('.b').querySelector('.t').textContent = '결제금액의 ' + (INFO.rate ?? 3) + '% 적립';
+    $('hUse').textContent = '💰 ' + (+(INFO.min_use ?? 2000)).toLocaleString('ko-KR')
+      + 'P부터 현금처럼 쓸 수 있어요';
     document.title = (INFO.name||'매장') + ' 포인트 적립';
     $('hSign').textContent = (INFO.name || '매장') + ' 드림';
     // 가입 보너스가 0이면 혜택 칸을 '함께한 날' 소개로 바꾼다 (빈 칸으로 두지 않는다)
