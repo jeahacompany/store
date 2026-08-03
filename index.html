@@ -184,6 +184,19 @@
   .badge.g { background:var(--green-bg); color:var(--green); }
   .badge.r { background:var(--red-bg); color:var(--red); }
   .badge.a { background:var(--orange-bg); color:var(--orange); }
+  /* 직책 카드 — 왼쪽 색 굵기로 위아래 단계가 보이게 */
+  .poscard { border:1px solid var(--line); border-left:5px solid #DEE2E6; border-radius:12px;
+             padding:13px 15px; margin-bottom:10px; background:#fff; }
+  .poshd { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .poshd b { font-size:16px; }
+  .pospay { margin-left:auto; font-size:13.5px; color:var(--sub); font-weight:600; }
+  .posrow { margin-top:8px; font-size:14.5px; line-height:1.6; display:flex; gap:9px; align-items:baseline; }
+  .poslbl { flex:none; width:88px; font-size:12.5px; color:var(--sub); font-weight:700; }
+  @media (max-width:640px){
+    .pospay { margin-left:0; width:100%; }
+    .posrow { flex-direction:column; gap:2px; }
+    .poslbl { width:auto; }
+  }
 
   /* login */
   .login-bg { min-height:100vh; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#20242E 0%,#2C3140 55%,#F26522 180%); padding:16px; }
@@ -272,6 +285,7 @@
         <div class="nav-item" data-t="ai" id="navAi" onclick="tab('ai')"><span class="ico">🤖</span>AI 비서</div>
         <div class="nav-item" data-t="cal" onclick="tab('cal')"><span class="ico">🗓️</span>캘린더</div>
         <div class="nav-item" data-t="staff" onclick="tab('staff')"><span class="ico">👥</span>직원<span class="cnt hidden" id="cntStaff"></span></div>
+        <div class="nav-item" data-t="pos" id="navPos" onclick="tab('pos')"><span class="ico">🎖️</span>직책</div>
         <div class="nav-item" data-t="shift" onclick="tab('shift')"><span class="ico">🗓️</span>근무표</div>
         <div class="nav-item" data-t="att" onclick="tab('att')"><span class="ico">⏱️</span>근태</div>
         <div class="nav-item" data-t="labor" id="navLabor" onclick="tab('labor')"><span class="ico">💸</span>인건비표</div>
@@ -787,6 +801,29 @@
         </div>
       </div>
 
+      <!-- 직책 -->
+      <div id="tab-pos" class="hidden">
+        <div class="card">
+          <h2>🎖️ 우리 매장 직책
+            <button class="btn sm" style="margin-left:auto" onclick="posEdit()">+ 직책 추가</button></h2>
+          <div class="sub">직원 등록·근무표·근로계약서가 모두 이 목록을 씁니다.
+            <b>승급 기준을 숫자로 박아두면</b> 나중에 "왜 쟤만 올려줘요" 소리가 안 나와요.</div>
+        </div>
+
+        <div class="card">
+          <h2>🍽️ 홀</h2>
+          <div class="sub">위로 갈수록 상위 직책이에요. <b>홀바 담당</b>은 셀프바를 맡으면서 홀과 주방 사이를 잇는 자리입니다.</div>
+          <div id="posHall" style="margin-top:12px"></div>
+        </div>
+
+        <div class="card">
+          <h2>👨‍🍳 주방</h2>
+          <div class="sub">무한리필은 <b>고기 소분이 원가를 결정</b>해요.
+            그래서 정육은 따로 두지 않고 <b>메인 셰프가 총괄</b>, 부 셰프가 실무를 맡습니다.</div>
+          <div id="posKit" style="margin-top:12px"></div>
+        </div>
+      </div>
+
       <!-- 근로계약서 · 원산지 -->
       <div id="tab-legal" class="hidden">
         <div class="card" style="border-color:#FFC9C9; background:#FFF9F9">
@@ -1082,6 +1119,40 @@
         <div style="margin-top:14px">
           <button class="btn" onclick="ogSave()">저장</button>
           <button class="btn red ghost" id="ogDel" onclick="ogDelete()">삭제</button>
+        </div>
+      </div></div>
+
+      <!-- 직책 모달 -->
+      <div id="posModal" class="modal-bg hidden"><div class="modal" style="max-width:620px">
+        <h2 id="posMTitle">직책</h2>
+        <input type="hidden" id="posId">
+        <div class="grid2">
+          <div><label>부서</label><select id="posDept" style="width:100%">
+            <option>홀</option><option>주방</option></select></div>
+          <div><label>직책 이름 *</label><input id="posName" style="width:100%" placeholder="홀 리더"></div>
+          <div><label>근무표 줄임말 <span class="sub">— 칸이 좁아서</span></label>
+            <input id="posShort" style="width:100%" placeholder="리더"></div>
+          <div><label>단계 <span class="sub">— 숫자가 클수록 상위</span></label>
+            <input id="posLevel" type="number" min="1" max="9" style="width:100%" value="1"></div>
+        </div>
+        <label>하는 일 *</label>
+        <textarea id="posDuties" rows="3" style="width:100%"
+          placeholder="오픈·마감 책임, 캐셔·포인트 정산, 신입 교육"></textarea>
+        <label>이 자리로 올라오는 기준 <span class="sub">— 숫자로 적을수록 좋아요</span></label>
+        <textarea id="posPromote" rows="2" style="width:100%"
+          placeholder="홀 매니저 3개월 + 마감 3회 무사고 + 신입 1명 교육 완료"></textarea>
+        <div class="grid2">
+          <div><label>시급 기준</label><input id="posPay" style="width:100%" placeholder="최저시급 +1,500~2,000원"></div>
+          <div><label>정렬 순서</label><input id="posSort" type="number" style="width:100%" value="999"></div>
+        </div>
+        <label style="display:flex; align-items:center; gap:6px; margin-top:10px">
+          <input type="checkbox" id="posAlone" style="width:17px;height:17px"> 혼자 근무 가능</label>
+        <div class="sub" style="margin-top:10px; background:#FFF9DB; border-radius:8px; padding:10px">
+          💡 <b>혼자 근무 가능</b>을 꺼두면 신입 자리예요. 근무표 짤 때 이 사람만 남는 시간대가 없게 확인하세요.
+        </div>
+        <div style="margin-top:14px">
+          <button class="btn" onclick="posSave()">저장</button>
+          <button class="btn red ghost" id="posDelBtn" onclick="posDelete()">삭제</button>
         </div>
       </div></div>
 
@@ -1880,12 +1951,13 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 let TOKEN = localStorage.getItem('store_admin_token') || '';
 let ME = null, STAFF = [], ATT = [], WAGES = null, TASKS = [];
-const TABS = ['today','ai','cal','staff','shift','att','labor','tasks','board','manual','info','cust','cash','sales','dep','exp','pnl','book','legal','settle','inb','bar','vendor','stock','price','links','logs','setup'];
-const TITLES = {today:'오늘', ai:'AI 비서', cal:'캘린더', staff:'직원', shift:'근무표', att:'근태', labor:'인건비표', tasks:'오더', board:'업무보드',
+const TABS = ['today','ai','cal','staff','pos','shift','att','labor','tasks','board','manual','info','cust','cash','sales','dep','exp','pnl','book','legal','settle','inb','bar','vendor','stock','price','links','logs','setup'];
+const TITLES = {today:'오늘', ai:'AI 비서', cal:'캘린더', staff:'직원', pos:'직책', shift:'근무표', att:'근태', labor:'인건비표', tasks:'오더', board:'업무보드',
   manual:'매뉴얼', info:'매장정보', cust:'고객·포인트', cash:'자금', sales:'매출', dep:'입금', exp:'지출', pnl:'오늘 정산', book:'손익계산서', legal:'근로계약·원산지', settle:'월 정산', inb:'입고 명세서', bar:'셀프바', vendor:'거래처', stock:'재고', price:'단가 변동', links:'연결 주소', logs:'시스템 로그', setup:'설정'};
-// 직책 — 매장에서 부르는 그대로
-// 홀 3 + 주방 6 — 바 담당은 주방 소속(숙련자), 셀프바 양 조절 = 원가 조절
-const POSITIONS = ['점장','매니저','홀','셰프','부셰프','바 담당','찬모','주방보조','세척'];
+// 직책 — DB(store.positions)에서 읽어온다. 직책 탭에서 고치면 여기도 같이 바뀜
+// 홀 5단계(총괄>리더>매니저>홀바>서포터) + 주방 4단계(메인셰프>부셰프>조리>보조)
+let POSITIONS = [];        // 이름만 (자동완성용)
+let POS_ROWS  = [];        // 전체 행 (직책 탭·설명용)
 const SHIFT_TARGET = { weekday: 4, weekend: 6 };   // 홀 목표 인원
 // 영업시간 — 평일 11:00~15:00 / 브레이크 15:00~17:00 / 17:00~21:00, 주말 10:30~21:00 풀
 // 근무는 오픈 준비 30분 전 ~ 마감 정리 30분 후 기준
@@ -1946,11 +2018,15 @@ function localDate(dt){ const d=dt||new Date(), p=n=>String(n).padStart(2,'0'); 
 function localYm(){ return localDate().slice(0,7); }
 function show(view){ ['loginView','mainView'].forEach(v => $(v).classList.toggle('hidden', v!==view)); }
 function closeModal(id){ $(id).classList.add('hidden'); }
-// 직책 자동완성 목록
-document.addEventListener('DOMContentLoaded', () => {
+// 직책 자동완성 목록 — 로그인 후 DB에서 받아 채운다
+async function loadPositions(force){
+  if(POS_ROWS.length && !force) return POS_ROWS;
+  POS_ROWS = await api('posList') || [];
+  POSITIONS = POS_ROWS.map(p => p.name);
   const dl = document.getElementById('posList');
   if(dl) dl.innerHTML = POSITIONS.map(p => '<option value="'+p+'">').join('');
-});
+  return POS_ROWS;
+}
 /* 사진 오버레이 다운로드: 열 때 IMG_DL_NAME을 지정하면 그 이름으로 저장됨 */
 let IMG_DL_NAME = '사진.jpg';
 function imgDownload(){
@@ -1994,6 +2070,7 @@ function tab(name){
   if(name==='bar') loadBar();
   if(name==='pnl') loadPnl();
   if(name==='book') loadBook();
+  if(name==='pos') loadPos();
   if(name==='legal') loadLegal();
   if(name==='links') loadLinks();
   if(name==='cust') loadCust();
@@ -2031,6 +2108,8 @@ function boot(){
   $('navPnl').style.display = (ME && ME.role==='owner') ? '' : 'none';
   $('navBook').style.display = (ME && ME.role==='owner') ? '' : 'none';
   $('navLegal').style.display = (ME && (ME.role==='owner'||ME.role==='manager')) ? '' : 'none';
+  $('navPos').style.display = (ME && (ME.role==='owner'||ME.role==='manager')) ? '' : 'none';
+  loadPositions().catch(()=>{});   // 직책 자동완성 미리 채워둔다
   if(ME && ME.role==='viewer'){
     document.querySelectorAll('#tabbar .nav-item').forEach(n => {
       if(!['cal','settle'].includes(n.dataset.t)) n.style.display='none';
@@ -3653,6 +3732,77 @@ function lgTab(t, btn){
   if(t === 'og') loadOrigins();
 }
 let CLAUSES = [];
+/* ── 직책 ───────────────────────────────────────── */
+async function loadPos(){
+  $('posHall').innerHTML = '<div class="sub">불러오는 중...</div>';
+  $('posKit').innerHTML  = '';
+  try{
+    const rows = await loadPositions(true);
+    renderPos('posHall', rows.filter(p => p.dept === '홀'));
+    renderPos('posKit',  rows.filter(p => p.dept === '주방'));
+  }catch(e){
+    $('posHall').innerHTML = '<div class="sub" style="color:var(--red)">'+esc(e.message)+'</div>';
+  }
+}
+function renderPos(elId, rows){
+  if(!rows.length){ $(elId).innerHTML = '<div class="sub">아직 없어요. 위 [+ 직책 추가]를 눌러주세요.</div>'; return; }
+  $(elId).innerHTML = rows.map(p => {
+    // 단계가 높을수록 진한 색 — 한눈에 위아래가 보이게
+    const tone = Math.min(p.level, 5);
+    return '<div class="poscard" style="border-left-color:'+['#DEE2E6','#FFD8A8','#FFA94D','#FF922B','#F26522'][tone-1]+'">'
+      + '<div class="poshd">'
+      +   '<b>'+esc(p.name)+'</b>'
+      +   '<span class="badge">'+esc(p.short || p.name)+'</span>'
+      +   (p.alone ? '<span class="badge g">혼자 근무 OK</span>'
+                   : '<span class="badge r">혼자 근무 ✖</span>')
+      +   '<span class="pospay">'+esc(p.pay_note || '-')+'</span>'
+      +   '<button class="btn sm ghost" onclick="posEdit(\''+p.id+'\')">수정</button>'
+      + '</div>'
+      + '<div class="posrow"><span class="poslbl">하는 일</span>'+esc(p.duties || '-')+'</div>'
+      + (p.promote ? '<div class="posrow"><span class="poslbl">올라오는 기준</span>'+esc(p.promote)+'</div>' : '')
+      + '</div>';
+  }).join('');
+}
+function posEdit(id){
+  const p = POS_ROWS.find(x => x.id === id) || {};
+  $('posMTitle').textContent = id ? '직책 수정' : '직책 추가';
+  $('posId').value = id || '';
+  $('posDept').value    = p.dept || '홀';
+  $('posName').value    = p.name || '';
+  $('posShort').value   = p.short || '';
+  $('posLevel').value   = p.level || 1;
+  $('posDuties').value  = p.duties || '';
+  $('posPromote').value = p.promote || '';
+  $('posPay').value     = p.pay_note || '';
+  $('posSort').value    = p.sort ?? 999;
+  $('posAlone').checked = !!p.alone;
+  $('posDelBtn').style.display = id ? '' : 'none';
+  $('posModal').classList.remove('hidden');
+}
+async function posSave(){
+  const name = $('posName').value.trim();
+  if(!name){ toast('직책 이름을 적어주세요', true); $('posName').focus(); return; }
+  if(!$('posDuties').value.trim()){ toast('하는 일을 적어주세요', true); $('posDuties').focus(); return; }
+  try{
+    await api('posSave', {
+      id: $('posId').value, dept: $('posDept').value, name,
+      short: $('posShort').value.trim(), level: +$('posLevel').value || 1,
+      duties: $('posDuties').value.trim(), promote: $('posPromote').value.trim(),
+      pay_note: $('posPay').value.trim(), sort: +$('posSort').value || 999,
+      alone: $('posAlone').checked
+    });
+    closeModal('posModal'); toast('저장했어요'); loadPos();
+  }catch(e){ toast(e.message, true); }
+}
+async function posDelete(){
+  const p = POS_ROWS.find(x => x.id === $('posId').value);
+  if(!confirm('"'+(p ? p.name : '이 직책')+'"을 삭제할까요?\n\n이 직책으로 등록된 직원의 표시가 비어 보일 수 있어요.')) return;
+  try{
+    await api('posDelete', $('posId').value);
+    closeModal('posModal'); toast('삭제했어요'); loadPos();
+  }catch(e){ toast(e.message, true); }
+}
+
 async function loadLegal(){
   try{ CLAUSES = await api('clauseList', TOKEN); }catch(e){}
   await loadContracts();
