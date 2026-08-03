@@ -29,6 +29,13 @@ input:focus{ outline:none; border-color:var(--brand) }
 .btn.ghost{ background:#fff; color:var(--ink); border:1px solid var(--line); font-weight:600; font-size:16px; padding:14px }
 .chk{ display:flex; gap:10px; align-items:flex-start; margin-top:12px; font-size:15px }
 .chk input{ width:22px; height:22px; margin-top:2px; flex:none; accent-color:var(--brand) }
+/* 전체 동의 */
+.agreebox{ margin-top:18px; border:1px solid var(--line); border-radius:14px; overflow:hidden }
+.chk.all{ margin:0; padding:15px 16px; background:#FFF7F2; font-size:16.5px; align-items:center }
+.chk.all b{ font-size:17px }
+.chk.all input{ width:26px; height:26px; margin-top:0 }
+.agreelist{ padding:4px 16px 16px; border-top:1px solid var(--line) }
+.agreelist .chk:first-child{ margin-top:12px }
 .hero{ background:linear-gradient(135deg,#F26522,#FF922B); color:#fff; border-radius:18px; padding:22px 18px; text-align:center }
 .hidden{ display:none }
 .err{ color:var(--red); font-size:14.5px; margin-top:10px }
@@ -107,12 +114,21 @@ details summary{ cursor:pointer; font-weight:600 }
     <label>인원 <span style="color:var(--red)">*</span></label>
     <div class="people" id="peopleBox"></div>
 
-    <label class="chk"><input type="checkbox" id="c1" checked>
-      <span><b>[선택] 포인트 회원으로 함께 가입</b><br>
-        <span class="sub">가입만 해도 <b id="bonusTxt">500P</b> 바로 지급! 다음부터 결제할 때마다 적립돼요.
-        (미체크해도 대기 등록은 됩니다)</span></span></label>
-    <label class="chk"><input type="checkbox" id="c2">
-      <span>[선택] 혜택·이벤트 안내 수신 동의</span></label>
+    <div class="agreebox">
+      <label class="chk all"><input type="checkbox" id="cAll" onchange="agreeAll(this)">
+        <span><b>전체 동의</b><br>
+          <span class="sub">아래 항목에 모두 동의합니다 (모두 선택 사항)</span></span></label>
+
+      <div class="agreelist">
+        <label class="chk"><input type="checkbox" id="c1" checked onchange="agreeSync()">
+          <span><b>포인트 회원으로 함께 가입</b><br>
+            <span class="sub">가입만 해도 <b id="bonusTxt">1,000P</b> 바로 지급! 다음부터 결제할 때마다 적립돼요.
+            (미체크해도 대기 등록은 됩니다)</span></span></label>
+        <label class="chk"><input type="checkbox" id="c2" onchange="agreeSync()">
+          <span><b>혜택·이벤트 안내 받기</b><br>
+            <span class="sub">할인·신메뉴 소식을 문자로 보내드려요. 언제든 수신 거부할 수 있습니다.</span></span></label>
+      </div>
+    </div>
 
     <button class="btn" id="btnJoin" onclick="join()">대기 등록하기</button>
     <div class="err hidden" id="err"></div>
@@ -253,6 +269,17 @@ $('phone').addEventListener('input', e => {
 $('phone').addEventListener('keydown', e => {
   if(e.key === 'Enter'){ e.preventDefault(); e.target.blur(); }
 });
+
+/* 전체 동의 — 손님이 직접 누르는 것이라 적법. 개별 해제도 됨 */
+const AGREE_IDS = ['c1','c2'];
+function agreeAll(cb){
+  AGREE_IDS.forEach(id => { const el = $(id); if(el) el.checked = cb.checked; });
+}
+function agreeSync(){
+  const all = AGREE_IDS.every(id => { const el = $(id); return el && el.checked; });
+  $('cAll').checked = all;
+}
+agreeSync();
 // 인원 버튼
 $('peopleBox').innerHTML = [1,2,3,4,5,6,8,10].map(n =>
   '<button onclick="setPeople('+n+',this)"'+(n===2?' class="on"':'')+'>'+n+'명</button>').join('');
