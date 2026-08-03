@@ -1861,7 +1861,8 @@
       <div class="grid2">
         <div><label>이름</label><input id="smName" style="width:100%"></div>
         <div><label>연락처</label><input id="smPhone" style="width:100%"></div>
-        <div><label>직책</label><input id="smPos" list="posList" style="width:100%" placeholder="점장, 매니저, 셰프...">
+        <div><label>직급</label><select id="smPos" style="width:100%" onchange="posHint('smPos','smPosHint')"></select>
+          <div class="sub" id="smPosHint" style="margin-top:5px"></div>
           <datalist id="posList"></datalist></div>
         <div><label>역할</label><select id="smRole" style="width:100%">
           <option value="staff">직원</option><option value="manager">매장 관리자</option>
@@ -1920,7 +1921,8 @@
         <div><label>아이디</label><input id="scU" style="width:100%" placeholder="영문·숫자 3자 이상"></div>
         <div><label>비밀번호</label><input id="scPw" style="width:100%" placeholder="4자 이상"></div>
         <div><label>이름</label><input id="scName" style="width:100%"></div>
-        <div><label>직책</label><input id="scPos" list="posList" style="width:100%" placeholder="점장, 매니저, 셰프..."></div>
+        <div><label>직급</label><select id="scPos" style="width:100%" onchange="posHint('scPos','scPosHint')"></select>
+          <div class="sub" id="scPosHint" style="margin-top:5px"></div></div>
         <div><label>역할</label><select id="scRole" style="width:100%">
           <option value="staff">직원</option><option value="manager">관리자</option><option value="viewer">투자자 (열람 전용)</option></select></div>
         <div><label>급여 방식</label><select id="scPayType" style="width:100%">
@@ -2089,7 +2091,38 @@ async function loadPositions(force){
   POSITIONS = POS_ROWS.map(p => p.name);
   const dl = document.getElementById('posList');
   if(dl) dl.innerHTML = POSITIONS.map(p => '<option value="'+p+'">').join('');
+  posFillSelect('smPos'); posFillSelect('scPos');
   return POS_ROWS;
+}
+/* 직급 드롭다운 채우기 — 부서별로 묶고, 목록에 없는 기존 값은 그대로 살려둔다 */
+function posFillSelect(id, current){
+  const el = document.getElementById(id); if(!el) return;
+  const cur = current != null ? current : el.value;
+  const depts = [...new Set(POS_ROWS.map(p => p.dept))];
+  let html = '<option value="">— 선택 —</option>';
+  depts.forEach(d => {
+    html += '<optgroup label="'+esc(d)+'">'
+         + POS_ROWS.filter(p => p.dept === d)
+             .map(p => '<option value="'+esc(p.name)+'">'+esc(p.name)+'</option>').join('')
+         + '</optgroup>';
+  });
+  // 예전에 자유입력으로 넣어둔 직책은 지우지 않고 '이전 값'으로 남긴다
+  if(cur && !POSITIONS.includes(cur)){
+    html += '<optgroup label="이전 값"><option value="'+esc(cur)+'">'+esc(cur)+'</option></optgroup>';
+  }
+  el.innerHTML = html;
+  el.value = cur || '';
+  // 목록이 아직 안 왔으면 받아서 다시 채운다
+  if(!POS_ROWS.length) loadPositions().then(() => posFillSelect(id, cur)).catch(()=>{});
+  posHint(id, id === 'smPos' ? 'smPosHint' : 'scPosHint');
+}
+/* 고른 직급의 급여 기준을 옆에 보여준다 — 시급 적을 때 참고용 */
+function posHint(selId, hintId){
+  const el = document.getElementById(hintId); if(!el) return;
+  const p = POS_ROWS.find(x => x.name === (document.getElementById(selId)||{}).value);
+  el.innerHTML = p && p.pay_note
+    ? '기준 급여 <b>'+esc(p.pay_note)+'</b>' + (p.name_en ? ' · '+esc(p.name_en) : '')
+    : '';
 }
 /* 사진 오버레이 다운로드: 열 때 IMG_DL_NAME을 지정하면 그 이름으로 저장됨 */
 let IMG_DL_NAME = '사진.jpg';
@@ -2318,7 +2351,7 @@ async function openStaff(id){
   const s = STAFF.find(x=>x.id===id); if(!s) return;
   $('smId').value = s.id;
   $('smTitle').textContent = s.name + (s.status==='pending' ? ' — 승인 대기중' : '');
-  $('smName').value=s.name||''; $('smPhone').value=s.phone||''; $('smPos').value=s.position||'';
+  $('smName').value=s.name||''; $('smPhone').value=s.phone||''; posFillSelect('smPos', s.position||'');
   $('smRole').value=s.role; $('smPayType').value=s.pay_type;
   $('smHourly').value=s.hourly_wage==null?'':cm(s.hourly_wage); $('smMonthly').value=s.monthly_wage==null?'':cm(s.monthly_wage);
   $('smHired').value=s.hired_at||''; $('smBirth').value=s.birth||'';
@@ -2354,7 +2387,7 @@ async function delStaff(){
   catch(e){ alert(e.message); }
 }
 function openStaffCreate(){
-  $('scU').value=''; $('scPw').value=''; $('scName').value=''; $('scPos').value='';
+  $('scU').value=''; $('scPw').value=''; $('scName').value=''; posFillSelect('scPos', '');
   $('scRole').value='staff'; $('scPayType').value='hourly'; $('scHourly').value='10,030'; $('scMonthly').value='';
   $('scModal').classList.remove('hidden');
 }
