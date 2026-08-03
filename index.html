@@ -184,18 +184,49 @@
   .badge.g { background:var(--green-bg); color:var(--green); }
   .badge.r { background:var(--red-bg); color:var(--red); }
   .badge.a { background:var(--orange-bg); color:var(--orange); }
-  /* 직책 카드 — 왼쪽 색 굵기로 위아래 단계가 보이게 */
-  .poscard { border:1px solid var(--line); border-left:5px solid #DEE2E6; border-radius:12px;
-             padding:13px 15px; margin-bottom:10px; background:#fff; }
-  .poshd { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-  .poshd b { font-size:16px; }
-  .pospay { margin-left:auto; font-size:13.5px; color:var(--sub); font-weight:600; }
-  .posrow { margin-top:8px; font-size:14.5px; line-height:1.6; display:flex; gap:9px; align-items:baseline; }
-  .poslbl { flex:none; width:88px; font-size:12.5px; color:var(--sub); font-weight:700; }
-  @media (max-width:640px){
-    .pospay { margin-left:0; width:100%; }
-    .posrow { flex-direction:column; gap:2px; }
-    .poslbl { width:auto; }
+  /* ── 직급 체계 ─────────────────────────────── */
+  .syshero { background:#20242E; color:#fff; border-radius:16px; padding:30px 28px; }
+  .syshero .en { font-size:12px; letter-spacing:4px; font-weight:700; color:#FF922B; }
+  .syshero h1 { font-size:26px; font-weight:800; margin-top:8px; letter-spacing:-.5px; }
+  .syshero .ms { margin-top:20px; padding-top:18px; border-top:1px solid rgba(255,255,255,.16);
+                 font-size:15px; line-height:1.85; color:#DEE2E6; white-space:pre-line; }
+  .syshero .ms b { color:#fff; font-weight:600; }
+
+  .poscard { border:1px solid var(--line); border-radius:14px; padding:0; margin-bottom:14px;
+             background:#fff; overflow:hidden; }
+  .poshd { padding:20px 22px 16px; border-bottom:1px solid var(--line); position:relative; }
+  .poshd .en { font-size:11.5px; letter-spacing:2.5px; font-weight:700; color:var(--brand); }
+  .poshd .nm { font-size:22px; font-weight:800; letter-spacing:-.5px; margin-top:5px; }
+  .poshd .lv { position:absolute; top:20px; right:22px; font-size:11.5px; font-weight:700;
+               letter-spacing:1px; color:var(--sub); }
+  .posmis { padding:18px 22px; background:#FAFBFC; border-bottom:1px solid var(--line); }
+  .posmis .q { font-size:17px; font-weight:700; line-height:1.55; letter-spacing:-.3px;
+               padding-left:14px; border-left:3px solid var(--brand); }
+  .posmis .d { margin-top:11px; font-size:14.5px; line-height:1.75; color:#495057; }
+  .posgrid { display:grid; grid-template-columns:1fr 1fr; }
+  .posgrid > div { padding:18px 22px; }
+  .posgrid > div:first-child { border-right:1px solid var(--line); }
+  .poslbl { font-size:11.5px; font-weight:700; letter-spacing:1.5px; color:var(--sub);
+            text-transform:uppercase; margin-bottom:10px; }
+  .poslist { list-style:none; font-size:14.5px; line-height:1.55; }
+  .poslist li { padding:4px 0 4px 15px; position:relative; }
+  .poslist li::before { content:''; position:absolute; left:2px; top:12px; width:4px; height:4px;
+                        border-radius:50%; background:#CED4DA; }
+  .poslist.chk li { padding-left:22px; }
+  .poslist.chk li::before { content:'✔'; left:0; top:4px; width:auto; height:auto; background:none;
+                            color:var(--brand); font-size:12.5px; font-weight:700; }
+  .posnote { margin-top:12px; font-size:13px; line-height:1.6; color:#868E96;
+             background:#FFF9DB; border-radius:8px; padding:10px 12px; }
+  .posft { display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+           padding:16px 22px; border-top:1px solid var(--line); background:#FAFBFC; }
+  .posft .pt { font-size:11.5px; font-weight:700; letter-spacing:1.5px; color:var(--sub); }
+  .posft .pv { font-size:14px; line-height:1.6; color:#343A40; flex:1; min-width:200px; }
+  .posft .pay { font-size:13.5px; font-weight:700; color:var(--brand-dark); }
+  @media (max-width:720px){
+    .posgrid { grid-template-columns:1fr; }
+    .posgrid > div:first-child { border-right:none; border-bottom:1px solid var(--line); }
+    .syshero { padding:24px 20px; }
+    .syshero h1 { font-size:22px; }
   }
 
   /* login */
@@ -803,24 +834,38 @@
 
       <!-- 직책 -->
       <div id="tab-pos" class="hidden">
-        <div class="card">
-          <h2>🎖️ 우리 매장 직책
-            <button class="btn sm" style="margin-left:auto" onclick="posEdit()">+ 직책 추가</button></h2>
-          <div class="sub">직원 등록·근무표·근로계약서가 모두 이 목록을 씁니다.
-            <b>승급 기준을 숫자로 박아두면</b> 나중에 "왜 쟤만 올려줘요" 소리가 안 나와요.</div>
+        <div class="syshero">
+          <div class="en">MUHAN HALL SYSTEM</div>
+          <h1>홀 운영 시스템</h1>
+          <div class="ms">우리는 음식을 판매하는 직원이 아닙니다.
+<b>우리는 손님이 가장 편안하게 식사할 수 있는 환경을 만드는 사람입니다.</b>
+
+손님이 매장에 들어오는 순간부터 나가는 순간까지,
+깨끗한 공간, 빠른 응대, 편안한 식사 환경을 제공하는 것이 우리의 역할입니다.
+
+무한의 서비스는 ‘서빙’이 아니라 <b>‘환경 관리’</b>입니다.</div>
         </div>
 
         <div class="card">
-          <h2>🍽️ 홀</h2>
-          <div class="sub">위로 갈수록 상위 직책이에요. <b>홀바 담당</b>은 셀프바를 맡으면서 홀과 주방 사이를 잇는 자리입니다.</div>
-          <div id="posHall" style="margin-top:12px"></div>
+          <h2>직급별 미션
+            <button class="btn sm" style="margin-left:auto" onclick="posEdit()">+ 직급 추가</button></h2>
+          <div class="sub">직원 등록·근무표·근로계약서가 모두 이 체계를 씁니다.
+            각 직급의 <b>진급 기준</b>은 직원앱에서도 그대로 보입니다.</div>
         </div>
 
-        <div class="card">
-          <h2>👨‍🍳 주방</h2>
-          <div class="sub">무한리필은 <b>고기 소분이 원가를 결정</b>해요.
-            그래서 정육은 따로 두지 않고 <b>메인 셰프가 총괄</b>, 부 셰프가 실무를 맡습니다.</div>
-          <div id="posKit" style="margin-top:12px"></div>
+        <div style="margin-bottom:6px; font-size:12px; font-weight:700; letter-spacing:2px; color:var(--sub)">HALL · 홀</div>
+        <div id="posHall"></div>
+
+        <div style="margin:22px 0 6px; font-size:12px; font-weight:700; letter-spacing:2px; color:var(--sub)">KITCHEN · 주방</div>
+        <div id="posKit"></div>
+
+        <div class="card" style="background:#FAFBFC">
+          <h2>홀 운영 원칙</h2>
+          <div style="font-size:15px; line-height:1.9; margin-top:8px">
+            우리는 하나의 팀입니다.<br><br>
+            <b>점장</b>은 관리합니다. &nbsp;<b>매니저</b>는 운영합니다. &nbsp;<b>크루</b>는 환경을 만듭니다.<br><br>
+            각자의 역할은 다르지만, 모든 직원은 서로를 지원하며 하나의 팀으로 움직입니다.
+          </div>
         </div>
       </div>
 
@@ -1124,33 +1169,46 @@
 
       <!-- 직책 모달 -->
       <div id="posModal" class="modal-bg hidden"><div class="modal" style="max-width:620px">
-        <h2 id="posMTitle">직책</h2>
+        <h2 id="posMTitle">직급</h2>
         <input type="hidden" id="posId">
         <div class="grid2">
           <div><label>부서</label><select id="posDept" style="width:100%">
             <option>홀</option><option>주방</option></select></div>
-          <div><label>직책 이름 *</label><input id="posName" style="width:100%" placeholder="홀 리더"></div>
-          <div><label>근무표 줄임말 <span class="sub">— 칸이 좁아서</span></label>
-            <input id="posShort" style="width:100%" placeholder="리더"></div>
-          <div><label>단계 <span class="sub">— 숫자가 클수록 상위</span></label>
+          <div><label>영문 표기 <span class="sub">— 문서 상단에 들어갑니다</span></label>
+            <input id="posEn" style="width:100%" placeholder="HALL MANAGER"></div>
+          <div><label>직급 이름 *</label><input id="posName" style="width:100%" placeholder="매니저"></div>
+          <div><label>근무표 줄임말</label><input id="posShort" style="width:100%" placeholder="매니저"></div>
+        </div>
+
+        <label>미션 <span class="sub">— 이 직급을 한 문장으로</span></label>
+        <input id="posMission" style="width:100%" placeholder="점장을 도와 홀이 멈추지 않도록 운영한다.">
+        <label>미션 설명</label>
+        <textarea id="posMissionBy" rows="2" style="width:100%"
+          placeholder="매니저는 점장의 오른팔입니다. 손님 응대와 홀 운영을 책임지며..."></textarea>
+
+        <label>책임 * <span class="sub">— 한 줄에 하나씩</span></label>
+        <textarea id="posDuties" rows="6" style="width:100%"
+          placeholder="손님 자리 안내&#10;이용방법 설명&#10;육수 주문"></textarea>
+        <label>참고 사항 <span class="sub">— ※ 로 강조되는 한 줄</span></label>
+        <input id="posNote" style="width:100%"
+          placeholder="고객의 요청은 직접 판단하지 않고 매니저에게 전달합니다.">
+
+        <label>이 직급의 기준 <span class="sub">— 한 줄에 하나씩, ✔ 로 표시됩니다</span></label>
+        <textarea id="posStd" rows="5" style="width:100%"
+          placeholder="손님보다 먼저 움직인다.&#10;홀 전체를 본다."></textarea>
+
+        <label>진급 기준 <span class="sub">— 한 줄에 하나씩. 숫자로 적을수록 다툼이 없습니다</span></label>
+        <textarea id="posPromote" rows="4" style="width:100%"
+          placeholder="홀바 담당 2개월 이상&#10;고객 응대 5문장 통과"></textarea>
+
+        <div class="grid2">
+          <div><label>급여 기준</label><input id="posPay" style="width:100%" placeholder="최저시급 +1,000~1,500원"></div>
+          <div><label>단계 <span class="sub">— 클수록 상위</span></label>
             <input id="posLevel" type="number" min="1" max="9" style="width:100%" value="1"></div>
         </div>
-        <label>하는 일 *</label>
-        <textarea id="posDuties" rows="3" style="width:100%"
-          placeholder="오픈·마감 책임, 캐셔·포인트 정산, 신입 교육"></textarea>
-        <label>이 자리로 올라오는 기준 <span class="sub">— 숫자로 적을수록 좋아요</span></label>
-        <textarea id="posPromote" rows="2" style="width:100%"
-          placeholder="홀 매니저 3개월 + 마감 3회 무사고 + 신입 1명 교육 완료"></textarea>
-        <div class="grid2">
-          <div><label>시급 기준</label><input id="posPay" style="width:100%" placeholder="최저시급 +1,500~2,000원"></div>
-          <div><label>정렬 순서</label><input id="posSort" type="number" style="width:100%" value="999"></div>
-        </div>
-        <label style="display:flex; align-items:center; gap:6px; margin-top:10px">
-          <input type="checkbox" id="posAlone" style="width:17px;height:17px"> 혼자 근무 가능</label>
-        <div class="sub" style="margin-top:10px; background:#FFF9DB; border-radius:8px; padding:10px">
-          💡 <b>혼자 근무 가능</b>을 꺼두면 신입 자리예요. 근무표 짤 때 이 사람만 남는 시간대가 없게 확인하세요.
-        </div>
-        <div style="margin-top:14px">
+        <label>정렬 순서</label><input id="posSort" type="number" style="width:100%" value="999">
+
+        <div style="margin-top:16px">
           <button class="btn" onclick="posSave()">저장</button>
           <button class="btn red ghost" id="posDelBtn" onclick="posDelete()">삭제</button>
         </div>
@@ -3743,59 +3801,81 @@ async function loadPos(){
     $('posHall').innerHTML = '<div class="sub" style="color:var(--red)">'+esc(e.message)+'</div>';
   }
 }
+// 줄바꿈으로 구분된 텍스트 → <li> 목록
+function posLines(txt, cls){
+  const items = String(txt || '').split('\n').map(s => s.trim()).filter(Boolean);
+  if(!items.length) return '<div class="sub">-</div>';
+  return '<ul class="poslist'+(cls ? ' '+cls : '')+'">'
+    + items.map(s => '<li>'+esc(s)+'</li>').join('') + '</ul>';
+}
 function renderPos(elId, rows){
-  if(!rows.length){ $(elId).innerHTML = '<div class="sub">아직 없어요. 위 [+ 직책 추가]를 눌러주세요.</div>'; return; }
-  $(elId).innerHTML = rows.map(p => {
-    // 단계가 높을수록 진한 색 — 한눈에 위아래가 보이게
-    const tone = Math.min(p.level, 5);
-    return '<div class="poscard" style="border-left-color:'+['#DEE2E6','#FFD8A8','#FFA94D','#FF922B','#F26522'][tone-1]+'">'
-      + '<div class="poshd">'
-      +   '<b>'+esc(p.name)+'</b>'
-      +   '<span class="badge">'+esc(p.short || p.name)+'</span>'
-      +   (p.alone ? '<span class="badge g">혼자 근무 OK</span>'
-                   : '<span class="badge r">혼자 근무 ✖</span>')
-      +   '<span class="pospay">'+esc(p.pay_note || '-')+'</span>'
-      +   '<button class="btn sm ghost" onclick="posEdit(\''+p.id+'\')">수정</button>'
-      + '</div>'
-      + '<div class="posrow"><span class="poslbl">하는 일</span>'+esc(p.duties || '-')+'</div>'
-      + (p.promote ? '<div class="posrow"><span class="poslbl">올라오는 기준</span>'+esc(p.promote)+'</div>' : '')
-      + '</div>';
-  }).join('');
+  if(!rows.length){ $(elId).innerHTML = '<div class="sub">아직 없어요. 위 [+ 직급 추가]를 눌러주세요.</div>'; return; }
+  $(elId).innerHTML = rows.map(p =>
+      '<div class="poscard">'
+    +   '<div class="poshd">'
+    +     '<div class="en">'+esc(p.name_en || '')+'</div>'
+    +     '<div class="nm">'+esc(p.name)+'</div>'
+    +     '<div class="lv">LEVEL '+(p.level||1)+'</div>'
+    +   '</div>'
+    +   (p.mission || p.mission_by ?
+        '<div class="posmis">'
+      +   (p.mission ? '<div class="q">“'+esc(p.mission)+'”</div>' : '')
+      +   (p.mission_by ? '<div class="d">'+esc(p.mission_by)+'</div>' : '')
+      + '</div>' : '')
+    +   '<div class="posgrid">'
+    +     '<div><div class="poslbl">책임</div>'+posLines(p.duties)
+    +       (p.note ? '<div class="posnote">※ '+esc(p.note)+'</div>' : '')+'</div>'
+    +     '<div><div class="poslbl">'+esc(p.name)+'의 기준</div>'+posLines(p.standards, 'chk')+'</div>'
+    +   '</div>'
+    +   '<div class="posft">'
+    +     '<span class="pt">진급 기준</span>'
+    +     '<span class="pv">'+esc(String(p.promote||'-').split('\n').map(s=>s.trim()).filter(Boolean).join(' · '))+'</span>'
+    +     '<span class="pay">'+esc(p.pay_note || '')+'</span>'
+    +     '<button class="btn sm ghost" onclick="posEdit(\''+p.id+'\')">수정</button>'
+    +   '</div>'
+    + '</div>'
+  ).join('');
 }
 function posEdit(id){
   const p = POS_ROWS.find(x => x.id === id) || {};
-  $('posMTitle').textContent = id ? '직책 수정' : '직책 추가';
+  $('posMTitle').textContent = id ? '직급 수정' : '직급 추가';
   $('posId').value = id || '';
-  $('posDept').value    = p.dept || '홀';
-  $('posName').value    = p.name || '';
-  $('posShort').value   = p.short || '';
-  $('posLevel').value   = p.level || 1;
-  $('posDuties').value  = p.duties || '';
-  $('posPromote').value = p.promote || '';
-  $('posPay').value     = p.pay_note || '';
-  $('posSort').value    = p.sort ?? 999;
-  $('posAlone').checked = !!p.alone;
+  $('posDept').value      = p.dept || '홀';
+  $('posEn').value        = p.name_en || '';
+  $('posName').value      = p.name || '';
+  $('posShort').value     = p.short || '';
+  $('posMission').value   = p.mission || '';
+  $('posMissionBy').value = p.mission_by || '';
+  $('posDuties').value    = p.duties || '';
+  $('posNote').value      = p.note || '';
+  $('posStd').value       = p.standards || '';
+  $('posPromote').value   = p.promote || '';
+  $('posPay').value       = p.pay_note || '';
+  $('posLevel').value     = p.level || 1;
+  $('posSort').value      = p.sort ?? 999;
   $('posDelBtn').style.display = id ? '' : 'none';
   $('posModal').classList.remove('hidden');
 }
 async function posSave(){
   const name = $('posName').value.trim();
-  if(!name){ toast('직책 이름을 적어주세요', true); $('posName').focus(); return; }
-  if(!$('posDuties').value.trim()){ toast('하는 일을 적어주세요', true); $('posDuties').focus(); return; }
+  if(!name){ toast('직급 이름을 적어주세요', true); $('posName').focus(); return; }
+  if(!$('posDuties').value.trim()){ toast('책임을 적어주세요', true); $('posDuties').focus(); return; }
   try{
     await api('posSave', TOKEN, {
       id: $('posId').value, dept: $('posDept').value, name,
-      short: $('posShort').value.trim(), level: +$('posLevel').value || 1,
-      duties: $('posDuties').value.trim(), promote: $('posPromote').value.trim(),
-      pay_note: $('posPay').value.trim(), sort: +$('posSort').value || 999,
-      alone: $('posAlone').checked
+      name_en: $('posEn').value.trim().toUpperCase(), short: $('posShort').value.trim(),
+      mission: $('posMission').value.trim(), mission_by: $('posMissionBy').value.trim(),
+      duties: $('posDuties').value.trim(), note: $('posNote').value.trim(),
+      standards: $('posStd').value.trim(), promote: $('posPromote').value.trim(),
+      pay_note: $('posPay').value.trim(),
+      level: +$('posLevel').value || 1, sort: +$('posSort').value || 999
     });
     closeModal('posModal'); toast('저장했어요'); loadPos();
   }catch(e){ toast(e.message, true); }
 }
 async function posDelete(){
   const p = POS_ROWS.find(x => x.id === $('posId').value);
-  if(!confirm('"'+(p ? p.name : '이 직책')+'"을 삭제할까요?\n\n이 직책으로 등록된 직원의 표시가 비어 보일 수 있어요.')) return;
+  if(!confirm('"'+(p ? p.name : '이 직급')+'"을 삭제할까요?\n\n이 직급으로 등록된 직원의 표시가 비어 보일 수 있어요.')) return;
   try{
     await api('posDelete', TOKEN, $('posId').value);
     closeModal('posModal'); toast('삭제했어요'); loadPos();
