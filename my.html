@@ -366,7 +366,7 @@ function snack(msg, kind){
   }
   SNK.className = 'snack ' + (kind || 'warn');
   SNK.innerHTML = '<span class="ic">' + (kind === 'ok' ? '✔' : '⚠️') + '</span><span>' + msg + '</span>';
-  requestAnimationFrame(() => SNK.classList.add('show'));
+  setTimeout(() => SNK.classList.add('show'), 20);
   clearTimeout(SNK_T);
   SNK_T = setTimeout(() => SNK.classList.remove('show'), 3200);
 }
