@@ -854,8 +854,8 @@
       <!-- 직책 -->
       <div id="tab-pos" class="hidden">
         <div class="syshero">
-          <div class="en">MUHAN STANDARD</div>
-          <h1>운영 시스템</h1>
+          <div class="en">SUNCHANGDAM</div>
+          <h1>순창담 운영 시스템</h1>
           <div class="ms" id="posHeroMs"></div>
         </div>
 
@@ -3814,10 +3814,10 @@ async function loadPos(){
   }
 }
 // 원문 문서를 토글로 — 내용은 한 글자도 줄이지 않는다
-function docToggles(list){
+function docToggles(list, openFirst){
   if(!list.length) return '';
-  return '<div class="posdocs">' + list.map(d =>
-      '<details class="doc"><summary>'+esc(d.title)+'</summary>'
+  return '<div class="posdocs">' + list.map((d, i) =>
+      '<details class="doc"'+(openFirst && i === 0 ? ' open' : '')+'><summary>'+esc(d.title)+'</summary>'
     + '<div class="bd">'+esc(d.body)+'</div></details>').join('') + '</div>';
 }
 // 전 직원 공통 문서 (position === '') — '우리의 미션'은 맨 위 배너에 펼쳐서 보여준다
@@ -3827,8 +3827,9 @@ function renderCommonDocs(){
   const hero = all.find(d => d.title.indexOf('미션') >= 0);
   const rest = all.filter(d => d !== hero);
   $('posHeroMs').textContent = hero ? hero.body : '';
+  // 맨 앞 문서(브랜드 스토리)는 펼친 채로 둔다
   el.innerHTML = rest.length
-    ? '<div class="docwrap"><div class="hd">ALL STAFF · 전 직원 공통</div>'+docToggles(rest)+'</div>'
+    ? '<div class="docwrap"><div class="hd">ALL STAFF · 전 직원 공통</div>'+docToggles(rest, true)+'</div>'
     : '';
 }
 // 줄바꿈으로 구분된 텍스트 → <li> 목록
