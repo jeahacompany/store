@@ -46,6 +46,18 @@ input:focus{ outline:none; border-color:var(--brand) }
 .chk.all input{ width:26px; height:26px; margin-top:0 }
 .agreelist{ padding:4px 16px 16px; border-top:1px solid var(--line) }
 .agreelist .chk:first-child{ margin-top:12px }
+/* 안내 배너 (화면 아래에서 올라옴) */
+.snack{ position:fixed; left:50%; bottom:22px; transform:translate(-50%, 140%);
+  background:#20242E; color:#fff; padding:15px 20px; border-radius:14px; font-size:15.5px; font-weight:600;
+  line-height:1.5; box-shadow:0 10px 30px rgba(0,0,0,.28); z-index:200; max-width:calc(100% - 32px);
+  width:max-content; transition:transform .28s cubic-bezier(.2,.9,.3,1.2); display:flex; align-items:center; gap:10px }
+.snack.show{ transform:translate(-50%, 0) }
+.snack.warn{ background:#E03131 }
+.snack .ic{ font-size:20px; flex:none }
+/* 동의 안 했을 때 흔들기 */
+@keyframes shakex{ 0%,100%{transform:translateX(0)} 20%{transform:translateX(-7px)} 40%{transform:translateX(7px)}
+  60%{transform:translateX(-5px)} 80%{transform:translateX(5px)} }
+.agreebox.shake{ animation:shakex .45s; border-color:var(--red); box-shadow:0 0 0 3px rgba(224,49,49,.12) }
 .hero{ background:linear-gradient(135deg,#F26522,#FF922B); color:#fff; border-radius:18px; padding:22px 18px }
 .hero b{ font-size:30px }
 .hidden{ display:none }
@@ -115,7 +127,7 @@ a.kakao{ display:block; text-align:center; background:#FEE500; color:#191919; pa
           <span class="sub">아래 항목에 모두 동의합니다</span></span></label>
 
       <div class="agreelist">
-        <label class="chk"><input type="checkbox" id="c1" checked onchange="agreeSync()">
+        <label class="chk"><input type="checkbox" id="c1" onchange="agreeSync()">
           <span><b>[필수]</b> 개인정보 수집·이용 동의<br>
             <span class="sub">전화번호를 포인트 적립·조회 목적으로만 사용하며, 마지막 방문 후 3년이 지나면 파기합니다.</span></span></label>
 
@@ -134,7 +146,6 @@ a.kakao{ display:block; text-align:center; background:#FEE500; color:#191919; pa
 
     <button class="btn" id="btnJoin" onclick="join()">가입하고 포인트 받기</button>
     <button class="btn ghost" onclick="show('lookView')">이미 회원이에요 — 포인트 조회</button>
-    <div class="err hidden" id="err"></div>
 
     <details id="dPolicy" class="hidden">
       <summary>포인트 사용정책 보기</summary>
@@ -319,10 +330,13 @@ let INFO = null;
 })();
 
 async function join(){
-  $('err').classList.add('hidden');
   const phone = $('phone').value.replace(/[^0-9]/g,'');
-  if(phone.length < 10){ fail('전화번호를 정확히 입력해주세요.'); return; }
-  if(!$('c1').checked){ fail('필수 동의에 체크해주세요.'); return; }
+  if(phone.length < 10){
+    snack('전화번호를 정확히 입력해주세요');
+    $('phone').focus(); $('phone').scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+  if(!$('c1').checked){ failAgree('<b>전체 동의</b>를 눌러주세요'); return; }
   $('btnJoin').disabled = true;
   try{
     const r = await api('custJoin', STORE, { phone, name:$('name').value.trim(),
@@ -342,7 +356,32 @@ async function join(){
     show('doneView');
   }catch(e){ fail(e.message); $('btnJoin').disabled = false; }
 }
-function fail(m){ $('err').textContent = m; $('err').classList.remove('hidden'); }
+/* 배너 안내 — 버튼 밑 작은 글씨 대신 화면 아래에서 올라옴 */
+let SNK = null, SNK_T = null;
+function snack(msg, kind){
+  if(!SNK){
+    SNK = document.createElement('div');
+    SNK.className = 'snack';
+    document.body.appendChild(SNK);
+  }
+  SNK.className = 'snack ' + (kind || 'warn');
+  SNK.innerHTML = '<span class="ic">' + (kind === 'ok' ? '✔' : '⚠️') + '</span><span>' + msg + '</span>';
+  requestAnimationFrame(() => SNK.classList.add('show'));
+  clearTimeout(SNK_T);
+  SNK_T = setTimeout(() => SNK.classList.remove('show'), 3200);
+}
+function fail(m){ snack(m); }
+/* 동의가 안 됐을 때는 동의 박스로 데려가서 흔들어줌 */
+function failAgree(m){
+  snack(m);
+  const box = document.querySelector('#joinView .agreebox');
+  if(!box) return;
+  box.scrollIntoView({ behavior:'smooth', block:'center' });
+  box.classList.remove('shake');
+  void box.offsetWidth;
+  box.classList.add('shake');
+  setTimeout(() => box.classList.remove('shake'), 1400);
+}
 
 /* 결과 화면에도 정책 붙이기 */
 function renderPolicy(r){

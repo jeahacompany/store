@@ -29,6 +29,14 @@ input:focus{ outline:none; border-color:var(--brand) }
 .btn.ghost{ background:#fff; color:var(--ink); border:1px solid var(--line); font-weight:600; font-size:16px; padding:14px }
 .chk{ display:flex; gap:10px; align-items:flex-start; margin-top:12px; font-size:15px }
 .chk input{ width:22px; height:22px; margin-top:2px; flex:none; accent-color:var(--brand) }
+/* 안내 배너 (화면 아래에서 올라옴) */
+.snack{ position:fixed; left:50%; bottom:22px; transform:translate(-50%, 140%);
+  background:#20242E; color:#fff; padding:15px 20px; border-radius:14px; font-size:15.5px; font-weight:600;
+  line-height:1.5; box-shadow:0 10px 30px rgba(0,0,0,.28); z-index:200; max-width:calc(100% - 32px);
+  width:max-content; transition:transform .28s cubic-bezier(.2,.9,.3,1.2); display:flex; align-items:center; gap:10px }
+.snack.show{ transform:translate(-50%, 0) }
+.snack.warn{ background:#E03131 }
+.snack .ic{ font-size:20px; flex:none }
 /* 전체 동의 */
 .agreebox{ margin-top:18px; border:1px solid var(--line); border-radius:14px; overflow:hidden }
 .chk.all{ margin:0; padding:15px 16px; background:#FFF7F2; font-size:16.5px; align-items:center }
@@ -120,7 +128,7 @@ details summary{ cursor:pointer; font-weight:600 }
           <span class="sub">아래 항목에 모두 동의합니다 (모두 선택 사항)</span></span></label>
 
       <div class="agreelist">
-        <label class="chk"><input type="checkbox" id="c1" checked onchange="agreeSync()">
+        <label class="chk"><input type="checkbox" id="c1" onchange="agreeSync()">
           <span><b>포인트 회원으로 함께 가입</b><br>
             <span class="sub">가입만 해도 <b id="bonusTxt">1,000P</b> 바로 지급! 다음부터 결제할 때마다 적립돼요.
             (미체크해도 대기 등록은 됩니다)</span></span></label>
@@ -131,7 +139,6 @@ details summary{ cursor:pointer; font-weight:600 }
     </div>
 
     <button class="btn" id="btnJoin" onclick="join()">대기 등록하기</button>
-    <div class="err hidden" id="err"></div>
 
     <details>
       <summary>개인정보 안내</summary>
@@ -388,9 +395,12 @@ function getPos(){
 }
 
 async function join(){
-  $('err').classList.add('hidden');
   const phone = $('phone').value.replace(/[^0-9]/g,'');
-  if(phone.length < 10){ fail('전화번호를 정확히 입력해주세요.'); return; }
+  if(phone.length < 10){
+    snack('전화번호를 정확히 입력해주세요');
+    $('phone').focus(); $('phone').scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
   $('btnJoin').disabled = true;
   $('btnJoin').textContent = '위치 확인 중...';
   try{
@@ -412,7 +422,21 @@ async function join(){
     poll();                                   // 등록 직후 곧바로 최신 상태로 한 번 더
   }catch(e){ fail(e.message); $('btnJoin').disabled = false; $('btnJoin').textContent = '대기 등록하기'; }
 }
-function fail(m){ $('err').textContent = m; $('err').classList.remove('hidden'); }
+/* 배너 안내 — 버튼 밑 작은 글씨 대신 화면 아래에서 올라옴 */
+let SNK = null, SNK_T = null;
+function snack(msg, kind){
+  if(!SNK){
+    SNK = document.createElement('div');
+    SNK.className = 'snack';
+    document.body.appendChild(SNK);
+  }
+  SNK.className = 'snack ' + (kind || 'warn');
+  SNK.innerHTML = '<span class="ic">' + (kind === 'ok' ? '✔' : '⚠️') + '</span><span>' + msg + '</span>';
+  requestAnimationFrame(() => SNK.classList.add('show'));
+  clearTimeout(SNK_T);
+  SNK_T = setTimeout(() => SNK.classList.remove('show'), 3200);
+}
+function fail(m){ snack(m); }
 
 function render(r){
   syncTime(r.server_time);
