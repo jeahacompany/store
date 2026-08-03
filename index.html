@@ -374,6 +374,7 @@
         <div class="nav-item" data-t="shift" onclick="tab('shift')"><span class="ico">🗓️</span>근무표</div>
         <div class="nav-item" data-t="att" onclick="tab('att')"><span class="ico">⏱️</span>근태</div>
         <div class="nav-item" data-t="labor" id="navLabor" onclick="tab('labor')"><span class="ico">💸</span>인건비표</div>
+        <div class="nav-item" data-t="wage" id="navWage" onclick="tab('wage')"><span class="ico">🧮</span>급여 계산기</div>
         <div class="nav-item" data-t="tasks" onclick="tab('tasks')"><span class="ico">📢</span>오더</div>
         <div class="nav-item" data-t="board" onclick="tab('board')"><span class="ico">🗂️</span>업무보드</div>
         <div class="nav-item" data-t="manual" onclick="tab('manual')"><span class="ico">📖</span>매뉴얼</div>
@@ -886,26 +887,14 @@
         </div>
       </div>
 
-      <!-- 직책 -->
-      <div id="tab-pos" class="hidden">
-        <div class="syshero">
-          <div class="en">SUNCHANGDAM</div>
-          <h1>순창담 운영 시스템</h1>
-          <div class="ms" id="posHeroMs"></div>
-        </div>
-
-        <div class="card">
-          <h2>직급별 미션
-            <button class="btn sm" style="margin-left:auto" onclick="posEdit()">+ 직급 추가</button></h2>
-          <div class="sub">직원 등록·근무표·근로계약서가 모두 이 체계를 씁니다.
-            카드 아래 <b>+ 표시를 누르면 원문 전체</b>가 펼쳐집니다. 직원앱에도 그대로 보입니다.</div>
-        </div>
-
+      <!-- 급여 계산기 -->
+      <div id="tab-wage" class="hidden">
         <div class="card">
           <h2>🧮 급여 계산기</h2>
           <div class="sub">월급을 시급으로 바꾸면 <b>최저임금 위반</b>이 보이고,
-            근무일을 넣으면 <b>주 52시간</b>을 넘는지 보입니다. 계약서에 적을 급여 구성도 나옵니다.</div>
-
+            근무일을 넣으면 <b>주 52시간</b>을 넘는지 보입니다. 계약서에 적을 급여 구성도 함께 나옵니다.</div>
+        </div>
+        <div class="card">
           <div class="grid2" style="margin-top:14px">
             <div><label>급여 방식</label>
               <select id="wcType" style="width:100%" onchange="wcCalc()">
@@ -943,6 +932,23 @@
 
           <div id="wcOut" style="margin-top:16px"></div>
         </div>
+      </div>
+
+      <!-- 직책 -->
+      <div id="tab-pos" class="hidden">
+        <div class="syshero">
+          <div class="en">SUNCHANGDAM</div>
+          <h1>순창담 운영 시스템</h1>
+          <div class="ms" id="posHeroMs"></div>
+        </div>
+
+        <div class="card">
+          <h2>직급별 미션
+            <button class="btn sm" style="margin-left:auto" onclick="posEdit()">+ 직급 추가</button></h2>
+          <div class="sub">직원 등록·근무표·근로계약서가 모두 이 체계를 씁니다.
+            카드 아래 <b>+ 표시를 누르면 원문 전체</b>가 펼쳐집니다. 직원앱에도 그대로 보입니다.</div>
+        </div>
+
 
         <div class="card">
           <h2>📖 매뉴얼 읽음 현황
@@ -2103,8 +2109,8 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 let TOKEN = localStorage.getItem('store_admin_token') || '';
 let ME = null, STAFF = [], ATT = [], WAGES = null, TASKS = [];
-const TABS = ['today','ai','cal','staff','pos','shift','att','labor','tasks','board','manual','info','cust','cash','sales','dep','exp','pnl','book','legal','settle','inb','bar','vendor','stock','price','links','logs','setup'];
-const TITLES = {today:'오늘', ai:'AI 비서', cal:'캘린더', staff:'직원', pos:'직책', shift:'근무표', att:'근태', labor:'인건비표', tasks:'오더', board:'업무보드',
+const TABS = ['today','ai','cal','staff','pos','shift','att','labor','wage','tasks','board','manual','info','cust','cash','sales','dep','exp','pnl','book','legal','settle','inb','bar','vendor','stock','price','links','logs','setup'];
+const TITLES = {today:'오늘', ai:'AI 비서', cal:'캘린더', staff:'직원', pos:'직책', shift:'근무표', att:'근태', labor:'인건비표', wage:'급여 계산기', tasks:'오더', board:'업무보드',
   manual:'매뉴얼', info:'매장정보', cust:'고객·포인트', cash:'자금', sales:'매출', dep:'입금', exp:'지출', pnl:'오늘 정산', book:'손익계산서', legal:'근로계약·원산지', settle:'월 정산', inb:'입고 명세서', bar:'셀프바', vendor:'거래처', stock:'재고', price:'단가 변동', links:'연결 주소', logs:'시스템 로그', setup:'설정'};
 // 직책 — DB(store.positions)에서 읽어온다. 직책 탭에서 고치면 여기도 같이 바뀜
 // 홀 5단계(총괄>리더>매니저>홀바>서포터) + 주방 4단계(메인셰프>부셰프>조리>보조)
@@ -2254,6 +2260,7 @@ function tab(name){
   if(name==='pnl') loadPnl();
   if(name==='book') loadBook();
   if(name==='pos') loadPos();
+  if(name==='wage') wcInit();
   if(name==='legal') loadLegal();
   if(name==='links') loadLinks();
   if(name==='cust') loadCust();
@@ -2291,6 +2298,7 @@ function boot(){
   ['navLabor','navLogs','navCash','navAi','navPnl','navBook'].forEach(id => navShow(id, isOwner));
   navShow('navLegal', isAdmin);
   navShow('navPos',   isAdmin);
+  navShow('navWage',  isAdmin);
   try{ loadPositions().catch(()=>{}); }catch(e){}   // 직책 자동완성 미리 채워둔다
   if(ME && ME.role==='viewer'){
     document.querySelectorAll('#tabbar .nav-item').forEach(n => {
@@ -3927,7 +3935,6 @@ async function loadPos(){
     POS_DOCS = docs || [];
     renderCommonDocs();
     loadReadStatus();
-    wcInit();
     renderPos('posHall', rows.filter(p => p.dept === '홀'));
     renderPos('posKit',  rows.filter(p => p.dept === '주방'));
   }catch(e){
