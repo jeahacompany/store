@@ -222,6 +222,25 @@
   .posft .pt { font-size:11.5px; font-weight:700; letter-spacing:1.5px; color:var(--sub); }
   .posft .pv { font-size:14px; line-height:1.6; color:#343A40; flex:1; min-width:200px; }
   .posft .pay { font-size:13.5px; font-weight:700; color:var(--brand-dark); }
+  /* 원문 토글 */
+  .posdocs { border-top:1px solid var(--line); }
+  .doc { border-bottom:1px solid var(--line); }
+  .doc:last-child { border-bottom:none; }
+  .doc > summary { list-style:none; cursor:pointer; padding:14px 22px; font-size:14.5px; font-weight:700;
+                   display:flex; align-items:center; gap:9px; user-select:none; }
+  .doc > summary::-webkit-details-marker { display:none; }
+  .doc > summary::before { content:'+'; flex:none; width:19px; height:19px; border-radius:5px;
+                           background:var(--gray-bg); color:var(--sub); font-size:14px; font-weight:700;
+                           display:flex; align-items:center; justify-content:center; }
+  .doc[open] > summary::before { content:'−'; background:var(--brand); color:#fff; }
+  .doc[open] > summary { color:var(--brand-dark); }
+  .doc > summary:hover { background:#FAFBFC; }
+  .doc .bd { padding:4px 22px 20px 50px; font-size:14.5px; line-height:1.9; white-space:pre-line;
+             color:#343A40; }
+  .docwrap { border:1px solid var(--line); border-radius:14px; background:#fff; overflow:hidden;
+             margin-bottom:14px; }
+  .docwrap > .hd { padding:16px 22px; border-bottom:1px solid var(--line); background:#FAFBFC;
+                   font-size:12px; font-weight:700; letter-spacing:2px; color:var(--sub); }
   @media (max-width:720px){
     .posgrid { grid-template-columns:1fr; }
     .posgrid > div:first-child { border-right:none; border-bottom:1px solid var(--line); }
@@ -835,38 +854,25 @@
       <!-- 직책 -->
       <div id="tab-pos" class="hidden">
         <div class="syshero">
-          <div class="en">MUHAN HALL SYSTEM</div>
-          <h1>홀 운영 시스템</h1>
-          <div class="ms">우리는 음식을 판매하는 직원이 아닙니다.
-<b>우리는 손님이 가장 편안하게 식사할 수 있는 환경을 만드는 사람입니다.</b>
-
-손님이 매장에 들어오는 순간부터 나가는 순간까지,
-깨끗한 공간, 빠른 응대, 편안한 식사 환경을 제공하는 것이 우리의 역할입니다.
-
-무한의 서비스는 ‘서빙’이 아니라 <b>‘환경 관리’</b>입니다.</div>
+          <div class="en">MUHAN STANDARD</div>
+          <h1>운영 시스템</h1>
+          <div class="ms" id="posHeroMs"></div>
         </div>
 
         <div class="card">
           <h2>직급별 미션
             <button class="btn sm" style="margin-left:auto" onclick="posEdit()">+ 직급 추가</button></h2>
           <div class="sub">직원 등록·근무표·근로계약서가 모두 이 체계를 씁니다.
-            각 직급의 <b>진급 기준</b>은 직원앱에서도 그대로 보입니다.</div>
+            카드 아래 <b>+ 표시를 누르면 원문 전체</b>가 펼쳐집니다. 직원앱에도 그대로 보입니다.</div>
         </div>
+
+        <div id="posCommon"></div>
 
         <div style="margin-bottom:6px; font-size:12px; font-weight:700; letter-spacing:2px; color:var(--sub)">HALL · 홀</div>
         <div id="posHall"></div>
 
         <div style="margin:22px 0 6px; font-size:12px; font-weight:700; letter-spacing:2px; color:var(--sub)">KITCHEN · 주방</div>
         <div id="posKit"></div>
-
-        <div class="card" style="background:#FAFBFC">
-          <h2>홀 운영 원칙</h2>
-          <div style="font-size:15px; line-height:1.9; margin-top:8px">
-            우리는 하나의 팀입니다.<br><br>
-            <b>점장</b>은 관리합니다. &nbsp;<b>매니저</b>는 운영합니다. &nbsp;<b>크루</b>는 환경을 만듭니다.<br><br>
-            각자의 역할은 다르지만, 모든 직원은 서로를 지원하며 하나의 팀으로 움직입니다.
-          </div>
-        </div>
       </div>
 
       <!-- 근로계약서 · 원산지 -->
@@ -3790,16 +3796,40 @@ function lgTab(t, btn){
 }
 let CLAUSES = [];
 /* ── 직책 ───────────────────────────────────────── */
+let POS_DOCS = [];   // 직급별 원문 문서 (store.manuals)
 async function loadPos(){
   $('posHall').innerHTML = '<div class="sub">불러오는 중...</div>';
   $('posKit').innerHTML  = '';
   try{
-    const rows = await loadPositions(true);
+    const [rows, docs] = await Promise.all([
+      loadPositions(true),
+      api('manualAll', TOKEN).catch(() => [])   // 문서는 없어도 직급은 보이게
+    ]);
+    POS_DOCS = docs || [];
+    renderCommonDocs();
     renderPos('posHall', rows.filter(p => p.dept === '홀'));
     renderPos('posKit',  rows.filter(p => p.dept === '주방'));
   }catch(e){
     $('posHall').innerHTML = '<div class="sub" style="color:var(--red)">'+esc(e.message)+'</div>';
   }
+}
+// 원문 문서를 토글로 — 내용은 한 글자도 줄이지 않는다
+function docToggles(list){
+  if(!list.length) return '';
+  return '<div class="posdocs">' + list.map(d =>
+      '<details class="doc"><summary>'+esc(d.title)+'</summary>'
+    + '<div class="bd">'+esc(d.body)+'</div></details>').join('') + '</div>';
+}
+// 전 직원 공통 문서 (position === '') — '우리의 미션'은 맨 위 배너에 펼쳐서 보여준다
+function renderCommonDocs(){
+  const el = $('posCommon'); if(!el) return;
+  const all  = POS_DOCS.filter(d => !d.position);
+  const hero = all.find(d => d.title.indexOf('미션') >= 0);
+  const rest = all.filter(d => d !== hero);
+  $('posHeroMs').textContent = hero ? hero.body : '';
+  el.innerHTML = rest.length
+    ? '<div class="docwrap"><div class="hd">ALL STAFF · 전 직원 공통</div>'+docToggles(rest)+'</div>'
+    : '';
 }
 // 줄바꿈으로 구분된 텍스트 → <li> 목록
 function posLines(txt, cls){
@@ -3833,6 +3863,7 @@ function renderPos(elId, rows){
     +     '<span class="pay">'+esc(p.pay_note || '')+'</span>'
     +     '<button class="btn sm ghost" onclick="posEdit(\''+p.id+'\')">수정</button>'
     +   '</div>'
+    +   docToggles(POS_DOCS.filter(d => d.position === p.name))
     + '</div>'
   ).join('');
 }
