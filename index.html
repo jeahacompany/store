@@ -2021,7 +2021,7 @@ function closeModal(id){ $(id).classList.add('hidden'); }
 // 직책 자동완성 목록 — 로그인 후 DB에서 받아 채운다
 async function loadPositions(force){
   if(POS_ROWS.length && !force) return POS_ROWS;
-  POS_ROWS = await api('posList') || [];
+  POS_ROWS = await api('posList', TOKEN) || [];
   POSITIONS = POS_ROWS.map(p => p.name);
   const dl = document.getElementById('posList');
   if(dl) dl.innerHTML = POSITIONS.map(p => '<option value="'+p+'">').join('');
@@ -3783,7 +3783,7 @@ async function posSave(){
   if(!name){ toast('직책 이름을 적어주세요', true); $('posName').focus(); return; }
   if(!$('posDuties').value.trim()){ toast('하는 일을 적어주세요', true); $('posDuties').focus(); return; }
   try{
-    await api('posSave', {
+    await api('posSave', TOKEN, {
       id: $('posId').value, dept: $('posDept').value, name,
       short: $('posShort').value.trim(), level: +$('posLevel').value || 1,
       duties: $('posDuties').value.trim(), promote: $('posPromote').value.trim(),
@@ -3797,7 +3797,7 @@ async function posDelete(){
   const p = POS_ROWS.find(x => x.id === $('posId').value);
   if(!confirm('"'+(p ? p.name : '이 직책')+'"을 삭제할까요?\n\n이 직책으로 등록된 직원의 표시가 비어 보일 수 있어요.')) return;
   try{
-    await api('posDelete', $('posId').value);
+    await api('posDelete', TOKEN, $('posId').value);
     closeModal('posModal'); toast('삭제했어요'); loadPos();
   }catch(e){ toast(e.message, true); }
 }
