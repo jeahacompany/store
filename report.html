@@ -76,6 +76,15 @@ body{margin:0; background:var(--bg); color:var(--ink); font-size:var(--fs); line
 .flow .body .m{font-size:15px; color:var(--sub); word-break:break-all}
 .flow .v{font-size:20px; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap; padding-top:1px}
 .tag{display:inline-block; background:var(--bg); border-radius:8px; padding:2px 9px; font-size:14px; color:var(--sub)}
+/* 증빙 사진 — 어른들이 보기 편하게 크게 */
+.evbtn{margin-top:8px; padding:9px 15px; border:1px solid var(--line); border-radius:10px; background:#fff;
+  font-size:15px; font-weight:700; font-family:inherit; color:#495057; cursor:pointer}
+.evbtn:active{background:var(--bg)}
+.evov{position:fixed; inset:0; background:rgba(15,17,22,.9); z-index:80; display:flex;
+  align-items:center; justify-content:center; flex-direction:column; padding:16px; gap:14px}
+.evov img{max-width:100%; max-height:78vh; border-radius:12px; background:#fff}
+.evov .cl{padding:15px 34px; border:0; border-radius:12px; background:#fff; font-size:18px;
+  font-weight:800; font-family:inherit; cursor:pointer}
 
 .sch{display:flex; gap:12px; padding:16px 0; border-bottom:1px solid var(--line)}
 .sch:last-child{border-bottom:none}
@@ -322,6 +331,8 @@ function renderFlows(){
       + '<div class="body"><b>' + esc(f.category) + '</b>'
       + (f.account ? ' <span class="tag">' + esc(f.account) + '</span>' : '')
       + (f.memo ? '<div class="m">' + esc(f.memo) + '</div>' : '')
+      // 증빙 사진이 있으면 그 자리에서 확인할 수 있게
+      + (f.has_photo ? '<button class="evbtn" onclick="showEv(\'' + f.id + '\')">📷 증빙 보기</button>' : '')
       + '</div>'
       + '<div class="v ' + (isIn ? 'inC' : 'outC') + '">' + (isIn ? '+' : '-') + won(f.amount) + '</div></div>';
   }).join('');
@@ -329,6 +340,28 @@ function renderFlows(){
   $('flowMore').textContent = '전체 보기 (' + F.length + '건)';
 }
 function showAllFlows(){ SHOW_ALL = true; renderFlows(); }
+
+/* 증빙 사진 보기 — 목록에서 누르면 크게 띄운다 */
+async function showEv(id){
+  const ov = document.createElement('div');
+  ov.className = 'evov';
+  ov.innerHTML = '<div style="color:#fff; font-size:17px">불러오는 중...</div>';
+  ov.onclick = () => ov.remove();
+  document.body.appendChild(ov);
+  try{
+    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/store_api', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON},
+      body: JSON.stringify({ p_fn:'reportPhoto', p_args:[CODE, id] })
+    });
+    const d = await res.json();
+    if(!d || d.ok === false) throw new Error((d && d.error) || '사진을 불러오지 못했어요.');
+    ov.innerHTML = '<img src="' + d.result.b64 + '" alt="증빙"><button class="cl">닫기</button>';
+  }catch(e){
+    ov.innerHTML = '<div style="color:#fff; font-size:17px">' + esc(e.message) + '</div>'
+                 + '<button class="cl">닫기</button>';
+  }
+}
 
 // 계좌번호 눌러서 복사 (어른들이 손으로 옮겨 적지 않게)
 function copyAcct(i){
