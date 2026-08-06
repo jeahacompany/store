@@ -245,6 +245,14 @@
              margin-bottom:14px; }
   .docwrap > .hd { padding:16px 22px; border-bottom:1px solid var(--line); background:#FAFBFC;
                    font-size:12px; font-weight:700; letter-spacing:2px; color:var(--sub); }
+  /* 묶인 탭 안의 서브탭 */
+  .subbar { display:flex; gap:4px; margin-bottom:16px; border-bottom:2px solid var(--line);
+            overflow-x:auto; }
+  .subt { padding:12px 20px; border:none; background:none; font-size:16px; font-weight:700;
+          font-family:inherit; color:var(--sub); cursor:pointer; white-space:nowrap;
+          border-bottom:3px solid transparent; margin-bottom:-2px; }
+  .subt:hover { color:var(--ink); }
+  .subt.on { color:var(--brand); border-bottom-color:var(--brand); }
   /* 자금 증빙 사진 */
   .evbox { margin-top:4px; border:2px dashed var(--line); border-radius:12px; padding:22px 16px;
            text-align:center; cursor:pointer; background:#FAFBFC; }
@@ -2216,8 +2224,10 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 let TOKEN = localStorage.getItem('store_admin_token') || '';
 let ME = null, STAFF = [], ATT = [], WAGES = null, TASKS = [];
-const TABS = ['today','ai','cal','staff','pos','shift','att','labor','wage','kakao','tasks','board','manual','info','cust','cash','sales','dep','exp','pnl','book','legal','settle','inb','bar','vendor','stock','price','links','logs','setup'];
-const TITLES = {today:'오늘', ai:'AI 비서', cal:'캘린더', staff:'직원', pos:'직책', shift:'근무표', att:'근태', labor:'인건비표', wage:'급여 계산기', kakao:'알림톡', tasks:'오더', board:'업무보드',
+// shift·att 는 'work', exp·inb 는 'buy' 안으로 들어가서 여기엔 묶음 이름만 둔다
+const TABS = ['today','ai','cal','staff','pos','work','labor','wage','kakao','tasks','board','manual','info','cust','cash','sales','dep','buy','pnl','book','legal','settle','bar','vendor','stock','price','links','logs','setup'];
+const TITLES = {today:'오늘', ai:'AI 비서', cal:'캘린더', staff:'직원', pos:'직책', shift:'근무표', att:'근태', work:'근무·근태', buy:'지출·매입',
+  labor:'인건비표', wage:'급여 계산기', kakao:'알림톡', tasks:'오더', board:'업무보드',
   manual:'매뉴얼', info:'매장정보', cust:'고객·포인트', cash:'자금', sales:'매출', dep:'입금', exp:'지출', pnl:'오늘 정산', book:'손익계산서', legal:'원산지 표시판', settle:'월 정산', inb:'입고 명세서', bar:'셀프바', vendor:'거래처', stock:'재고', price:'단가 변동', links:'연결 주소', logs:'시스템 로그', setup:'설정'};
 // 직책 — DB(store.positions)에서 읽어온다. 직책 탭에서 고치면 여기도 같이 바뀜
 // 홀 5단계(총괄>리더>매니저>홀바>서포터) + 주방 4단계(메인셰프>부셰프>조리>보조)
@@ -2340,12 +2350,77 @@ document.querySelectorAll('.modal-bg > .modal').forEach(m => {
 document.addEventListener('keydown', e => {
   if(e.key === 'Escape') document.querySelectorAll('.modal-bg:not(.hidden)').forEach(el => el.classList.add('hidden'));
 });
+/* ── 탭 묶기 ─────────────────────────────────────
+   메뉴가 31개까지 늘어 한눈에 안 들어와서, 관련된 것끼리 한 탭 안에 서브탭으로 모은다.
+   HTML을 옮기지 않고 화면 뜰 때 JS로 감싸는 방식이라 되돌리기도 쉽다.
+   기능은 하나도 안 없앤다 — 위치만 바뀐다.                                     */
+const TAB_MERGE = {
+  work: { title:'근무·근태', icon:'🗓️', after:'staff',
+          subs:[{id:'shift', name:'📅 근무표'}, {id:'att', name:'⏱️ 근태'}] },
+  buy:  { title:'지출·매입', icon:'🧾', after:'sales',
+          subs:[{id:'exp', name:'🧾 지출'}, {id:'inb', name:'📦 입고 명세서'}] }
+};
+const MERGED_OF = {};    // 'shift' → 'work'
+Object.entries(TAB_MERGE).forEach(([g, cfg]) => cfg.subs.forEach(s => MERGED_OF[s.id] = g));
+
+function buildMergedTabs(){
+  Object.entries(TAB_MERGE).forEach(([g, cfg]) => {
+    if($('tab-'+g)) return;                       // 이미 만들었으면 건너뛴다
+    const first = $('tab-'+cfg.subs[0].id);
+    if(!first) return;
+    const box = document.createElement('div');
+    box.id = 'tab-'+g; box.className = 'hidden';
+    box.innerHTML = '<div class="subbar">' + cfg.subs.map((s,i) =>
+        '<button class="subt'+(i===0?' on':'')+'" data-s="'+s.id+'"'
+      + ' onclick="subTab(\''+g+'\',\''+s.id+'\')">'+s.name+'</button>').join('') + '</div>';
+    first.parentNode.insertBefore(box, first);
+    cfg.subs.forEach((s,i) => {                   // 기존 탭을 통째로 안으로 옮긴다
+      const el = $('tab-'+s.id);
+      el.classList.toggle('hidden', i !== 0);
+      box.appendChild(el);
+    });
+    // 사이드바: 묶인 메뉴는 감추고 새 메뉴 하나를 그 자리에 만든다
+    const anchor = document.querySelector('[data-t="'+cfg.after+'"]');
+    const nav = document.createElement('div');
+    nav.className = 'nav-item'; nav.dataset.t = g;
+    nav.onclick = () => tab(g);
+    nav.innerHTML = '<span class="ico">'+cfg.icon+'</span>'+cfg.title;
+    if(anchor && anchor.parentNode) anchor.parentNode.insertBefore(nav, anchor.nextSibling);
+    cfg.subs.forEach(s => {
+      const old = document.querySelector('[data-t="'+s.id+'"]');
+      if(old) old.style.display = 'none';
+    });
+  });
+}
+function subTab(g, id){
+  const cfg = TAB_MERGE[g]; if(!cfg) return;
+  cfg.subs.forEach(s => $('tab-'+s.id).classList.toggle('hidden', s.id !== id));
+  document.querySelectorAll('#tab-'+g+' .subt').forEach(b => b.classList.toggle('on', b.dataset.s === id));
+  $('pageTitle').textContent = TITLES[id] || cfg.title;
+  loadForTab(id);
+}
+
 function tab(name){
   if(ME && ME.role==='viewer' && !['cal','settle'].includes(name)) return;
-  TABS.forEach(t => { $('tab-'+t).classList.toggle('hidden', t!==name); });
+  // 묶인 탭을 직접 부르면 그 그룹을 열고 해당 서브탭으로 간다
+  const g = MERGED_OF[name];
+  if(g){ tab(g); subTab(g, name); return; }
+  TABS.forEach(t => { const el = $('tab-'+t); if(el) el.classList.toggle('hidden', t!==name); });
   document.querySelectorAll('#tabbar .nav-item').forEach(b => b.classList.toggle('active', b.dataset.t===name));
   $('pageTitle').textContent = TITLES[name] || '';
   $('pageMeta').textContent = name==='today' ? new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'}) : '';
+  // 묶음 탭을 열면 지금 켜져 있는 서브탭을 불러온다
+  if(TAB_MERGE[name]){
+    const on = document.querySelector('#tab-'+name+' .subt.on');
+    const sid = on ? on.dataset.s : TAB_MERGE[name].subs[0].id;
+    $('pageTitle').textContent = TITLES[sid] || TAB_MERGE[name].title;
+    loadForTab(sid);
+    return;
+  }
+  loadForTab(name);
+}
+
+function loadForTab(name){
   if(name==='today') loadDash();
   if(name==='cal') loadCal();
   if(name==='staff'){ loadStaff(); loadStaffLegal(); }
@@ -2399,6 +2474,7 @@ function boot(){
   $('meRole').textContent = ME ? (ME.role==='owner'?'사장':ME.role==='viewer'?'투자자':'매장 관리자') : '-';
   $('meAvatar').textContent = ME ? ME.name.slice(0,1) : '·';
   show('mainView');
+  try{ buildMergedTabs(); }catch(e){}   // 탭 묶기 — 실패해도 로그인은 되게
   // 메뉴 하나가 없어도 로그인이 막히면 안 된다 (캐시된 옛 페이지 대비)
   const navShow = (id, ok) => { const el = document.getElementById(id); if(el) el.style.display = ok ? '' : 'none'; };
   const isOwner = !!(ME && ME.role==='owner');
