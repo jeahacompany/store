@@ -71,6 +71,16 @@ label{display:block; font-size:14px; color:var(--sub); margin:10px 0 4px}
 .toast.show{opacity:.97}
 .err{color:var(--red); font-size:14px; min-height:18px; margin-top:8px}
 .grid2{display:grid; grid-template-columns:1fr 1fr; gap:0 12px}
+/* 매장에서 급하게 누르는 버튼 — 크게 */
+.bigbtn{width:100%; margin:4px 0 12px; padding:18px; border:2px dashed var(--brand); border-radius:14px;
+  background:var(--brand-soft); color:var(--brand-dark); font-size:19px; font-weight:800;
+  font-family:inherit; cursor:pointer; letter-spacing:-.3px}
+.bigbtn:active{background:var(--brand); color:#fff; border-style:solid}
+/* 인원 선택 버튼 */
+.pplgrid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px}
+.pplb{padding:16px 0; border:2px solid var(--line); border-radius:12px; background:#fff;
+  font-size:18px; font-weight:700; font-family:inherit; color:#3A3F47; cursor:pointer}
+.pplb.on{background:var(--brand); border-color:var(--brand); color:#fff}
 </style>
 </head>
 <body>
@@ -111,8 +121,8 @@ label{display:block; font-size:14px; color:var(--sub); margin:10px 0 4px}
   <div id="view-wait" class="hidden">
     <div class="card">
       <h2>⏳ 웨이팅 전체 <span class="sub" id="wfSummary" style="font-weight:400"></span>
-        <button class="btn sm ghost" style="margin-left:auto" onclick="useCoupon()">🎟 쿠폰 사용</button>
-        <button class="btn sm" onclick="openWait()">+ 대기 등록</button></h2>
+        <button class="btn sm ghost" style="margin-left:auto" onclick="useCoupon()">🎟 쿠폰 사용</button></h2>
+      <button class="bigbtn" onclick="openWait()">➕ 대기 걸기</button>
       <div style="display:flex; gap:6px; flex-wrap:wrap; margin:10px 0">
         <button class="btn sm wf-f active" onclick="wfFilter('live',this)">대기중</button>
         <button class="btn sm ghost wf-f" onclick="wfFilter('입장',this)">입장</button>
@@ -155,8 +165,8 @@ label{display:block; font-size:14px; color:var(--sub); margin:10px 0 4px}
       <div class="card" style="border-color:#FFD8A8">
         <h2>⏳ 웨이팅 <span class="badge a" id="waitCnt">0</span>
           <span class="sub" id="waitExtra" style="font-weight:400"></span>
-          <button class="btn sm ghost" style="margin-left:auto" onclick="useCoupon()">🎟 쿠폰 사용</button>
-          <button class="btn sm" onclick="openWait()">+ 대기 등록</button></h2>
+          <button class="btn sm ghost" style="margin-left:auto" onclick="useCoupon()">🎟 쿠폰 사용</button></h2>
+        <button class="bigbtn" onclick="openWait()">➕ 대기 걸기</button>
         <div id="waitList"><div class="sub">불러오는 중...</div></div>
       </div>
       <div class="card" style="margin-top:14px">
@@ -245,16 +255,22 @@ label{display:block; font-size:14px; color:var(--sub); margin:10px 0 4px}
 <!-- 대기 등록 모달 -->
 <div class="modal-bg hidden" id="waitModal">
   <div class="modal" style="max-width:460px">
-    <h2>대기 등록</h2>
-    <div class="sub" style="margin-bottom:8px">손님이 QR로 직접 등록할 수도 있어요. 여기선 대신 등록합니다.</div>
-    <div class="grid2">
-      <div><label>전화번호</label><input id="wmPhone" inputmode="numeric" style="width:100%; font-size:20px" placeholder="01012345678"></div>
-      <div><label>인원</label><input id="wmPeople" inputmode="numeric" type="number" value="2" style="width:100%; font-size:20px"></div>
-    </div>
-    <label>메모</label><input id="wmMemo" style="width:100%" placeholder="예: 아기의자, 창가 희망">
-    <div style="margin-top:16px; display:flex; gap:8px">
-      <button class="btn" style="flex:1" onclick="saveWait()">등록</button>
-      <button class="btn ghost" onclick="$('waitModal').classList.add('hidden')">닫기</button>
+    <h2>대기 걸기</h2>
+    <div class="sub" style="margin-bottom:8px">손님이 QR로 직접 등록할 수도 있어요. 여기선 대신 걸어드립니다.</div>
+
+    <label>전화번호 <span style="color:var(--red)">*</span></label>
+    <input id="wmPhone" inputmode="numeric" style="width:100%; font-size:26px; font-weight:700;
+           letter-spacing:1px; padding:16px" placeholder="010-">
+
+    <label style="margin-top:14px">인원</label>
+    <div class="pplgrid" id="wmPplBtns"></div>
+    <input type="hidden" id="wmPeople" value="2">
+
+    <label style="margin-top:14px">메모</label><input id="wmMemo" style="width:100%" placeholder="예: 아기의자, 창가 희망">
+
+    <div style="margin-top:18px; display:flex; gap:8px">
+      <button class="btn" style="flex:1; padding:18px; font-size:19px" onclick="saveWait()">대기 걸기</button>
+      <button class="btn ghost" style="padding:18px" onclick="$('waitModal').classList.add('hidden')">닫기</button>
     </div>
   </div>
 </div>
@@ -547,12 +563,37 @@ async function useCoupon(){
     loadWait();
   }catch(e){ alert(e.message); }
 }
-function openWait(){
-  $('wmPhone').value=''; $('wmPeople').value='2'; $('wmMemo').value='';
-  $('waitModal').classList.remove('hidden');
-  setTimeout(()=>$('wmPhone').focus(), 100);
+/* 인원 버튼 — 태블릿에서 숫자 치는 것보다 훨씬 빠르다 */
+const WM_PPL = [1,2,3,4,5,6,8,10];
+function wmPplRender(){
+  const cur = +$('wmPeople').value || 2;
+  $('wmPplBtns').innerHTML = WM_PPL.map(n =>
+    '<button type="button" class="pplb'+(n===cur?' on':'')+'" onclick="wmPpl('+n+')">'+n+'명</button>').join('');
 }
+function wmPpl(n){ $('wmPeople').value = n; wmPplRender(); }
+
+function openWait(){
+  $('wmPhone').value='010-'; $('wmPeople').value='2'; $('wmMemo').value='';
+  wmPplRender();
+  $('waitModal').classList.remove('hidden');
+  setTimeout(()=>{
+    const el = $('wmPhone'); el.focus();
+    try{ el.setSelectionRange(el.value.length, el.value.length); }catch(e){}
+  }, 100);
+}
+/* 번호 자동 하이픈 — 010은 이미 깔려 있어서 8자리만 치면 된다 */
+$('wmPhone').addEventListener('input', e => {
+  let v = e.target.value.replace(/[^0-9]/g,'').slice(0,11);
+  if(v.length > 7) v = v.slice(0,3)+'-'+v.slice(3,7)+'-'+v.slice(7);
+  else if(v.length > 3) v = v.slice(0,3)+'-'+v.slice(3);
+  e.target.value = v;
+});
+$('wmPhone').addEventListener('keydown', e => {
+  if(e.key === 'Enter'){ e.preventDefault(); saveWait(); }
+});
 async function saveWait(){
+  const ph = $('wmPhone').value.replace(/[^0-9]/g,'');
+  if(ph.length < 10){ toast('전화번호를 정확히 넣어주세요'); $('wmPhone').focus(); return; }
   try{
     const r = await api('waitAdd', TOKEN, { phone:$('wmPhone').value.replace(/[^0-9]/g,''),
       people:+$('wmPeople').value||2, memo:$('wmMemo').value.trim() });
