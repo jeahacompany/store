@@ -245,6 +245,13 @@
              margin-bottom:14px; }
   .docwrap > .hd { padding:16px 22px; border-bottom:1px solid var(--line); background:#FAFBFC;
                    font-size:12px; font-weight:700; letter-spacing:2px; color:var(--sub); }
+  /* 체크리스트 칸 — 눌러서 보거나 올린다 */
+  .ckcell { display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:999px;
+            border:1px solid var(--red-bg); background:var(--red-bg); color:var(--red);
+            font-size:13.5px; font-weight:700; font-family:inherit; cursor:pointer; }
+  .ckcell.g { background:var(--green-bg); border-color:var(--green-bg); color:var(--green); }
+  .ckcell:hover { border-color:currentColor; }
+  .ckcell span { font-size:12.5px; font-weight:600; }
   /* ── 직원 제출 서류 ── */
   .docgrid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:4px; }
   .doccard { border:1px solid #FFC9C9; background:#FFF9F9; border-radius:12px; padding:12px 13px; }
@@ -2044,7 +2051,6 @@
       <label>주소</label><input id="smAddr" style="width:100%">
       <label>제출 서류 <span class="sub">— 직원이 못 올리면 여기서 대신 올려주세요</span></label>
       <div id="smDocs" class="sub">불러오는 중...</div>
-      <input type="file" id="smDocFile" accept="image/*" class="hidden">
       <label>메모</label><textarea id="smMemo"></textarea>
       <div id="smLoginSec" style="margin-top:14px; padding:12px; background:#F8F9FA; border-radius:12px">
         <b style="font-size:14px">🔑 로그인 계정 (사장님 전용)</b>
@@ -2165,6 +2171,9 @@
       </div>
     </div>
   </div>
+
+  <!-- 서류 업로드용 — 모달 밖에 둬야 모달이 닫힌 상태(체크리스트)에서도 열린다 -->
+  <input type="file" id="smDocFile" accept="image/*" class="hidden">
 
   <div id="imgOverlay" class="hidden" style="position:fixed; inset:0; background:rgba(15,17,22,.85); z-index:60; display:flex; align-items:center; justify-content:center; flex-direction:column; padding:16px" onclick="this.classList.add('hidden')">
     <img id="imgView" style="max-width:100%; max-height:78vh; border-radius:12px">
@@ -2621,10 +2630,10 @@ async function saveDocExpiry(id, date){
     loadChecklist();
   }catch(e){ toast(e.message, true); }
 }
-async function viewStaffDoc(id, kind){
+async function viewStaffDoc(id, kind, name){
   try{
     const d = await api('docGet', TOKEN, id);
-    IMG_DL_NAME = ($('smName').value || '직원') + '_' + (DOC_LABELS[kind] || '서류') + '.jpg';
+    IMG_DL_NAME = (name || $('smName').value || '직원') + '_' + (DOC_LABELS[kind] || '서류') + '.jpg';
     $('imgView').src = d.b64;
     $('imgOverlay').classList.remove('hidden');
   }catch(e){ alert(e.message); }
@@ -4437,10 +4446,30 @@ async function loadStaffLegal(){
 }
 
 /* 직원별 받아야 할 것 */
+let CK_ROWS = [];
+/* 체크리스트 칸 클릭 — 있으면 보고, 없으면 그 자리에서 올린다 */
+function ckDoc(staffId, kind, docId){
+  const row = CK_ROWS.find(r => r.id === staffId);
+  CK_NAME = row ? row.name : '직원';
+  SM_DOC_STAFF = staffId;
+  if(docId) viewStaffDoc(docId, kind, CK_NAME);
+  else      upStaffDoc(kind);
+}
+let CK_NAME = '';
 async function loadChecklist(){
   try{
     const rows = await api('staffChecklist', TOKEN);
-    const ok = v => v ? '<span class="badge g">✔</span>' : '<span class="badge r">✖</span>';
+    CK_ROWS = rows;
+    // 서류 칸 — 있으면 눌러서 보고, 없으면 눌러서 바로 올린다
+    const docCell = (staffId, kind, docId, label) =>
+        '<button class="ckcell'+(docId?' g':'')+'" title="'+(docId?'눌러서 보기':'눌러서 올리기')+'"'
+      + ' onclick="ckDoc(\''+staffId+'\',\''+kind+'\',\''+(docId||'')+'\')">'
+      + (docId ? '✔' : '✖') + (label ? '<span>'+label+'</span>' : '') + '</button>';
+    // 인적사항 칸 — 눌러서 직원 정보 열기
+    const infoCell = (staffId, v) =>
+        '<button class="ckcell'+(v?' g':'')+'" title="눌러서 직원 정보 열기"'
+      + ' onclick="openStaff(\''+staffId+'\')">'+(v?'✔':'✖')+'</button>';
+
     $('ckBody').innerHTML = rows.map(r => {
       let ct;
       if(r.contract === '완료')      ct = '<span class="badge g">✔ 서명완료</span>';
@@ -4448,15 +4477,18 @@ async function loadChecklist(){
       else if(r.contract === '작성중')  ct = '<span class="badge">작성중</span>';
       else ct = '<span class="badge r">✖ 없음</span>';
       // 보건증 만료 임박 경고
-      let hx = ok(r.doc_health);
+      let hLabel = '';
       if(r.doc_health && r.health_exp){
-        const left = Math.round((new Date(r.health_exp) - new Date()) / 86400000);
-        if(left < 0)       hx = '<span class="badge r">만료됨</span>';
-        else if(left < 30) hx = '<span class="badge a">'+left+'일 남음</span>';
+        const left = Math.round((new Date(r.health_exp+'T00:00:00') - new Date(localDate()+'T00:00:00')) / 86400000);
+        if(left < 0)       hLabel = '만료됨';
+        else if(left < 30) hLabel = left+'일 남음';
       }
       return '<tr><td><b>'+esc(r.name)+'</b> <span class="sub">'+esc(r.position||'')+'</span></td>'
-        + '<td>'+ok(r.doc_id)+'</td><td>'+ok(r.doc_bank)+'</td><td>'+hx+'</td>'
-        + '<td>'+ok(r.has_addr)+'</td><td>'+ok(r.has_acct)+'</td><td>'+ct+'</td></tr>';
+        + '<td>'+docCell(r.id,'idcard',   r.id_did)+'</td>'
+        + '<td>'+docCell(r.id,'bankbook', r.bank_did)+'</td>'
+        + '<td>'+docCell(r.id,'health',   r.health_did, hLabel)+'</td>'
+        + '<td>'+infoCell(r.id, r.has_addr)+'</td>'
+        + '<td>'+infoCell(r.id, r.has_acct)+'</td><td>'+ct+'</td></tr>';
     }).join('') || '<tr><td colspan="7" class="sub">재직 중인 직원이 없어요.</td></tr>';
   }catch(e){}
 }
