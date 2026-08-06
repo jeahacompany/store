@@ -251,8 +251,13 @@
   .doccard.has { border-color:#B2F2BB; background:#F4FCF5; }
   .doccard .dnm { font-size:14.5px; font-weight:700; color:var(--red); }
   .doccard.has .dnm { color:var(--green); }
-  .doccard .dexp { margin-top:4px; font-size:12.5px; color:var(--sub); }
-  .doccard .dexp.bad { color:var(--red); font-weight:700; }
+  .doccard .dexpwrap { display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-top:8px; }
+  .doccard .dexpin { padding:6px 8px; font-size:13px; border:1px solid var(--line); border-radius:8px;
+                     background:#fff; font-family:inherit; }
+  .doccard .dhint { font-size:12.5px; color:var(--red); font-weight:600; }
+  .doccard .dday { font-size:12.5px; font-weight:800; color:var(--green); white-space:nowrap; }
+  .doccard .dday.warn { color:var(--orange); }
+  .doccard .dday.bad { color:var(--red); }
   .doccard .dbtns { display:flex; gap:5px; flex-wrap:wrap; margin-top:9px; }
   .doccard .dbtns .btn { padding:6px 9px; font-size:13px; }
   @media (max-width:720px){ .docgrid { grid-template-columns:1fr; } }
@@ -2568,20 +2573,20 @@ async function scSave(){
 }
 const DOC_LABELS = {idcard:'신분증', bankbook:'통장사본', health:'보건증'};
 let SM_DOC_STAFF = '';        // 지금 보고 있는 직원
+const DOC_EXP_KEEP = {};      // 사진만 교체할 때 만료일을 잃지 않게 들고 있는다
 async function loadStaffDocs(staffId){
   SM_DOC_STAFF = staffId || '';
   $('smDocs').innerHTML = '<span class="sub">불러오는 중...</span>';
   try{
     const r = await api('docList', TOKEN, staffId);
+    (r.docs||[]).forEach(d => { DOC_EXP_KEEP[d.kind] = d.expires_at || ''; });
     $('smDocs').innerHTML = '<div class="docgrid">' + ['idcard','bankbook','health'].map(k => {
       const doc = (r.docs||[]).find(d => d.kind === k);
       const has = !!r.status[k];
-      // 보건증은 만료일이 있어서 지난 건 빨갛게 알려준다
-      const exp = doc && doc.expires_at;
-      const expired = exp && exp < localDate();
       return '<div class="doccard'+(has?' has':'')+'">'
         + '<div class="dnm">'+(has?'✔':'✖')+' '+DOC_LABELS[k]+'</div>'
-        + (exp ? '<div class="dexp'+(expired?' bad':'')+'">만료 '+esc(exp)+(expired?' · 지났어요':'')+'</div>' : '')
+        // 보건증은 1년마다 갱신이라 카드에서 바로 날짜를 고칠 수 있게 한다
+        + (doc && k === 'health' ? docExpiryRow(doc) : '')
         + '<div class="dbtns">'
         +   (doc ? '<button class="btn sm ghost" onclick="viewStaffDoc(\''+doc.id+'\',\''+k+'\')">보기</button>'
                  + '<button class="btn sm ghost" onclick="dlStaffDoc(\''+doc.id+'\',\''+k+'\')">저장</button>'
@@ -2591,6 +2596,30 @@ async function loadStaffDocs(staffId){
         + '</div></div>';
     }).join('') + '</div>';
   }catch(e){ $('smDocs').innerHTML = '<span class="sub" style="color:var(--red)">'+esc(e.message)+'</span>'; }
+}
+/* 보건증 만료일 — 카드 안에서 바로 고친다 (팝업 대신) */
+function docExpiryRow(doc){
+  const exp = doc.expires_at || '';
+  let note = '<span class="dhint">만료일을 넣어주세요</span>';
+  if(exp){
+    const days = Math.round((new Date(exp+'T00:00:00') - new Date(localDate()+'T00:00:00')) / 86400000);
+    note = days < 0  ? '<span class="dday bad">'+(-days)+'일 지났어요</span>'
+         : days === 0 ? '<span class="dday bad">오늘 만료</span>'
+         : days <= 30 ? '<span class="dday warn">D-'+days+'</span>'
+         :              '<span class="dday">D-'+days+'</span>';
+  }
+  return '<div class="dexpwrap">'
+    + '<input type="date" class="dexpin" value="'+esc(exp)+'"'
+    +   ' onchange="saveDocExpiry(\''+doc.id+'\', this.value)">'
+    + note + '</div>';
+}
+async function saveDocExpiry(id, date){
+  try{
+    await api('docExpirySet', TOKEN, id, date || '');
+    toast(date ? '만료일을 저장했어요' : '만료일을 지웠어요');
+    loadStaffDocs(SM_DOC_STAFF);
+    loadChecklist();
+  }catch(e){ toast(e.message, true); }
 }
 async function viewStaffDoc(id, kind){
   try{
@@ -2624,16 +2653,13 @@ function upStaffDoc(kind){
     const file = f.files && f.files[0];
     if(!file) return;
     if(!SM_DOC_STAFF){ toast('직원을 먼저 선택해주세요', true); return; }
-    let exp = '';
-    if(kind === 'health'){
-      exp = prompt('보건증 만료일을 넣어주세요 (예: 2027-08-04)\n모르면 비워두세요.', '') || '';
-      if(exp && !/^\d{4}-\d{2}-\d{2}$/.test(exp.trim())){ toast('날짜 형식이 달라요 (2027-08-04)', true); return; }
-    }
+    // 만료일은 올린 뒤 카드에서 바로 넣는다 (교체할 때 기존 날짜를 살려둔다)
+    const keep = kind === 'health' ? (DOC_EXP_KEEP[kind] || '') : '';
     try{
       toast('올리는 중...');
       const b64 = await shrinkImage(file);
-      await api('docUploadFor', TOKEN, SM_DOC_STAFF, kind, b64, 'image/jpeg', exp.trim());
-      toast(DOC_LABELS[kind] + ' 올렸어요');
+      await api('docUploadFor', TOKEN, SM_DOC_STAFF, kind, b64, 'image/jpeg', keep);
+      toast(DOC_LABELS[kind] + ' 올렸어요' + (kind === 'health' && !keep ? ' — 만료일을 넣어주세요' : ''));
       loadStaffDocs(SM_DOC_STAFF);
       loadChecklist();
     }catch(e){ toast(e.message, true); }
