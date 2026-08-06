@@ -270,13 +270,22 @@ async function api(fn, ...args){
 }
 function show(v){ ['loading','joinView','myView'].forEach(x => $(x).classList.toggle('hidden', x!==v)); }
 
-$('phone').addEventListener('input', e => {
-  let v = e.target.value.replace(/[^0-9]/g,'').slice(0,11);
-  if(v.length > 7) v = v.slice(0,3)+'-'+v.slice(3,7)+'-'+v.slice(7);
-  else if(v.length > 3) v = v.slice(0,3)+'-'+v.slice(3);
-  e.target.value = v;
-  if(v.length === 13) e.target.blur();      // 다 치면 키패드 내려서 인원 버튼이 보이게
-});
+/* 010은 미리 넣어둔다 — 010 아닌 번호가 거의 없어서 8자리만 치면 된다 */
+(function(){
+  const el = $('phone');
+  el.addEventListener('input', e => {
+    let v = e.target.value.replace(/[^0-9]/g,'').slice(0,11);
+    if(v.length > 7) v = v.slice(0,3)+'-'+v.slice(3,7)+'-'+v.slice(7);
+    else if(v.length > 3) v = v.slice(0,3)+'-'+v.slice(3);
+    e.target.value = v;
+    if(v.length === 13) e.target.blur();    // 다 치면 키패드 내려서 인원 버튼이 보이게
+  });
+  el.addEventListener('focus', () => {
+    if(!el.value.replace(/[^0-9]/g,'')) el.value = '010-';
+    setTimeout(() => { try{ el.setSelectionRange(el.value.length, el.value.length); }catch(e){} }, 0);
+  });
+  if(!el.value) el.value = '010-';
+})();
 $('phone').addEventListener('keydown', e => {
   if(e.key === 'Enter'){ e.preventDefault(); e.target.blur(); }
 });
