@@ -245,6 +245,37 @@
              margin-bottom:14px; }
   .docwrap > .hd { padding:16px 22px; border-bottom:1px solid var(--line); background:#FAFBFC;
                    font-size:12px; font-weight:700; letter-spacing:2px; color:var(--sub); }
+  /* ── 카카오 알림톡 ── */
+  .kksteps { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
+  .kkstep { flex:1; min-width:150px; display:flex; gap:10px; align-items:flex-start;
+            background:#fff; border:1px solid var(--line); border-radius:12px; padding:12px 13px; }
+  .kkstep .n { flex:none; width:23px; height:23px; border-radius:50%; background:var(--ink); color:#fff;
+               font-size:12.5px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+  .kkstep b { display:block; font-size:14.5px; }
+  .kkstep span { display:block; font-size:12.5px; color:var(--sub); margin-top:2px; line-height:1.5; }
+  .kkcard { padding:0; overflow:hidden; }
+  .kkhd { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:15px 18px;
+          border-bottom:1px solid var(--line); }
+  .kkhd b { font-size:16px; }
+  .kkcode { font-size:12px; color:var(--sub); background:var(--gray-bg); padding:3px 8px; border-radius:6px; }
+  .kkst { font-size:12.5px; font-weight:700; padding:4px 8px; border-radius:999px;
+          border:1px solid var(--line); background:var(--gray-bg); color:#495057; }
+  .kkst.g { background:var(--green-bg); color:var(--green); border-color:var(--green-bg); }
+  .kkst.a { background:var(--orange-bg); color:var(--orange); border-color:var(--orange-bg); }
+  .kkst.r { background:var(--red-bg); color:var(--red); border-color:var(--red-bg); }
+  /* 카카오톡 대화창 느낌 */
+  .kkwrap { background:#B2C7DA; padding:18px 16px; }
+  .kkbubble { max-width:330px; background:#FEE500; border-radius:4px 14px 14px 14px; overflow:hidden;
+              box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .kktop { background:#FADA0A; padding:8px 14px; font-size:12.5px; font-weight:800; color:#3C1E1E; }
+  .kkbody { padding:14px; font-size:14.5px; line-height:1.75; white-space:pre-wrap; color:#1A1A1A; }
+  .kkvar { background:#3C1E1E; color:#FEE500; border-radius:4px; padding:1px 6px;
+           font-size:13px; font-weight:700; }
+  .kkbtns { padding:0 10px 10px; display:flex; flex-direction:column; gap:6px; }
+  .kkbtn { background:#fff; border-radius:6px; padding:11px; text-align:center;
+           font-size:14px; font-weight:700; color:#3C1E1E; }
+  .kkbtn.ch { background:#3C1E1E; color:#FEE500; }
+  .kknote { padding:12px 18px; font-size:13px; line-height:1.6; color:var(--sub); background:#FAFBFC; }
   /* ── 급여 계산기 ── */
   .wcbig { border-radius:14px; padding:20px 22px; color:#fff; background:#20242E; }
   .wcbig.no { background:#C92A2A; }
@@ -375,6 +406,7 @@
         <div class="nav-item" data-t="att" onclick="tab('att')"><span class="ico">⏱️</span>근태</div>
         <div class="nav-item" data-t="labor" id="navLabor" onclick="tab('labor')"><span class="ico">💸</span>인건비표</div>
         <div class="nav-item" data-t="wage" id="navWage" onclick="tab('wage')"><span class="ico">🧮</span>급여 계산기</div>
+        <div class="nav-item" data-t="kakao" id="navKakao" onclick="tab('kakao')"><span class="ico">💬</span>알림톡</div>
         <div class="nav-item" data-t="tasks" onclick="tab('tasks')"><span class="ico">📢</span>오더</div>
         <div class="nav-item" data-t="board" onclick="tab('board')"><span class="ico">🗂️</span>업무보드</div>
         <div class="nav-item" data-t="manual" onclick="tab('manual')"><span class="ico">📖</span>매뉴얼</div>
@@ -885,6 +917,34 @@
           <div class="table-scroll"><table><thead><tr><th>항목</th><th>월 금액</th><th>하루치</th><th></th></tr></thead>
           <tbody id="pnFixedList"></tbody></table></div>
         </div>
+      </div>
+
+      <!-- 카카오 알림톡 -->
+      <div id="tab-kakao" class="hidden">
+        <div class="card" style="border-color:#FFE066; background:#FFFDF5">
+          <h2>💬 카카오 알림톡 준비</h2>
+          <div class="sub">템플릿 <b>심사에 1~2주</b>가 걸려요. 문구를 지금 확정해두면
+            사업자등록 나오는 즉시 심사를 넣을 수 있습니다.</div>
+          <div class="kksteps">
+            <div class="kkstep"><span class="n">1</span><div><b>사업자등록</b><span>발신번호 등록에 필요</span></div></div>
+            <div class="kkstep"><span class="n">2</span><div><b>카카오 채널 개설</b><span>무료 · 지금도 가능</span></div></div>
+            <div class="kkstep"><span class="n">3</span><div><b>발신번호 등록</b><span>매장 번호로 인증</span></div></div>
+            <div class="kkstep"><span class="n">4</span><div><b>템플릿 심사</b><span>1~2주 · 아래 문구 그대로 제출</span></div></div>
+            <div class="kkstep"><span class="n">5</span><div><b>연동</b><span>발송 코드는 이미 자리 잡아둠</span></div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>👥 플친(채널 친구) 늘리는 구조</h2>
+          <div class="sub" style="line-height:1.8">
+            <b>알림톡</b>은 정보성이라 <b>친구가 아니어도</b> 보낼 수 있어요 (대기 안내·포인트 적립).<br>
+            그 알림톡에 <b>[채널 추가] 버튼</b>을 달아두면 손님이 그 자리에서 친구가 됩니다.<br>
+            친구가 되면 그때부터 <b>친구톡</b>으로 할인·신메뉴 같은 <b>광고성</b>을 보낼 수 있어요.<br>
+            <span style="color:var(--red)">할인·이벤트 문구를 알림톡에 넣으면 심사에서 반려됩니다.</span>
+          </div>
+        </div>
+
+        <div id="kkBox"><div class="sub">불러오는 중...</div></div>
       </div>
 
       <!-- 급여 계산기 -->
@@ -2109,8 +2169,8 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 let TOKEN = localStorage.getItem('store_admin_token') || '';
 let ME = null, STAFF = [], ATT = [], WAGES = null, TASKS = [];
-const TABS = ['today','ai','cal','staff','pos','shift','att','labor','wage','tasks','board','manual','info','cust','cash','sales','dep','exp','pnl','book','legal','settle','inb','bar','vendor','stock','price','links','logs','setup'];
-const TITLES = {today:'오늘', ai:'AI 비서', cal:'캘린더', staff:'직원', pos:'직책', shift:'근무표', att:'근태', labor:'인건비표', wage:'급여 계산기', tasks:'오더', board:'업무보드',
+const TABS = ['today','ai','cal','staff','pos','shift','att','labor','wage','kakao','tasks','board','manual','info','cust','cash','sales','dep','exp','pnl','book','legal','settle','inb','bar','vendor','stock','price','links','logs','setup'];
+const TITLES = {today:'오늘', ai:'AI 비서', cal:'캘린더', staff:'직원', pos:'직책', shift:'근무표', att:'근태', labor:'인건비표', wage:'급여 계산기', kakao:'알림톡', tasks:'오더', board:'업무보드',
   manual:'매뉴얼', info:'매장정보', cust:'고객·포인트', cash:'자금', sales:'매출', dep:'입금', exp:'지출', pnl:'오늘 정산', book:'손익계산서', legal:'근로계약·원산지', settle:'월 정산', inb:'입고 명세서', bar:'셀프바', vendor:'거래처', stock:'재고', price:'단가 변동', links:'연결 주소', logs:'시스템 로그', setup:'설정'};
 // 직책 — DB(store.positions)에서 읽어온다. 직책 탭에서 고치면 여기도 같이 바뀜
 // 홀 5단계(총괄>리더>매니저>홀바>서포터) + 주방 4단계(메인셰프>부셰프>조리>보조)
@@ -2261,6 +2321,7 @@ function tab(name){
   if(name==='book') loadBook();
   if(name==='pos') loadPos();
   if(name==='wage') wcInit();
+  if(name==='kakao') loadKakao();
   if(name==='legal') loadLegal();
   if(name==='links') loadLinks();
   if(name==='cust') loadCust();
@@ -2299,6 +2360,7 @@ function boot(){
   navShow('navLegal', isAdmin);
   navShow('navPos',   isAdmin);
   navShow('navWage',  isAdmin);
+  navShow('navKakao', isAdmin);
   try{ loadPositions().catch(()=>{}); }catch(e){}   // 직책 자동완성 미리 채워둔다
   if(ME && ME.role==='viewer'){
     document.querySelectorAll('#tabbar .nav-item').forEach(n => {
@@ -3960,6 +4022,69 @@ function renderCommonDocs(){
     ? '<div class="docwrap"><div class="hd">ALL STAFF · 전 직원 공통</div>'+docToggles(rest, true)+'</div>'
     : '';
 }
+/* ── 카카오 알림톡 템플릿 ───────────────────────── */
+let KK = [];
+async function loadKakao(){
+  const box = $('kkBox'); if(!box) return;
+  try{
+    KK = await api('kakaoList', TOKEN) || [];
+    const cats = [...new Set(KK.map(t => t.category))];
+    box.innerHTML = cats.map(c =>
+        '<div style="margin:22px 0 8px; font-size:12px; font-weight:700; letter-spacing:2px; color:var(--sub)">'
+      +   esc(c.toUpperCase()) + ' · ' + esc(c) + '</div>'
+      + KK.filter(t => t.category === c).map(kkCard).join('')
+    ).join('');
+  }catch(e){ box.innerHTML = '<div class="card"><div class="sub" style="color:var(--red)">'+esc(e.message)+'</div></div>'; }
+}
+function kkCard(t){
+  const stTone = { '준비':'', '심사중':'a', '승인':'g', '반려':'r' }[t.status] || '';
+  const ad = t.kind === '친구톡';
+  // 변수는 노란 칩으로 보여줘서 뭘 채워야 하는지 한눈에 보이게
+  const body = esc(t.body).replace(/#\{([^}]+)\}/g, '<span class="kkvar">$1</span>');
+  const btns = (t.buttons || []).map(b =>
+    '<div class="kkbtn'+(b.type === 'AC' ? ' ch' : '')+'">'+esc(b.name)+'</div>').join('');
+  return '<div class="card kkcard">'
+    + '<div class="kkhd">'
+    +   '<b>'+esc(t.name)+'</b>'
+    +   '<span class="badge '+(ad?'r':'b')+'">'+esc(t.kind)+'</span>'
+    +   '<select class="kkst '+stTone+'" onchange="kkStatus(\''+t.id+'\', this.value)">'
+    +     ['준비','심사중','승인','반려'].map(s =>
+            '<option'+(s===t.status?' selected':'')+'>'+s+'</option>').join('')
+    +   '</select>'
+    +   '<code class="kkcode">'+esc(t.code)+'</code>'
+    +   '<button class="btn sm ghost" style="margin-left:auto" onclick="kkCopy(\''+t.id+'\')">문구 복사</button>'
+    +   '<button class="btn sm ghost" onclick="kkEdit(\''+t.id+'\')">수정</button>'
+    + '</div>'
+    + '<div class="kkwrap"><div class="kkbubble">'
+    +   '<div class="kktop">알림톡 도착</div>'
+    +   '<div class="kkbody">'+body+'</div>'
+    +   (btns ? '<div class="kkbtns">'+btns+'</div>' : '')
+    + '</div></div>'
+    + (t.note ? '<div class="kknote">'+esc(t.note)+'</div>' : '')
+    + '</div>';
+}
+function kkCopy(id){
+  const t = KK.find(x => x.id === id); if(!t) return;
+  navigator.clipboard.writeText(t.body)
+    .then(() => toast('문구를 복사했어요 — 심사 넣을 때 그대로 붙여넣으세요'))
+    .catch(() => toast('복사에 실패했어요', true));
+}
+function kkEdit(id){
+  const t = KK.find(x => x.id === id); if(!t) return;
+  const body = prompt('『'+t.name+'』 문구를 고치세요.\n\n'
+    + '· 변수는 #{이름} 형식 그대로 두세요\n'
+    + '· 할인·이벤트 같은 광고 문구를 넣으면 심사에서 반려됩니다', t.body);
+  if(body === null || body === t.body) return;
+  api('kakaoSave', TOKEN, { id, body })
+    .then(() => { toast('저장했어요'); loadKakao(); })
+    .catch(e => toast(e.message, true));
+}
+function kkStatus(id, st){
+  api('kakaoSave', TOKEN, { id, status: st })
+    .then(() => { toast(st+'(으)로 바꿨어요'); loadKakao(); })
+    .catch(e => toast(e.message, true));
+}
+
 /* ── 급여 계산기 ─────────────────────────────────
    법정 기준을 계산에 그대로 박아넣는다.
    · 월 환산 주수 4.345 (1년 52.14주 ÷ 12개월)
