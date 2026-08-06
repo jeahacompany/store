@@ -441,7 +441,7 @@ function renderWaitFull(){
         + (done ? ' · <b>'+w.waited_min+'분 기다림</b>' : ' · '+waitMin(w.created_at)+'분 대기중')+'</div>'
     + '</span>'
     + '<span style="white-space:nowrap">'
-      + (w.status==='대기' ? '<button class="btn sm green" onclick="setWait(\''+w.id+'\',\'호출\')">호출</button> ' : '')
+      + (w.status==='대기' ? '<button class="btn sm green" onclick="setWait(\''+w.id+'\',\'호출\')">📞 전화 호출</button> ' : '')
       + (w.status==='호출' ? '<button class="btn sm green" onclick="setWait(\''+w.id+'\',\'입장\')">입장</button> ' : '')
       + '<button class="btn sm ghost" onclick="callPhone(\''+w.id+'\')">📞 전화</button> '
       + '<button class="btn sm ghost" onclick="smsPhone(\''+w.id+'\')">✉ 문자</button> '
@@ -478,7 +478,7 @@ async function loadWait(){
       + '</span>'
       + '<span style="white-space:nowrap">'
         + (w.status==='대기'
-            ? '<button class="btn sm green" onclick="setWait(\''+w.id+'\',\'호출\')">호출</button> '
+            ? '<button class="btn sm green" onclick="setWait(\''+w.id+'\',\'호출\')">📞 전화 호출</button> '
             : '<button class="btn sm green" onclick="setWait(\''+w.id+'\',\'입장\')">입장</button> ')
         + '<button class="btn sm ghost" onclick="callPhone(\''+w.id+'\')">📞</button> '
         + '<button class="btn sm red" onclick="setWait(\''+w.id+'\',\'노쇼\')">노쇼</button> '
@@ -517,6 +517,17 @@ function smsPhone(id){
 }
 async function setWait(id, st){
   if((st==='노쇼'||st==='취소') && !confirm(st+' 처리할까요?')) return;
+  // 우리는 이름을 부르지 않고 전화로 모신다 — 호출을 누르면 바로 전화가 걸리게
+  if(st === '호출'){
+    const w = WAITS.find(x => x.id === id);
+    const tel = w && (w.phone_full || w.phone);
+    if(tel && !confirm((w.wait_no ? w.wait_no+'번 ' : '') + tel + ' 로 전화를 걸까요?\n\n'
+        + '[확인] 전화 걸고 호출 처리   /   [취소] 호출 처리만')) {
+      // 취소를 눌러도 호출 상태는 바꿔준다 (이미 통화했거나 나중에 걸 때)
+    } else if(tel){
+      setTimeout(() => { location.href = 'tel:' + String(tel).replace(/[^0-9+]/g,''); }, 300);
+    }
+  }
   try{
     const r = await api('waitSet', TOKEN, id, st);
     if(st === '입장' && r.coupon_amt > 0){
