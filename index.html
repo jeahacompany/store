@@ -245,6 +245,14 @@
              margin-bottom:14px; }
   .docwrap > .hd { padding:16px 22px; border-bottom:1px solid var(--line); background:#FAFBFC;
                    font-size:12px; font-weight:700; letter-spacing:2px; color:var(--sub); }
+  /* 자금 증빙 사진 */
+  .evbox { margin-top:4px; border:2px dashed var(--line); border-radius:12px; padding:22px 16px;
+           text-align:center; cursor:pointer; background:#FAFBFC; }
+  .evbox:hover { border-color:var(--brand); background:var(--brand-soft); }
+  .evbox .evico { font-size:26px; }
+  .evbox .evtxt { margin-top:6px; font-size:14.5px; font-weight:700; color:#495057; }
+  .evbox .evsub { margin-top:3px; font-size:12.5px; color:var(--sub); }
+  .evbox img { max-width:100%; max-height:220px; border-radius:8px; display:block; margin:0 auto; }
   /* 체크리스트 칸 — 눌러서 보거나 올린다 */
   .ckcell { display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:999px;
             border:1px solid var(--red-bg); background:var(--red-bg); color:var(--red);
@@ -1813,6 +1821,23 @@
           </div>
           <label>금액 (원)</label><input id="csAmt" type="text" inputmode="numeric" oninput="mFmt(this)" style="width:100%" placeholder="100,000,000">
           <label>메모</label><input id="csMemo" style="width:100%" placeholder="예: 투자자 ○○○ 1차 투자금">
+
+          <label>증빙 자료 <span class="sub">— 이체확인증·영수증·계약서 사진</span></label>
+          <div class="evbox" id="csEvBox" onclick="csPickPhoto()">
+            <div id="csEvEmpty">
+              <div class="evico">📎</div>
+              <div class="evtxt">눌러서 사진 올리기</div>
+              <div class="evsub">나중에 "이 돈이 뭐였지" 할 때 바로 확인돼요</div>
+            </div>
+            <img id="csEvImg" class="hidden" alt="증빙">
+          </div>
+          <div id="csEvBtns" class="hidden" style="display:flex; gap:6px; margin-top:8px">
+            <button class="btn sm ghost" onclick="csViewPhoto()">크게 보기</button>
+            <button class="btn sm ghost" onclick="csPickPhoto()">교체</button>
+            <button class="btn sm ghost" style="color:var(--red)" onclick="csClearPhoto()">빼기</button>
+          </div>
+          <input type="file" id="csEvFile" accept="image/*" class="hidden">
+
           <div style="margin-top:12px"><button class="btn" onclick="csSave()">저장</button> <button class="btn ghost" onclick="csReset()">새로 입력</button></div>
           <div class="sub" style="margin-top:8px">💡 통장끼리 돈을 옮기면: 보낸 통장에서 출금 1건 + 받은 통장에 입금 1건으로 적으세요.</div>
         </div>
@@ -5851,9 +5876,48 @@ const CS_CATS = { '입금': ['투자금','대출','개인 자금 투입','기타
 function csDirChange(){
   $('csCat').innerHTML = CS_CATS[$('csDir').value].map(c=>'<option>'+c+'</option>').join('');
 }
+/* 증빙 사진 — null이면 "안 건드림", ''이면 "빼기", 문자열이면 새 사진 */
+let CS_PHOTO = null;
+function csShowPhoto(b64){
+  const img = $('csEvImg');
+  if(b64){ img.src = b64; img.classList.remove('hidden'); $('csEvEmpty').classList.add('hidden');
+           $('csEvBtns').classList.remove('hidden'); }
+  else   { img.src = ''; img.classList.add('hidden'); $('csEvEmpty').classList.remove('hidden');
+           $('csEvBtns').classList.add('hidden'); }
+}
+function csPickPhoto(){
+  const f = $('csEvFile');
+  f.value = '';
+  f.onchange = async () => {
+    const file = f.files && f.files[0]; if(!file) return;
+    try{
+      toast('사진 준비 중...');
+      CS_PHOTO = await shrinkImage(file);
+      csShowPhoto(CS_PHOTO);
+      toast('사진을 붙였어요 — 저장을 눌러야 기록됩니다');
+    }catch(e){ toast(e.message, true); }
+  };
+  f.click();
+}
+function csClearPhoto(){ CS_PHOTO = ''; csShowPhoto(''); toast('저장을 누르면 사진이 빠져요'); }
+function csViewPhoto(){
+  const src = $('csEvImg').src; if(!src) return;
+  IMG_DL_NAME = '증빙_' + ($('csDate').value || localDate()) + '.jpg';
+  $('imgView').src = src; $('imgOverlay').classList.remove('hidden');
+}
+/* 목록에서 바로 보기 */
+async function csPhoto(id){
+  try{
+    const r = await api('cashPhoto', TOKEN, id);
+    const x = CASH.find(c => c.id === id);
+    IMG_DL_NAME = '증빙_' + ((x && x.flow_date) || localDate()) + '.jpg';
+    $('imgView').src = r.b64; $('imgOverlay').classList.remove('hidden');
+  }catch(e){ toast(e.message, true); }
+}
 function csReset(){
   $('csId').value=''; $('csDate').value = localDate(); $('csAmt').value=''; $('csMemo').value='';
   $('csDir').value='입금'; csDirChange();
+  CS_PHOTO = null; csShowPhoto('');
 }
 let ACCTS = [];
 async function loadCash(){
@@ -5886,7 +5950,9 @@ async function loadCash(){
       + '<td><span class="badge '+(x.direction==='입금'?'g':'r')+'">'+x.direction+'</span></td>'
       + '<td>'+esc(x.category)+'</td>'
       + '<td class="name-cell">'+(x.direction==='입금'?'+':'-')+fmtWon(x.amount)+'</td>'
-      + '<td class="sub">'+esc(x.memo||'')+'</td>'
+      + '<td class="sub">'+esc(x.memo||'')
+      +   (x.has_photo ? ' <button class="btn sm ghost" style="padding:3px 8px; font-size:12.5px"'
+                       + ' onclick="csPhoto(\''+x.id+'\')">📷 증빙</button>' : '')+'</td>'
       + '<td style="white-space:nowrap"><button class="btn sm ghost" onclick="csEdit(\''+x.id+'\')">수정</button> '
       + '<button class="btn sm red" onclick="csDel(\''+x.id+'\')">삭제</button></td></tr>'
     ).join('') || '<tr><td colspan="7" class="sub">아직 기록이 없어요. 투자금이 들어오면 첫 입금을 기록해보세요.</td></tr>';
@@ -5897,13 +5963,20 @@ function csEdit(id){
   $('csId').value=x.id; $('csDate').value=x.flow_date; $('csDir').value=x.direction; csDirChange();
   $('csCat').value=x.category; $('csAmt').value=cm(x.amount); $('csMemo').value=x.memo||'';
   $('csAcct').value = x.account_id || '';
+  // 사진은 목록에 안 실려오니 여기서 따로 받아 미리보기에 건다
+  CS_PHOTO = null; csShowPhoto('');
+  if(x.has_photo){
+    api('cashPhoto', TOKEN, id).then(r => { if($('csId').value === id) csShowPhoto(r.b64); }).catch(()=>{});
+  }
   window.scrollTo({top:0, behavior:'smooth'});
 }
 async function csSave(){
   try{
-    await api('cashSave', TOKEN, { id:$('csId').value, flow_date:$('csDate').value,
+    const p = { id:$('csId').value, flow_date:$('csDate').value,
       direction:$('csDir').value, category:$('csCat').value, amount:mVal($('csAmt').value),
-      memo:$('csMemo').value.trim(), account_id:$('csAcct').value });
+      memo:$('csMemo').value.trim(), account_id:$('csAcct').value };
+    if(CS_PHOTO !== null) p.photo = CS_PHOTO;   // 안 건드렸으면 아예 안 보낸다
+    await api('cashSave', TOKEN, p);
     toast('기록했어요'); csReset(); await loadCash();
   }catch(e){ alert(e.message); }
 }
