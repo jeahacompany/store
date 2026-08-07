@@ -245,6 +245,9 @@
              margin-bottom:14px; }
   .docwrap > .hd { padding:16px 22px; border-bottom:1px solid var(--line); background:#FAFBFC;
                    font-size:12px; font-weight:700; letter-spacing:2px; color:var(--sub); }
+  /* 근무표 부서 구분줄 */
+  #shBody tr.deptrow td { background:#F1F3F5; font-size:14.5px; font-weight:800;
+                          border-top:2px solid var(--ink); padding-top:10px; padding-bottom:10px; }
   /* 묶인 탭 안의 서브탭 */
   .subbar { display:flex; gap:4px; margin-bottom:16px; border-bottom:2px solid var(--line);
             overflow-x:auto; }
@@ -5695,6 +5698,8 @@ function shWeek(delta){
 async function loadShift(){
   if(!SH_FROM) SH_FROM = shMonday(new Date());
   try{
+    // 부서(홀/주방)를 나누려면 직급 마스터가 있어야 한다
+    if(!POS_ROWS.length) await loadPositions().catch(()=>{});
     SH_DATA = await api('shiftWeek', TOKEN, localDate(SH_FROM));
     renderShift();
   }catch(e){ toast(e.message); }
@@ -5717,7 +5722,12 @@ function renderShift(){
   const leaveKey = {};
   (r.leaves||[]).forEach(l => { leaveKey[l.staff_id + '|' + l.leave_date] = l; });
 
-  $('shBody').innerHTML = (r.staff||[]).map(st => {
+  // 직급 마스터로 부서를 판정한다 (직급 탭에서 바꾸면 여기도 따라온다)
+  const deptOf = st => {
+    const p = POS_ROWS.find(x => x.name === (st.position||''));
+    return p ? p.dept : '기타';
+  };
+  const one = st => {
     let wmins = 0, wcost = 0;
     const cells = days.map(d => {
       const ds = localDate(d), k = st.id + '|' + ds, x = byKey[k], lv = leaveKey[k];
@@ -5734,25 +5744,55 @@ function renderShift(){
         + (x.memo ? '<div class="sub">'+esc(x.memo)+'</div>' : '')
         + '</td>';
     }).join('');
-    return '<tr><td><b>'+esc(st.name)+'</b><div class="sub">'+esc(st.position||'-')
-      + (st.pay_type==='monthly' ? ' · 월급' : '')+'</div></td>' + cells
-      + '<td style="text-align:center"><b>'+Math.round(wmins/6)/10+'h</b>'
-      + (wcost>0 ? '<div class="sub">'+fmtWon(wcost)+'</div>' : '')+'</td></tr>';
-  }).join('') || '<tr><td colspan="9" class="sub">직원이 없어요.</td></tr>';
+    return { mins: wmins, cost: wcost,
+      html: '<tr><td><b>'+esc(st.name)+'</b><div class="sub">'+esc(st.position||'-')
+        + (st.pay_type==='monthly' ? ' · 월급' : '')+'</div></td>' + cells
+        + '<td style="text-align:center"><b>'+Math.round(wmins/6)/10+'h</b>'
+        + (wcost>0 ? '<div class="sub">'+fmtWon(wcost)+'</div>' : '')+'</td></tr>' };
+  };
 
-  $('shTotals').innerHTML = '<span class="badge b">주간 총 '+Math.round((r.totalMins||0)/6)/10+'시간</span>'
-    + (r.totalCost != null ? ' <span class="badge a">예상 인건비(시급제) '+fmtWon(r.totalCost)+'</span>' : '');
+  // 홀 / 주방 / 기타로 나눠서 따로 본다. 부서마다 소계를 붙인다.
+  const DEPTS = [['홀','🍽️ 홀'], ['주방','👨‍🍳 주방'], ['기타','· 그 외']];
+  const staffAll = r.staff || [];
+  let body = '';
+  DEPTS.forEach(([key, label]) => {
+    const list = staffAll.filter(st => deptOf(st) === key);
+    if(!list.length) return;
+    const rows = list.map(one);
+    const dm = rows.reduce((a,b) => a + b.mins, 0);
+    const dc = rows.reduce((a,b) => a + b.cost, 0);
+    body += '<tr class="deptrow"><td colspan="8">'+label
+          + ' <span class="sub">'+list.length+'명</span></td>'
+          + '<td style="text-align:center"><b>'+Math.round(dm/6)/10+'h</b>'
+          + (dc>0 ? '<div class="sub">'+fmtWon(dc)+'</div>' : '')+'</td></tr>';
+    body += rows.map(x => x.html).join('');
+  });
+  $('shBody').innerHTML = body || '<tr><td colspan="9" class="sub">직원이 없어요.</td></tr>';
+
+  // 합산은 여기서 본다 — 부서별 내역도 같이
+  const sumBy = key => staffAll.filter(st => deptOf(st) === key).map(one)
+                        .reduce((a,b) => ({m:a.m+b.mins, c:a.c+b.cost}), {m:0,c:0});
+  const hall = sumBy('홀'), kit = sumBy('주방');
+  $('shTotals').innerHTML =
+      '<span class="badge b">주간 총 '+Math.round((r.totalMins||0)/6)/10+'시간</span>'
+    + (r.totalCost != null ? ' <span class="badge a">예상 인건비(시급제) '+fmtWon(r.totalCost)+'</span>' : '')
+    + ' <span class="badge">🍽️ 홀 '+Math.round(hall.m/6)/10+'h'+(hall.c>0?' · '+fmtWon(hall.c):'')+'</span>'
+    + ' <span class="badge">👨‍🍳 주방 '+Math.round(kit.m/6)/10+'h'+(kit.c>0?' · '+fmtWon(kit.c):'')+'</span>';
 
   // 요일별 인원 — 목표 대비
   $('shCount').innerHTML = days.map(d => {
     const ds = localDate(d), wk = (d.getDay()===0 || d.getDay()===6);
     const target = wk ? SHIFT_TARGET.weekend : SHIFT_TARGET.weekday;
     const list = (r.rows||[]).filter(x => x.work_date === ds);
+    // 직급 마스터 기준으로 센다 (직책 이름이 바뀌어도 따라감)
     const hall = list.filter(x => {
-      const st = (r.staff||[]).find(s => s.id === x.staff_id);
-      return st && ['점장','매니저','홀'].includes(st.position);
+      const st = staffAll.find(s => s.id === x.staff_id);
+      return st && deptOf(st) === '홀';
     }).length;
-    const kit = list.length - hall;
+    const kit = list.filter(x => {
+      const st = staffAll.find(s => s.id === x.staff_id);
+      return st && deptOf(st) === '주방';
+    }).length;
     const ok = hall >= target;
     return '<div class="row"><span><b>'+(d.getMonth()+1)+'/'+d.getDate()+' ('+DOWK[d.getDay()]+')</b> '
       + '<span class="sub">홀 '+hall+'명 · 주방 '+kit+'명</span></span>'
