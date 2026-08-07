@@ -245,6 +245,18 @@
              margin-bottom:14px; }
   .docwrap > .hd { padding:16px 22px; border-bottom:1px solid var(--line); background:#FAFBFC;
                    font-size:12px; font-weight:700; letter-spacing:2px; color:var(--sub); }
+  /* 회계 계정별 현황 */
+  .bssec { border:1px solid var(--line); border-radius:12px; margin-bottom:10px; overflow:hidden; }
+  .bshd { display:flex; justify-content:space-between; padding:11px 15px; background:var(--ink); color:#fff;
+          font-size:14px; font-weight:800; letter-spacing:1px; }
+  .bshd span { font-variant-numeric:tabular-nums; }
+  .bsrow { display:flex; align-items:center; gap:10px; padding:11px 15px; border-top:1px solid var(--line);
+           font-size:14.5px; }
+  .bsrow .c { flex:none; width:38px; font-size:12px; color:var(--sub); font-variant-numeric:tabular-nums; }
+  .bsrow .n { flex:1; font-weight:700; }
+  .bsrow .q { flex:none; font-size:12.5px; color:var(--sub); }
+  .bsrow .v { flex:none; min-width:110px; text-align:right; font-weight:800;
+              font-variant-numeric:tabular-nums; }
   /* 직책 탭 홀/주방 고르기 */
   .deptbar { display:flex; gap:7px; margin-bottom:14px; flex-wrap:wrap; }
   .deptb { padding:10px 18px; border:1px solid var(--line); border-radius:999px; background:#fff;
@@ -1850,9 +1862,13 @@
             <div><label>날짜</label><input id="csDate" type="date" style="width:100%"></div>
             <div><label>통장</label><select id="csAcct" style="width:100%"></select></div>
             <div><label>구분</label><select id="csDir" style="width:100%" onchange="csDirChange()"><option>입금</option><option>출금</option></select></div>
-            <div><label>분류</label><select id="csCat" style="width:100%"></select></div>
+            <div><label>분류</label><select id="csCat" style="width:100%" onchange="csAcctAuto()"></select></div>
           </div>
           <label>금액 (원)</label><input id="csAmt" type="text" inputmode="numeric" oninput="mFmt(this)" style="width:100%" placeholder="100,000,000">
+          <label>회계 계정 <span class="sub">— 분류를 고르면 자동으로 잡히고, 필요하면 바꾸세요</span></label>
+          <select id="csAcct2" style="width:100%" onchange="csAcctHint()"></select>
+          <div class="sub" id="csAcctHint" style="margin-top:5px"></div>
+
           <label>메모</label><input id="csMemo" style="width:100%" placeholder="예: 투자자 ○○○ 1차 투자금">
 
           <label>증빙 자료 <span class="sub">— 이체확인증·영수증·계약서 사진</span></label>
@@ -1879,6 +1895,14 @@
           <div class="sub" style="margin-bottom:8px">잔고 = 입금 − 출금 + 누적 매출 − 누적 지출 (매출·지출 탭과 자동 연동)</div>
           <div class="table-scroll"><table><thead><tr><th>날짜</th><th>통장</th><th>구분</th><th>분류</th><th>금액</th><th>메모</th><th></th></tr></thead>
           <tbody id="csBody"></tbody></table></div>
+        </div>
+
+        <div class="card">
+          <h2>🏛 회계 계정별 현황 <span class="sub" style="font-weight:400">— 세무사에게 넘길 기준</span></h2>
+          <div class="sub" style="margin-bottom:12px">창업 초기 돈은 대부분 <b>비용이 아니라 자산</b>이에요.
+            인테리어·보증금은 지출이 아니라 자산으로 잡히고, <b>감가상각</b>으로 몇 년에 걸쳐 비용 처리됩니다.
+            투자금은 매출이 아니라 <b>자본금</b>이고요.</div>
+          <div id="bsBox"><div class="sub">불러오는 중...</div></div>
         </div>
       </div>
 
@@ -6067,6 +6091,66 @@ const CS_CATS = { '입금': ['투자금','대출','개인 자금 투입','기타
                   '출금': ['보증금','권리금','인테리어','설비·집기','대출 상환','개인 인출','기타 출금'] };
 function csDirChange(){
   $('csCat').innerHTML = CS_CATS[$('csDir').value].map(c=>'<option>'+c+'</option>').join('');
+  csAcctAuto();
+}
+
+/* ── 회계 계정 (자산·부채·자본) ──────────────────
+   창업 초기 돈은 대부분 비용이 아니라 자산이다.
+   여기서 계정을 같이 남겨두면 나중에 세무 정리할 때 소급할 일이 없다.        */
+let BS_ACCTS = [];
+async function loadBsAccts(){
+  try{ BS_ACCTS = await api('bsList', TOKEN) || []; }catch(e){ BS_ACCTS = []; }
+  csAcctFill();
+  renderBsSummary();
+}
+function csAcctFill(cur){
+  const el = $('csAcct2'); if(!el) return;
+  const v = cur != null ? cur : el.value;
+  let h = '<option value="">— 아직 정하지 않음 —</option>';
+  ['자산','부채','자본'].forEach(sec => {
+    const list = BS_ACCTS.filter(a => a.section === sec);
+    if(!list.length) return;
+    h += '<optgroup label="'+sec+'">'
+       + list.map(a => '<option value="'+a.id+'">'+esc(a.code+' '+a.name)+'</option>').join('')
+       + '</optgroup>';
+  });
+  el.innerHTML = h;
+  el.value = v || '';
+  csAcctHint();
+}
+/* 분류에 맞는 계정을 자동으로 골라준다 */
+function csAcctAuto(){
+  const cat = $('csCat').value;
+  const hit = BS_ACCTS.find(a => (a.cats||[]).includes(cat));
+  if(hit) $('csAcct2').value = hit.id;
+  csAcctHint();
+}
+function csAcctHint(){
+  const el = $('csAcctHint'); if(!el) return;
+  const a = BS_ACCTS.find(x => x.id === $('csAcct2').value);
+  if(!a){ el.innerHTML = '<span style="color:var(--red)">계정을 정해두면 나중에 세무 정리가 쉬워요</span>'; return; }
+  el.innerHTML = '<b>'+esc(a.section)+'</b> · '+esc(a.note||'')
+    + (a.life_years ? ' · <b>'+a.life_years+'년 감가상각</b> 대상' : '');
+}
+/* 계정별 현황 — 자산이 얼마나 쌓였나 */
+function renderBsSummary(){
+  const el = $('bsBox'); if(!el) return;
+  const used = BS_ACCTS.filter(a => +a.cnt > 0);
+  if(!used.length){ el.innerHTML = '<div class="sub">아직 계정이 붙은 기록이 없어요.</div>'; return; }
+  const won = n => Math.abs(Math.round(n)).toLocaleString('ko-KR')+'원';
+  el.innerHTML = ['자산','부채','자본'].map(sec => {
+    const list = used.filter(a => a.section === sec);
+    if(!list.length) return '';
+    const tot = list.reduce((s,a) => s + Math.abs(+a.amount), 0);
+    return '<div class="bssec"><div class="bshd">'+sec+'<span>'+won(tot)+'</span></div>'
+      + list.map(a =>
+          '<div class="bsrow"><span class="c">'+esc(a.code)+'</span>'
+        + '<span class="n">'+esc(a.name)
+        + (a.life_years ? ' <span class="badge a">'+a.life_years+'년 상각</span>' : '')+'</span>'
+        + '<span class="q">'+a.cnt+'건</span>'
+        + '<span class="v">'+won(a.amount)+'</span></div>').join('')
+      + '</div>';
+  }).join('');
 }
 /* 증빙 사진 — null이면 "안 건드림", ''이면 "빼기", 문자열이면 새 사진 */
 let CS_PHOTO = null;
@@ -6145,10 +6229,12 @@ function csReset(){
   $('csId').value=''; $('csDate').value = localDate(); $('csAmt').value=''; $('csMemo').value='';
   $('csDir').value='입금'; csDirChange();
   CS_PHOTO = null; csShowPhoto('');
+  csAcctFill(''); csAcctAuto();
 }
 let ACCTS = [];
 async function loadCash(){
   if(!$('csDate').value) csReset();
+  loadBsAccts();                      // 회계 계정 목록·현황
   try{
     const r = await api('cashList', TOKEN);
     CASH = r.rows; ACCTS = r.accounts || [];
@@ -6190,6 +6276,7 @@ function csEdit(id){
   $('csId').value=x.id; $('csDate').value=x.flow_date; $('csDir').value=x.direction; csDirChange();
   $('csCat').value=x.category; $('csAmt').value=cm(x.amount); $('csMemo').value=x.memo||'';
   $('csAcct').value = x.account_id || '';
+  csAcctFill(x.bs_acct_id || '');
   // 사진은 목록에 안 실려오니 여기서 따로 받아 미리보기에 건다
   CS_PHOTO = null; csShowPhoto('');
   if(x.has_photo){
@@ -6203,7 +6290,9 @@ async function csSave(){
       direction:$('csDir').value, category:$('csCat').value, amount:mVal($('csAmt').value),
       memo:$('csMemo').value.trim(), account_id:$('csAcct').value };
     if(CS_PHOTO !== null) p.photo = CS_PHOTO;   // 안 건드렸으면 아예 안 보낸다
-    await api('cashSave', TOKEN, p);
+    const r = await api('cashSave', TOKEN, p);
+    // 회계 계정은 따로 붙인다 (기존 저장 함수를 안 건드리려고)
+    try{ await api('cashAcctSet', TOKEN, r.id, $('csAcct2').value); }catch(e){}
     toast('기록했어요'); csReset(); await loadCash();
   }catch(e){ alert(e.message); }
 }
