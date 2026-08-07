@@ -265,6 +265,10 @@
   .evbox { margin-top:4px; border:2px dashed var(--line); border-radius:12px; padding:22px 16px;
            text-align:center; cursor:pointer; background:#FAFBFC; }
   .evbox:hover { border-color:var(--brand); background:var(--brand-soft); }
+  /* 파일을 끌고 왔을 때 */
+  .evbox.drop { border-color:var(--brand); border-style:solid; background:var(--brand-soft);
+                box-shadow:0 0 0 4px rgba(242,101,34,.15); }
+  .evbox.drop .evtxt { color:var(--brand-dark); }
   .evbox .evico { font-size:26px; }
   .evbox .evtxt { margin-top:6px; font-size:14.5px; font-weight:700; color:#495057; }
   .evbox .evsub { margin-top:3px; font-size:12.5px; color:var(--sub); }
@@ -1855,8 +1859,8 @@
           <div class="evbox" id="csEvBox" onclick="csPickPhoto()">
             <div id="csEvEmpty">
               <div class="evico">📎</div>
-              <div class="evtxt">눌러서 사진 올리기</div>
-              <div class="evsub">나중에 "이 돈이 뭐였지" 할 때 바로 확인돼요</div>
+              <div class="evtxt">눌러서 올리기 · 끌어다 놓기 · 붙여넣기(Ctrl+V)</div>
+              <div class="evsub">캡쳐한 이체확인증은 <b>Ctrl+V</b>로 바로 붙여넣으면 돼요</div>
             </div>
             <img id="csEvImg" class="hidden" alt="증빙">
           </div>
@@ -6076,18 +6080,53 @@ function csShowPhoto(b64){
 function csPickPhoto(){
   const f = $('csEvFile');
   f.value = '';
-  f.onchange = async () => {
-    const file = f.files && f.files[0]; if(!file) return;
-    try{
-      toast('사진 준비 중...');
-      CS_PHOTO = await shrinkImage(file);
-      csShowPhoto(CS_PHOTO);
-      toast('사진을 붙였어요 — 저장을 눌러야 기록됩니다');
-    }catch(e){ toast(e.message, true); }
-  };
+  f.onchange = () => csTakeFile(f.files && f.files[0]);
   f.click();
 }
 function csClearPhoto(){ CS_PHOTO = ''; csShowPhoto(''); toast('저장을 누르면 사진이 빠져요'); }
+
+/* 파일 하나를 증빙으로 붙인다 (선택·드래그·붙여넣기 공통) */
+async function csTakeFile(file){
+  if(!file) return;
+  if(!/^image\//.test(file.type)){ toast('사진 파일만 올릴 수 있어요', true); return; }
+  try{
+    toast('사진 준비 중...');
+    CS_PHOTO = await shrinkImage(file);
+    csShowPhoto(CS_PHOTO);
+    toast('사진을 붙였어요 — 저장을 눌러야 기록됩니다');
+  }catch(e){ toast(e.message, true); }
+}
+/* 마우스로 끌어다 놓기 + 캡쳐 붙여넣기 */
+(function csDropSetup(){
+  // 상자 밖에 떨어뜨리면 브라우저가 그 파일을 열어버린다 — 그것부터 막는다
+  ['dragover','drop'].forEach(ev =>
+    document.addEventListener(ev, e => { e.preventDefault(); }, false));
+  const box = document.getElementById('csEvBox');
+  if(!box) return;
+  ['dragenter','dragover'].forEach(ev => box.addEventListener(ev, e => {
+    e.preventDefault(); e.stopPropagation(); box.classList.add('drop');
+  }));
+  ['dragleave','drop'].forEach(ev => box.addEventListener(ev, e => {
+    e.preventDefault(); e.stopPropagation(); box.classList.remove('drop');
+  }));
+  box.addEventListener('drop', e => {
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    csTakeFile(f);
+  });
+  // 자금 탭이 열려 있을 때만 붙여넣기를 받는다 (다른 화면에서 오작동하지 않게)
+  document.addEventListener('paste', e => {
+    const t = document.getElementById('tab-cash');
+    if(!t || t.classList.contains('hidden')) return;
+    const items = (e.clipboardData && e.clipboardData.items) || [];
+    for(const it of items){
+      if(it.type && it.type.indexOf('image') === 0){
+        e.preventDefault();
+        csTakeFile(it.getAsFile());
+        return;
+      }
+    }
+  });
+})();
 function csViewPhoto(){
   const src = $('csEvImg').src; if(!src) return;
   IMG_DL_NAME = '증빙_' + ($('csDate').value || localDate()) + '.jpg';
