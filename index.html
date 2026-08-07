@@ -245,6 +245,11 @@
              margin-bottom:14px; }
   .docwrap > .hd { padding:16px 22px; border-bottom:1px solid var(--line); background:#FAFBFC;
                    font-size:12px; font-weight:700; letter-spacing:2px; color:var(--sub); }
+  /* 직책 탭 홀/주방 고르기 */
+  .deptbar { display:flex; gap:7px; margin-bottom:14px; flex-wrap:wrap; }
+  .deptb { padding:10px 18px; border:1px solid var(--line); border-radius:999px; background:#fff;
+           font-size:14.5px; font-weight:700; font-family:inherit; color:#495057; cursor:pointer; }
+  .deptb.on { background:var(--ink); border-color:var(--ink); color:#fff; }
   /* 근무표 부서 구분줄 */
   #shBody tr.deptrow td { background:#F1F3F5; font-size:14.5px; font-weight:800;
                           border-top:2px solid var(--ink); padding-top:10px; padding-bottom:10px; }
@@ -1088,6 +1093,27 @@
         </div>
 
 
+        <div class="deptbar">
+          <button class="deptb on" data-d="all"  onclick="posDept('all',this)">전체</button>
+          <button class="deptb"    data-d="홀"   onclick="posDept('홀',this)">🍽️ 홀</button>
+          <button class="deptb"    data-d="주방" onclick="posDept('주방',this)">👨‍🍳 주방</button>
+        </div>
+
+        <div id="posCommon"></div>
+
+        <div id="posHallWrap">
+          <div style="margin-bottom:6px; font-size:12px; font-weight:700; letter-spacing:2px; color:var(--sub)">HALL · 홀</div>
+          <div id="posHall"></div>
+        </div>
+
+        <div id="posKitWrap">
+          <div style="margin:22px 0 6px; font-size:12px; font-weight:700; letter-spacing:2px; color:var(--sub)">KITCHEN · 주방</div>
+          <div id="posKit"></div>
+        </div>
+      </div>
+
+      <!-- 매뉴얼 읽음 현황 -->
+      <div id="tab-mread" class="hidden">
         <div class="card">
           <h2>📖 매뉴얼 읽음 현황
             <button class="btn sm ghost" style="margin-left:auto" onclick="loadReadStatus()">↻ 새로고침</button></h2>
@@ -1095,14 +1121,6 @@
             문서를 고치면 그 문서만 다시 <b>안 읽음</b>이 되니, 교육 이수 근거로 남길 수 있어요.</div>
           <div id="mrBox" style="margin-top:12px"><div class="sub">불러오는 중...</div></div>
         </div>
-
-        <div id="posCommon"></div>
-
-        <div style="margin-bottom:6px; font-size:12px; font-weight:700; letter-spacing:2px; color:var(--sub)">HALL · 홀</div>
-        <div id="posHall"></div>
-
-        <div style="margin:22px 0 6px; font-size:12px; font-weight:700; letter-spacing:2px; color:var(--sub)">KITCHEN · 주방</div>
-        <div id="posKit"></div>
       </div>
 
       <!-- 근로계약서 · 원산지 -->
@@ -2361,7 +2379,8 @@ document.addEventListener('keydown', e => {
 //   owner:true 인 서브탭은 사장에게만 보인다 (인건비·손익 같은 민감한 것)
 const TAB_MERGE = {
   staffg:{ title:'직원', icon:'👥', subs:[
-           {id:'staff', name:'👥 직원'}, {id:'pos', name:'🎖️ 직책'}] },
+           {id:'staff', name:'👥 직원'}, {id:'pos', name:'🎖️ 직책'},
+           {id:'mread', name:'📖 매뉴얼 읽음'}] },
   work:  { title:'근무·근태', icon:'🗓️', subs:[
            {id:'shift', name:'📅 근무표'}, {id:'att', name:'⏱️ 근태'},
            {id:'labor', name:'💸 인건비표', owner:true}, {id:'wage', name:'🧮 급여 계산기'}] },
@@ -2489,6 +2508,7 @@ function loadForTab(name){
   if(name==='pnl') loadPnl();
   if(name==='book') loadBook();
   if(name==='pos') loadPos();
+  if(name==='mread') loadReadStatus();
   if(name==='wage') wcInit();
   if(name==='kakao') loadKakao();
   if(name==='legal') loadLegal();
@@ -4266,7 +4286,6 @@ async function loadPos(){
     ]);
     POS_DOCS = docs || [];
     renderCommonDocs();
-    loadReadStatus();
     renderPos('posHall', rows.filter(p => p.dept === '홀'));
     renderPos('posKit',  rows.filter(p => p.dept === '주방'));
   }catch(e){
@@ -4469,6 +4488,14 @@ async function wcSaveMin(){
   try{ await api('minWageSave', TOKEN, v); MIN_WAGE = v;
        toast('최저임금을 저장했어요 — 근로계약서 점검에도 함께 쓰입니다'); wcCalc(); }
   catch(e){ toast(e.message, true); }
+}
+
+/* 직책 탭 안에서 홀/주방만 골라 보기 */
+function posDept(d, btn){
+  document.querySelectorAll('.deptb').forEach(b => b.classList.toggle('on', b === btn));
+  const hw = $('posHallWrap'), kw = $('posKitWrap');
+  if(hw) hw.classList.toggle('hidden', d === '주방');
+  if(kw) kw.classList.toggle('hidden', d === '홀');
 }
 
 /* 매뉴얼 읽음 현황 — 누가 어디까지 읽었나 */
