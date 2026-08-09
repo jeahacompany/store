@@ -214,9 +214,10 @@ a.link{color:var(--brand); text-decoration:none; font-size:13.5px; cursor:pointe
 
       <label>연락처</label><input id="suPhone" type="tel" inputmode="numeric" maxlength="13" enterkeyhint="next">
 
-      <label>생년월일 6자리</label>
-      <input id="suBirth6" type="tel" inputmode="numeric" maxlength="6" placeholder="910830" enterkeyhint="next">
-      <div class="hint" id="suBirthHint">앞 6자리만 적어주세요 (예: 1991년 8월 30일 → 910830)</div>
+      <label>주민등록번호</label>
+      <input id="suRrn" type="tel" inputmode="numeric" maxlength="14" placeholder="910830-1234567" enterkeyhint="next">
+      <div class="hint" id="suBirthHint">근로계약서·4대보험 신고에 필요해요.
+        <b>암호화해서 보관</b>하고 사장님만 볼 수 있습니다.</div>
 
       <label>주소</label>
       <div class="addrrow">
@@ -495,25 +496,35 @@ document.addEventListener('click', e => {
   }
 });
 
-/* 생년월일 6자리 → 날짜 (앞 2자리가 올해 이하면 2000년대) */
-function suBirthDate(){
-  const v = String($('suBirth6').value).replace(/[^0-9]/g,'');
-  if(v.length !== 6) return null;
-  const yy=+v.slice(0,2), mm=+v.slice(2,4), dd=+v.slice(4,6);
-  if(mm<1||mm>12||dd<1||dd>31) return null;
-  const cut = new Date().getFullYear() % 100;
-  const year = yy <= cut ? 2000+yy : 1900+yy;
+/* 주민등록번호 → 생년월일·성별
+   뒷자리 첫 숫자로 세기를 정확히 안다: 1·2·5·6 = 1900년대, 3·4·7·8 = 2000년대 */
+function suRrnInfo(){
+  const v = String($('suRrn').value).replace(/[^0-9]/g,'');
+  if(v.length !== 13) return null;
+  const yy=+v.slice(0,2), mm=+v.slice(2,4), dd=+v.slice(4,6), g=v[6];
+  if(mm<1||mm>12||dd<1||dd>31 || !'1234567890'.includes(g)) return null;
+  const year = '3478'.includes(g) ? 2000+yy : 1900+yy;
   const d = new Date(year, mm-1, dd);
   if(d.getDate() !== dd) return null;
-  return { ymd: year+'-'+String(mm).padStart(2,'0')+'-'+String(dd).padStart(2,'0'),
-           label: year+'년 '+mm+'월 '+dd+'일' };
+  const age = new Date().getFullYear() - year;
+  return { digits:v, label: year+'년 '+mm+'월 '+dd+'일',
+           sex: '13579'.includes(g) ? '남' : '여', age };
 }
-$('suBirth6').addEventListener('input', e => {
-  e.target.value = e.target.value.replace(/[^0-9]/g,'').slice(0,6);
-  const b = suBirthDate(), h = $('suBirthHint');
-  if(b){ h.innerHTML = '🎂 <b>'+b.label+'</b>'; h.style.color='var(--green)'; }
-  else if(e.target.value.length === 6){ h.textContent='날짜를 다시 확인해주세요'; h.style.color='var(--red)'; }
-  else { h.textContent='앞 6자리만 적어주세요 (예: 1991년 8월 30일 → 910830)'; h.style.color=''; }
+$('suRrn').addEventListener('input', e => {
+  let v = e.target.value.replace(/[^0-9]/g,'').slice(0,13);
+  e.target.value = v.length > 6 ? v.slice(0,6)+'-'+v.slice(6) : v;
+  const r = suRrnInfo(), h = $('suBirthHint');
+  if(r){
+    h.innerHTML = '🎂 <b>'+r.label+'</b> · '+r.sex+' · 만 '+r.age+'세쯤';
+    h.style.color = 'var(--green)';
+    if(r.age < 15) h.innerHTML += '<br><span style="color:var(--red)">15세 미만은 고용노동부 취직인허증이 필요해요</span>';
+    else if(r.age < 18) h.innerHTML += '<br><span style="color:#E8590C">18세 미만은 가족관계증명서·친권자 동의서가 필요해요</span>';
+  }else if(v.length === 13){
+    h.textContent = '주민등록번호를 다시 확인해주세요'; h.style.color = 'var(--red)';
+  }else{
+    h.innerHTML = '근로계약서·4대보험 신고에 필요해요. <b>암호화해서 보관</b>하고 사장님만 볼 수 있습니다.';
+    h.style.color = '';
+  }
 });
 /* 연락처 자동 하이픈 — 010은 미리 넣어둔다 */
 (function(){
@@ -555,14 +566,16 @@ async function doSignup(){
   const name = $('suName').value.trim();
   if(!name){ $('suErr').textContent='이름을 입력해주세요.'; $('suName').focus(); return; }
   if($('suPw').value.length < 4){ $('suErr').textContent='비밀번호는 4자 이상으로 해주세요.'; $('suPw').focus(); return; }
-  const b = suBirthDate();
-  if($('suBirth6').value && !b){ $('suErr').textContent='생년월일을 다시 확인해주세요.'; $('suBirth6').focus(); return; }
+  const r0 = suRrnInfo();
+  if($('suRrn').value.replace(/[^0-9]/g,'') && !r0){
+    $('suErr').textContent='주민등록번호를 다시 확인해주세요.'; $('suRrn').focus(); return; }
   const addr = [$('suAddr').value.trim(), $('suAddr2').value.trim()].filter(Boolean).join(' ');
   try{
     // 아이디는 따로 안 보낸다 — 서버가 이름을 아이디로 쓴다
+    // 생년월일도 서버가 주민번호에서 뽑는다
     const r = await api('signup', '', '', $('suPw').value, {
       name, phone: $('suPhone').value.trim(),
-      birth: b ? b.ymd : '', address: addr,
+      rrn: r0 ? r0.digits : '', address: addr,
       bank_name: $('suBank').value.trim(), bank_acct: $('suAcct').value.trim(),
       bank_holder: $('suHolder').value.trim()
     });
