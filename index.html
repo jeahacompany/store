@@ -261,6 +261,35 @@
   .bsrow .q { flex:none; font-size:12.5px; color:var(--sub); }
   .bsrow .v { flex:none; min-width:110px; text-align:right; font-weight:800;
               font-variant-numeric:tabular-nums; }
+  /* ── 구매 URL ── */
+  .buysum { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
+  .buysum .bs { flex:1; min-width:150px; background:#fff; border:1px solid var(--line);
+                border-radius:12px; padding:13px 15px; }
+  .buysum .bs span { display:block; font-size:12.5px; color:var(--sub); }
+  .buysum .bs span i { font-style:normal; font-size:11px; }
+  .buysum .bs b { display:block; font-size:21px; font-weight:800; margin-top:3px;
+                  font-variant-numeric:tabular-nums; letter-spacing:-.5px; }
+  .buysum .bs.hi { background:var(--ink); border-color:var(--ink); }
+  .buysum .bs.hi span { color:#AEB4C0; } .buysum .bs.hi b { color:#FF922B; }
+  .buyrow { display:flex; gap:12px; align-items:flex-start; padding:13px 0;
+            border-bottom:1px solid #F1F3F5; }
+  .buyrow:last-child { border-bottom:none; }
+  .buyrow .g { flex:none; width:58px; }
+  .buyrow .n { flex:1; min-width:0; font-size:15.5px; }
+  .buyrow .n .m { font-size:13.5px; color:#5C636A; margin-top:3px; line-height:1.6; }
+  .buyrow .n .v { font-size:12.5px; color:var(--sub); margin-top:3px; }
+  .buyrow .p { flex:none; text-align:right; font-weight:800; font-variant-numeric:tabular-nums;
+               min-width:100px; }
+  .buyrow .a { flex:none; display:flex; gap:5px; align-items:flex-start; flex-wrap:wrap; }
+  .buyrow .a .btn { text-decoration:none; }
+  .gradebar { display:flex; gap:6px; margin-top:4px; }
+  .gb { flex:1; padding:11px 0; border:1px solid var(--line); border-radius:10px; background:#fff;
+        font-size:14.5px; font-weight:700; font-family:inherit; color:#495057; cursor:pointer; }
+  .gb.on { background:var(--brand); border-color:var(--brand); color:#fff; }
+  @media (max-width:720px){
+    .buyrow { flex-wrap:wrap; }
+    .buyrow .p { min-width:0; text-align:left; }
+  }
   /* 직책 탭 홀/주방 고르기 */
   .deptbar { display:flex; gap:7px; margin-bottom:14px; flex-wrap:wrap; }
   .deptb { padding:10px 18px; border:1px solid var(--line); border-radius:999px; background:#fff;
@@ -1401,6 +1430,60 @@
         </div>
       </div></div>
 
+      <!-- 구매 URL -->
+      <div id="tab-buylink" class="hidden">
+        <div class="card" style="border-color:#FFD8A8; background:#FFFDF8">
+          <h2>🛒 구매 URL <span class="sub" style="font-weight:400">— 뭘 어디서 얼마에 샀는지</span>
+            <button class="btn sm" style="margin-left:auto" onclick="buyEdit()">+ 품목 추가</button></h2>
+          <div class="sub">지금 사면서 기록해두면 <b>2호점 낼 때 이 목록이 그대로 오픈 세트</b>가 돼요.
+            "여기서 이거 사세요"를 링크로 넘길 수 있고, 초기 비용이 얼마인지도 숫자로 나옵니다.
+            <b>비추천도 남겨두세요</b> — 실패한 구매를 안 반복하는 게 더 큰 자산이에요.</div>
+          <div class="buysum" id="buySum"></div>
+        </div>
+
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px" id="buyFilter"></div>
+        <div id="buyBox"><div class="sub">불러오는 중...</div></div>
+      </div>
+
+      <!-- 구매 URL 모달 -->
+      <div id="buyModal" class="modal-bg hidden"><div class="modal" style="max-width:620px">
+        <h2 id="buyMTitle">구매 품목</h2>
+        <input type="hidden" id="byId">
+        <div class="grid2">
+          <div><label>분류</label><select id="byCat" style="width:100%"></select></div>
+          <div><label>품목 이름 *</label><input id="byName" style="width:100%" placeholder="예: 인덕션 2구"></div>
+        </div>
+        <label>구매 링크</label>
+        <input id="byUrl" style="width:100%" placeholder="https://... (없으면 비워두세요)">
+        <div class="grid2">
+          <div><label>구매처</label><input id="byVendor" style="width:100%" placeholder="쿠팡 / 을지로 ○○상회"></div>
+          <div><label>구매일</label><input id="byDate" type="date" style="width:100%"></div>
+          <div><label>개당 가격 (원)</label>
+            <input id="byPrice" type="text" inputmode="numeric" style="width:100%" oninput="mFmt(this); byCalc()"></div>
+          <div><label>수량</label>
+            <input id="byQty" type="number" min="1" style="width:100%" value="1" oninput="byCalc()"></div>
+        </div>
+        <div class="sub" id="byTotal" style="margin-top:6px"></div>
+
+        <label>2호점에 줄 때 <span class="sub">— 프차 오픈 세트를 뽑을 기준</span></label>
+        <div class="gradebar">
+          <button type="button" class="gb" data-g="필수"   onclick="byGrade('필수',this)">필수</button>
+          <button type="button" class="gb on" data-g="추천" onclick="byGrade('추천',this)">추천</button>
+          <button type="button" class="gb" data-g="선택"   onclick="byGrade('선택',this)">선택</button>
+          <button type="button" class="gb" data-g="비추천" onclick="byGrade('비추천',this)">비추천</button>
+        </div>
+        <input type="hidden" id="byGradeV" value="추천">
+
+        <label>메모 <span class="sub">— 모델명·사이즈·주의사항</span></label>
+        <textarea id="byMemo" rows="3" style="width:100%" placeholder="예: 3.5kW 이상이어야 육수가 빨리 끓음"></textarea>
+
+        <div style="margin-top:14px">
+          <button class="btn" onclick="buySave()">저장</button>
+          <button class="btn red ghost" id="byDelBtn" onclick="buyDel()">삭제</button>
+          <button class="btn ghost" onclick="closeModal('buyModal')">닫기</button>
+        </div>
+      </div></div>
+
       <!-- 문서(매뉴얼) 모달 -->
       <div id="dcModal" class="modal-bg hidden"><div class="modal" style="max-width:660px">
         <h2 id="dcMTitle">문서 수정</h2>
@@ -2302,7 +2385,7 @@ let ME = null, STAFF = [], ATT = [], WAGES = null, TASKS = [];
 // 개별 탭은 전부 묶음(TAB_MERGE) 안으로 들어가서, 여기엔 묶음 이름과 단독 탭만 둔다
 const TABS = ['today','ai','cal','bar','cash','staffg','work','jobs','money','buy','acct','guest','docs','sys'];
 const TITLES = {today:'오늘', ai:'AI 비서', cal:'캘린더', staff:'직원', pos:'직책', shift:'근무표', att:'근태', staffg:'직원', work:'근무·근태', jobs:'오더·업무', money:'매출·지출', buy:'매입·재고',
-  acct:'정산', guest:'고객', docs:'매뉴얼·정보', sys:'설정',
+  acct:'정산', guest:'고객', docs:'매뉴얼·정보', sys:'설정', buylink:'구매 URL',
   labor:'인건비표', wage:'급여 계산기', kakao:'알림톡', tasks:'오더', board:'업무보드',
   manual:'매뉴얼', info:'매장정보', cust:'고객·포인트', cash:'자금', sales:'매출', dep:'입금', exp:'지출', pnl:'오늘 정산', book:'손익계산서', legal:'원산지 표시판', settle:'월 정산', inb:'입고 명세서', bar:'셀프바', vendor:'거래처', stock:'재고', price:'단가 변동', links:'연결 주소', logs:'시스템 로그', setup:'설정'};
 // 직책 — DB(store.positions)에서 읽어온다. 직책 탭에서 고치면 여기도 같이 바뀜
@@ -2444,7 +2527,8 @@ const TAB_MERGE = {
            {id:'sales', name:'💰 매출'}, {id:'exp', name:'🧾 지출'}, {id:'dep', name:'📥 입금'}] },
   buy:   { title:'매입·재고', icon:'📦', subs:[
            {id:'inb', name:'📦 입고 명세서'}, {id:'stock', name:'🗃️ 재고'},
-           {id:'price', name:'💹 단가 변동'}, {id:'vendor', name:'🤝 거래처'}] },
+           {id:'price', name:'💹 단가 변동'}, {id:'vendor', name:'🤝 거래처'},
+           {id:'buylink', name:'🛒 구매 URL'}] },
   acct:  { title:'정산', icon:'📒', subs:[
            {id:'pnl', name:'🧮 오늘 정산', owner:true}, {id:'settle', name:'📊 월 정산'},
            {id:'book', name:'📒 손익계산서', owner:true}] },
@@ -2563,6 +2647,7 @@ function loadForTab(name){
   if(name==='book') loadBook();
   if(name==='pos') loadPos();
   if(name==='mread') loadReadStatus();
+  if(name==='buylink') loadBuy();
   if(name==='wage') wcInit();
   if(name==='kakao') loadKakao();
   if(name==='legal') loadLegal();
@@ -4583,6 +4668,120 @@ async function wcSaveMin(){
   if(v < 1000){ toast('최저임금을 정확히 넣어주세요', true); return; }
   try{ await api('minWageSave', TOKEN, v); MIN_WAGE = v;
        toast('최저임금을 저장했어요 — 근로계약서 점검에도 함께 쓰입니다'); wcCalc(); }
+  catch(e){ toast(e.message, true); }
+}
+
+/* ── 구매 URL ────────────────────────────────────
+   지금 사면서 남겨두면 2호점 낼 때 이 목록이 그대로 오픈 세트가 된다.        */
+const BUY_CATS = ['주방기기','홀 집기','인테리어','냉장·냉동','식기·조리도구',
+                  '소모품','유니폼','포장·비품','간판·사인','IT·POS','기타'];
+const BUY_GRADE = { '필수':'r', '추천':'g', '선택':'', '비추천':'a' };
+let BUY = [], BUY_FILTER = '전체';
+
+async function loadBuy(){
+  const box = $('buyBox'); if(!box) return;
+  try{
+    const r = await api('buyList', TOKEN);
+    BUY = r.rows || [];
+    const won = n => (+n||0).toLocaleString('ko-KR')+'원';
+    $('buySum').innerHTML =
+        '<div class="bs"><span>등록 품목</span><b>'+r.cnt+'개</b></div>'
+      + '<div class="bs"><span>내가 쓴 돈</span><b>'+won(r.sum)+'</b></div>'
+      + '<div class="bs hi"><span>2호점 오픈 세트 <i>필수+추천</i></span><b>'+won(r.openSum)+'</b></div>';
+    renderBuyFilter();
+    renderBuy();
+  }catch(e){ box.innerHTML = '<div class="card"><div class="sub" style="color:var(--red)">'+esc(e.message)+'</div></div>'; }
+}
+function renderBuyFilter(){
+  const cats = ['전체', ...new Set(BUY.map(b => b.category))];
+  $('buyFilter').innerHTML = cats.map(c =>
+    '<button class="btn sm'+(c===BUY_FILTER?'':' ghost')+'" onclick="buyFilterSet(\''+esc(c)+'\')">'
+    + esc(c) + (c==='전체' ? '' : ' <b>'+BUY.filter(b=>b.category===c).length+'</b>') + '</button>').join('');
+}
+function buyFilterSet(c){ BUY_FILTER = c; renderBuyFilter(); renderBuy(); }
+function renderBuy(){
+  const list = BUY_FILTER === '전체' ? BUY : BUY.filter(b => b.category === BUY_FILTER);
+  if(!list.length){
+    $('buyBox').innerHTML = '<div class="card"><div class="sub">아직 없어요. '
+      + '위 [+ 품목 추가]로 사면서 하나씩 넣어두세요.</div></div>';
+    return;
+  }
+  const won = n => (+n||0).toLocaleString('ko-KR');
+  const cats = [...new Set(list.map(b => b.category))];
+  $('buyBox').innerHTML = cats.map(c => {
+    const rows = list.filter(b => b.category === c);
+    const sum = rows.reduce((a,b) => a + (+b.total||0), 0);
+    return '<div class="card"><h2>'+esc(c)
+      + ' <span class="sub" style="font-weight:400">'+rows.length+'개 · '+won(sum)+'원</span></h2>'
+      + rows.map(b =>
+          '<div class="buyrow">'
+        + '<div class="g"><span class="badge '+(BUY_GRADE[b.grade]||'')+'">'+esc(b.grade)+'</span></div>'
+        + '<div class="n"><b>'+esc(b.name)+'</b>'
+        +   (b.qty > 1 ? ' <span class="sub">×'+b.qty+'</span>' : '')
+        +   (b.memo ? '<div class="m">'+esc(b.memo)+'</div>' : '')
+        +   '<div class="v">'+esc(b.vendor||'')+(b.bought_at ? ' · '+esc(b.bought_at) : '')+'</div></div>'
+        + '<div class="p">'+won(b.total)+'원'
+        +   (b.qty > 1 ? '<div class="sub">개당 '+won(b.price)+'</div>' : '')+'</div>'
+        + '<div class="a">'
+        +   (b.url ? '<a class="btn sm" href="'+esc(b.url)+'" target="_blank" rel="noopener">🔗 열기</a>'
+                   + '<button class="btn sm ghost" onclick="buyCopy(\''+b.id+'\')">복사</button>' : '')
+        +   '<button class="btn sm ghost" onclick="buyEdit(\''+b.id+'\')">수정</button>'
+        + '</div></div>').join('')
+      + '</div>';
+  }).join('');
+}
+function buyCopy(id){
+  const b = BUY.find(x => x.id === id); if(!b) return;
+  navigator.clipboard.writeText(b.url)
+    .then(() => toast('링크를 복사했어요')).catch(() => toast('복사에 실패했어요', true));
+}
+function byGrade(g, btn){
+  $('byGradeV').value = g;
+  document.querySelectorAll('.gb').forEach(b => b.classList.toggle('on', b === btn));
+}
+function byCalc(){
+  const p = +String($('byPrice').value).replace(/[^\d]/g,'') || 0;
+  const q = Math.max(1, +$('byQty').value || 1);
+  $('byTotal').innerHTML = p ? '합계 <b>'+(p*q).toLocaleString('ko-KR')+'원</b>' : '';
+}
+function buyEdit(id){
+  const b = BUY.find(x => x.id === id) || {};
+  $('buyMTitle').textContent = id ? '구매 품목 수정' : '구매 품목 추가';
+  $('byId').value = id || '';
+  $('byCat').innerHTML = BUY_CATS.map(c => '<option>'+c+'</option>').join('');
+  $('byCat').value    = b.category || (BUY_FILTER !== '전체' ? BUY_FILTER : '주방기기');
+  $('byName').value   = b.name || '';
+  $('byUrl').value    = b.url || '';
+  $('byVendor').value = b.vendor || '';
+  $('byDate').value   = b.bought_at || localDate();
+  $('byPrice').value  = b.price ? (+b.price).toLocaleString('ko-KR') : '';
+  $('byQty').value    = b.qty || 1;
+  $('byMemo').value   = b.memo || '';
+  byGrade(b.grade || '추천', document.querySelector('.gb[data-g="'+(b.grade||'추천')+'"]'));
+  byCalc();
+  $('byDelBtn').style.display = id ? '' : 'none';
+  $('buyModal').classList.remove('hidden');
+  setTimeout(() => $('byName').focus(), 80);
+}
+async function buySave(){
+  const name = $('byName').value.trim();
+  if(!name){ toast('품목 이름을 적어주세요', true); $('byName').focus(); return; }
+  try{
+    await api('buySave', TOKEN, {
+      id: $('byId').value, category: $('byCat').value, name,
+      url: $('byUrl').value.trim(), vendor: $('byVendor').value.trim(),
+      price: +String($('byPrice').value).replace(/[^\d]/g,'') || 0,
+      qty: Math.max(1, +$('byQty').value || 1),
+      bought_at: $('byDate').value, grade: $('byGradeV').value,
+      memo: $('byMemo').value.trim()
+    });
+    closeModal('buyModal'); toast('저장했어요'); loadBuy();
+  }catch(e){ toast(e.message, true); }
+}
+async function buyDel(){
+  const b = BUY.find(x => x.id === $('byId').value);
+  if(!confirm('"'+(b ? b.name : '이 품목')+'"을 목록에서 지울까요?')) return;
+  try{ await api('buyDelete', TOKEN, $('byId').value); closeModal('buyModal'); toast('삭제했어요'); loadBuy(); }
   catch(e){ toast(e.message, true); }
 }
 
