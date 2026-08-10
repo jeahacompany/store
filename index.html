@@ -245,6 +245,10 @@
              margin-bottom:14px; }
   .docwrap > .hd { padding:16px 22px; border-bottom:1px solid var(--line); background:#FAFBFC;
                    font-size:12px; font-weight:700; letter-spacing:2px; color:var(--sub); }
+  /* 문서 수정·삭제·추가 */
+  .doc .docact { padding:0 22px 16px 50px; display:flex; gap:6px; }
+  .docadd { padding:12px 22px; border-top:1px dashed var(--line); background:#FAFBFC; }
+  .docadd .btn { width:100%; border-style:dashed; }
   /* 회계 계정별 현황 */
   .bssec { border:1px solid var(--line); border-radius:12px; margin-bottom:10px; overflow:hidden; }
   .bshd { display:flex; justify-content:space-between; padding:11px 15px; background:var(--ink); color:#fff;
@@ -1394,6 +1398,28 @@
         <div style="margin-top:14px">
           <button class="btn" onclick="ogSave()">저장</button>
           <button class="btn red ghost" id="ogDel" onclick="ogDelete()">삭제</button>
+        </div>
+      </div></div>
+
+      <!-- 문서(매뉴얼) 모달 -->
+      <div id="dcModal" class="modal-bg hidden"><div class="modal" style="max-width:660px">
+        <h2 id="dcMTitle">문서 수정</h2>
+        <div class="sub">누가 보나요 — <b id="dcWho">전 직원 공통</b></div>
+        <input type="hidden" id="dcId">
+        <label>보여줄 대상</label>
+        <select id="dcPos" style="width:100%" onchange="$('dcWho').textContent = this.value || '전 직원 공통'">
+          <option value="">전 직원 공통</option>
+        </select>
+        <label>제목 *</label>
+        <input id="dcTitle" style="width:100%" placeholder="예: 순창담 3초 확인 규칙">
+        <label>내용 * <span class="sub">— 줄바꿈 그대로 보입니다</span></label>
+        <textarea id="dcBody" rows="16" style="width:100%; font-family:inherit; line-height:1.8"></textarea>
+        <div class="sub" style="margin-top:8px; background:#FFF9DB; border-radius:8px; padding:10px">
+          💡 문서를 고치면 그 문서만 <b>다시 '안 읽음'</b>이 돼요. 바뀐 내용을 직원이 다시 확인하게 됩니다.
+        </div>
+        <div style="margin-top:14px">
+          <button class="btn" onclick="docSave()">저장</button>
+          <button class="btn ghost" onclick="closeModal('dcModal')">닫기</button>
         </div>
       </div></div>
 
@@ -4321,11 +4347,54 @@ async function loadPos(){
   }
 }
 // 원문 문서를 토글로 — 내용은 한 글자도 줄이지 않는다
-function docToggles(list, openFirst){
-  if(!list.length) return '';
-  return '<div class="posdocs">' + list.map((d, i) =>
+function docToggles(list, openFirst, pos){
+  const rows = list.map((d, i) =>
       '<details class="doc"'+(openFirst && i === 0 ? ' open' : '')+'><summary>'+esc(d.title)+'</summary>'
-    + '<div class="bd">'+esc(d.body)+'</div></details>').join('') + '</div>';
+    + '<div class="bd">'+esc(d.body)+'</div>'
+    + '<div class="docact">'
+    +   '<button class="btn sm ghost" onclick="docEdit(\''+d.id+'\')">✏️ 수정</button>'
+    +   '<button class="btn sm ghost" style="color:var(--red)" onclick="docDel(\''+d.id+'\')">삭제</button>'
+    + '</div></details>').join('');
+  // 문서가 없어도 추가 버튼은 보이게
+  return '<div class="posdocs">' + rows
+    + '<div class="docadd"><button class="btn sm ghost" onclick="docEdit(\'\',\''+esc(pos||'')+'\')">'
+    + '＋ 문서 추가</button></div></div>';
+}
+/* 문서 수정·추가 — 직책 화면에서 보면서 바로 고친다 */
+function docEdit(id, pos){
+  const d = POS_DOCS.find(x => x.id === id) || {};
+  // 대상 목록을 직급 마스터로 채운다
+  $('dcPos').innerHTML = '<option value="">전 직원 공통</option>'
+    + ['홀','주방'].map(sec => {
+        const list = POS_ROWS.filter(p => p.dept === sec);
+        return list.length ? '<optgroup label="'+esc(sec)+'">'
+          + list.map(p => '<option value="'+esc(p.name)+'">'+esc(p.name)+'</option>').join('')
+          + '</optgroup>' : '';
+      }).join('');
+  $('dcId').value    = id || '';
+  $('dcPos').value   = id ? (d.position || '') : (pos || '');
+  $('dcTitle').value = d.title || '';
+  $('dcBody').value  = d.body || '';
+  $('dcMTitle').textContent = id ? '문서 수정' : '문서 추가';
+  $('dcWho').textContent = ($('dcPos').value || '전 직원 공통');
+  $('dcModal').classList.remove('hidden');
+  setTimeout(() => $('dcTitle').focus(), 80);
+}
+async function docSave(){
+  const t = $('dcTitle').value.trim();
+  if(!t){ toast('제목을 적어주세요', true); $('dcTitle').focus(); return; }
+  if(!$('dcBody').value.trim()){ toast('내용을 적어주세요', true); $('dcBody').focus(); return; }
+  try{
+    await api('manualSave', TOKEN, { id:$('dcId').value, title:t,
+      position:$('dcPos').value.trim(), body:$('dcBody').value });
+    closeModal('dcModal'); toast('저장했어요'); loadPos();
+  }catch(e){ toast(e.message, true); }
+}
+async function docDel(id){
+  const d = POS_DOCS.find(x => x.id === id);
+  if(!confirm('「'+(d ? d.title : '이 문서')+'」를 삭제할까요?\n\n직원앱에서도 사라집니다.')) return;
+  try{ await api('manualDelete', TOKEN, id); toast('삭제했어요'); loadPos(); }
+  catch(e){ toast(e.message, true); }
 }
 // 전 직원 공통 문서 (position === '') — '우리의 미션'은 맨 위 배너에 펼쳐서 보여준다
 function renderCommonDocs(){
@@ -4335,9 +4404,8 @@ function renderCommonDocs(){
   const rest = all.filter(d => d !== hero);
   $('posHeroMs').textContent = hero ? hero.body : '';
   // 맨 앞 문서(브랜드 스토리)는 펼친 채로 둔다
-  el.innerHTML = rest.length
-    ? '<div class="docwrap"><div class="hd">ALL STAFF · 전 직원 공통</div>'+docToggles(rest, true)+'</div>'
-    : '';
+  el.innerHTML = '<div class="docwrap"><div class="hd">ALL STAFF · 전 직원 공통</div>'
+               + docToggles(rest, true, '') + '</div>';
 }
 /* ── 카카오 알림톡 템플릿 ───────────────────────── */
 let KK = [];
@@ -4589,7 +4657,7 @@ function renderPos(elId, rows){
     +     '<span class="pay">'+esc(p.pay_note || '')+'</span>'
     +     '<button class="btn sm ghost" onclick="posEdit(\''+p.id+'\')">수정</button>'
     +   '</div>'
-    +   docToggles(POS_DOCS.filter(d => d.position === p.name))
+    +   docToggles(POS_DOCS.filter(d => d.position === p.name), false, p.name)
     + '</div>'
   ).join('');
 }
@@ -5589,7 +5657,10 @@ async function loadPnl(){
       '<tr><td><b>'+esc(f.name)+'</b> <span class="sub">'+esc(f.category||'')+'</span></td>'
       + '<td>'+pnMoney(f.monthly)+'</td>'
       + '<td class="sub">'+pnMoney(Math.round((+f.monthly||0)/(p.open_days||30)))+'</td>'
-      + '<td><button class="btn sm ghost" onclick=\'openFixed('+JSON.stringify(f).replace(/'/g,"&#39;")+')\'>수정</button></td></tr>'
+      + '<td style="white-space:nowrap">'
+      +   '<button class="btn sm ghost" onclick=\'openFixed('+JSON.stringify(f).replace(/'/g,"&#39;")+')\'>수정</button> '
+      +   '<button class="btn sm ghost" style="color:var(--red)" onclick="fxDelRow(\''+f.id+'\',\''+esc(f.name)+'\')">삭제</button>'
+      + '</td></tr>'
     ).join('') || '<tr><td colspan="4" class="sub">월세·전기 같은 고정비를 넣어주세요</td></tr>';
 
     renderTiming(t);
@@ -5656,6 +5727,12 @@ async function fxDelete(){
   if(!confirm('이 고정비 항목을 삭제할까요?')) return;
   try{ await api('fixedCostDelete', TOKEN, $('fxId').value); closeModal('fixedModal'); loadPnl(); }
   catch(e){ alert(e.message); }
+}
+/* 목록에서 바로 삭제 — 수정 창을 거치지 않게 */
+async function fxDelRow(id, name){
+  if(!confirm('"'+name+'" 고정비를 삭제할까요?\n\n오늘 정산의 하루치 계산에서 빠집니다.')) return;
+  try{ await api('fixedCostDelete', TOKEN, id); toast('삭제했어요'); loadPnl(); }
+  catch(e){ toast(e.message, true); }
 }
 async function saveOpenDays(){
   try{ await api('storeSave', TOKEN, { open_days: +$('pnOpenDays').value || 30 }); loadPnl(); }
