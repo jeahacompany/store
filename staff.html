@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>우리매장 — 직원</title>
+<title>순창담_본점 직원</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
 :root{
@@ -172,6 +172,24 @@ label{display:block; font-size:12px; color:var(--sub); margin:10px 0 4px}
 .toast.show{opacity:.97}
 .err{color:var(--red); font-size:13px; margin-top:8px; min-height:18px}
 /* 입력칸 밑 안내 */
+/* 로그인 첫 화면 — 처음 보는 사람이 "여긴 체계가 있구나" 느끼게 */
+.lghero{background:linear-gradient(150deg,#20242E 0%,#2B3040 100%); color:#fff;
+  border-radius:18px; padding:26px 22px; margin-top:28px}
+.lghero .en{font-size:11.5px; letter-spacing:4px; font-weight:700; color:#FF922B}
+.lghero h1{font-size:25px; font-weight:800; margin-top:8px; letter-spacing:-.5px; color:#fff}
+.lghero h1 span{color:#FF922B}
+.lghero .ms{margin-top:16px; padding-top:14px; border-top:1px solid rgba(255,255,255,.16);
+  font-size:14.5px; line-height:1.85; color:#C8CDD6}
+.lghero .ms b{color:#fff; font-weight:700}
+.lgwhat{font-size:12px; font-weight:700; letter-spacing:2px; color:var(--sub); margin-bottom:12px}
+.lgrow{display:flex; gap:12px; align-items:flex-start; padding:11px 0; border-bottom:1px solid #F1F2F4}
+.lgrow:last-of-type{border-bottom:0}
+.lgrow .i{flex:none; width:34px; height:34px; border-radius:10px; background:var(--brand-soft,#FFF3EC);
+  display:flex; align-items:center; justify-content:center; font-size:17px}
+.lgrow b{display:block; font-size:15.5px; letter-spacing:-.2px}
+.lgrow span{display:block; font-size:13.5px; color:var(--sub); margin-top:3px; line-height:1.6}
+.lgnote{margin-top:14px; padding-top:13px; border-top:1px dashed var(--line);
+  text-align:center; font-size:14px; font-weight:700; color:var(--brand)}
 .hint{font-size:13.5px; color:var(--sub); margin-top:5px; line-height:1.6}
 .hint b{color:var(--brand)}
 /* 우편번호 + 찾기 버튼 */
@@ -189,14 +207,34 @@ a.link{color:var(--brand); text-decoration:none; font-size:13.5px; cursor:pointe
 
   <!-- 로그인 -->
   <div id="loginView" class="hidden">
-    <div class="card" style="margin-top:60px">
-      <h1>우리매장 <b>직원</b></h1>
-      <div class="sub">출퇴근 · 할일 · 매뉴얼 — 매장의 모든 것</div>
-      <label>아이디</label><input id="liUser" autocomplete="username">
-      <label>비밀번호</label><input id="liPw" type="password" autocomplete="current-password">
+    <div class="lghero">
+      <div class="en">SUNCHANGDAM</div>
+      <h1>순창담_본점 <span>직원</span></h1>
+      <div class="ms">순창은 장(醬)의 고장입니다.<br>
+        담근다는 것은 <b>기다린다</b>는 것이고,<br>
+        담는다는 것은 <b>가득 채운다</b>는 것입니다.</div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <label>아이디 <span class="sub">— 이름을 그대로 넣으세요</span></label>
+      <input id="liUser" autocomplete="username" enterkeyhint="next">
+      <label>비밀번호</label><input id="liPw" type="password" autocomplete="current-password" enterkeyhint="done">
       <div class="err" id="liErr"></div>
       <button class="btn" onclick="doLogin()">로그인</button>
       <div class="center" style="margin-top:14px"><a class="link" onclick="show('signupView')">처음이에요 — 직원 가입하기</a></div>
+    </div>
+
+    <div class="card">
+      <div class="lgwhat">여기서 이렇게 일합니다</div>
+      <div class="lgrow"><span class="i">⏱</span><div><b>출퇴근이 기록으로 남습니다</b>
+        <span>휴대폰으로 찍으면 분 단위로 저장돼요. 손으로 적지 않습니다.</span></div></div>
+      <div class="lgrow"><span class="i">💰</span><div><b>급여를 언제든 확인할 수 있습니다</b>
+        <span>일한 시간과 일당이 매일 계산돼요. 월급날 놀랄 일이 없습니다.</span></div></div>
+      <div class="lgrow"><span class="i">📖</span><div><b>배울 것이 문서로 있습니다</b>
+        <span>직급마다 할 일과 올라가는 기준이 숫자로 적혀 있어요.</span></div></div>
+      <div class="lgrow"><span class="i">📝</span><div><b>근로계약서를 같이 씁니다</b>
+        <span>서로 서명하고 사본을 언제든 꺼내 볼 수 있어요.</span></div></div>
+      <div class="lgnote">기록이 남는다는 건 서로를 지킨다는 뜻입니다.</div>
     </div>
   </div>
 
