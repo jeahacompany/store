@@ -261,6 +261,41 @@
   .bsrow .q { flex:none; font-size:12.5px; color:var(--sub); }
   .bsrow .v { flex:none; min-width:110px; text-align:right; font-weight:800;
               font-variant-numeric:tabular-nums; }
+  /* ── 오늘 화면 ── */
+  .tdhero { background:linear-gradient(150deg,#20242E,#2B3040); color:#fff; border-radius:16px;
+            padding:20px 22px; margin-bottom:14px; display:flex; gap:22px; align-items:center;
+            flex-wrap:wrap; }
+  .tdhero .dd { display:flex; align-items:baseline; gap:9px; }
+  .tdhero .dd span { font-size:13px; color:#AEB4C0; }
+  .tdhero .dd b { font-size:32px; font-weight:800; color:#FF922B; letter-spacing:-1px; }
+  .tdhero .dd i { font-style:normal; font-size:12.5px; color:#8A9099; }
+  .tdhero .ev { flex:1; min-width:200px; font-size:14.5px; line-height:1.8;
+                border-left:1px solid rgba(255,255,255,.16); padding-left:20px; }
+  .tdhero .ev span { color:#AEB4C0; font-size:13px; }
+  .tdal { display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:11px;
+          margin-top:8px; cursor:pointer; border:1px solid var(--line); background:#fff; }
+  .tdal:hover { border-color:var(--brand); }
+  .tdal.r { border-color:#FFA8A8; background:#FFF5F5; }
+  .tdal.a { border-color:#FFD8A8; background:#FFF9F2; }
+  .tdal.b { border-color:#A5D8FF; background:#F1F8FF; }
+  .tdal div { flex:1; }
+  .tdal b { display:block; font-size:15px; }
+  .tdal span { display:block; font-size:13px; color:var(--sub); margin-top:2px; }
+  .tdal .go { flex:none; font-size:22px; color:var(--sub); }
+  .tddept { margin-top:12px; }
+  .tddept .hd { font-size:14.5px; font-weight:800; margin-bottom:8px; }
+  .tddept .hd b { color:var(--sub); font-weight:600; font-size:13px; }
+  .tddept .mem { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:8px; }
+  .tddept .m { border:1px solid var(--line); border-left:4px solid #DEE2E6; border-radius:10px;
+               padding:10px 12px; }
+  .tddept .m.g { border-left-color:var(--green); background:#F4FCF5; }
+  .tddept .m.b { border-left-color:var(--blue,#1971C2); background:#F1F8FF; }
+  .tddept .m.r { border-left-color:#DEE2E6; }
+  .tddept .m b { display:block; font-size:15px; }
+  .tddept .m span { display:block; font-size:12px; color:var(--sub); margin-top:1px; }
+  .tddept .m i { display:block; font-style:normal; font-size:12.5px; font-weight:700;
+                 color:#495057; margin-top:4px; }
+  #tdNums .kpi .value small { font-size:13px; font-weight:600; margin-left:2px; color:var(--sub); }
   /* ── 휴지통 ── */
   .trrow { display:flex; gap:12px; align-items:center; padding:12px 0;
            border-bottom:1px solid #F1F3F5; }
@@ -553,6 +588,22 @@
 
       <!-- 오늘 -->
       <div id="tab-today">
+        <!-- 오픈 카운트다운 + 오늘 일정 -->
+        <div id="tdHero" class="tdhero hidden"></div>
+
+        <!-- 챙겨야 할 것 — 놓치면 과태료·사고 -->
+        <div id="tdAlert"></div>
+
+        <!-- 오늘 인력: 홀 / 주방 -->
+        <div class="card">
+          <h2>👥 오늘 인력 <span class="sub" style="font-weight:400" id="tdManSum"></span>
+            <button class="btn sm ghost" style="margin-left:auto" onclick="tab('work')">근무표</button></h2>
+          <div id="tdMan"><div class="sub">불러오는 중...</div></div>
+        </div>
+
+        <!-- 오늘 숫자 -->
+        <div class="cards" id="tdNums"></div>
+
         <div class="cards">
           <div class="kpi"><div class="label">출근</div><div class="value" id="stIn">0</div></div>
           <div class="kpi"><div class="label">근무중</div><div class="value v-green" id="stWork">0</div></div>
@@ -2738,6 +2789,7 @@ function boot(){
 
 /* ---------- 오늘 ---------- */
 async function loadDash(){
+  loadDash2();                    // 강화된 오늘 화면 (인력·경고·숫자)
   try{
     const d = await api('dash', TOKEN);
     $('todayDate').textContent = new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'});
@@ -4708,6 +4760,86 @@ async function wcSaveMin(){
   try{ await api('minWageSave', TOKEN, v); MIN_WAGE = v;
        toast('최저임금을 저장했어요 — 근로계약서 점검에도 함께 쓰입니다'); wcCalc(); }
   catch(e){ toast(e.message, true); }
+}
+
+/* ── 오늘 화면 ───────────────────────────────────
+   아침에 열었을 때 "오늘 뭐가 어떤지"가 한눈에 보여야 한다.
+   인력은 사용자 지시대로 홀·주방으로 나눠서 본다.                            */
+const TD_STATE = { '근무중':'g', '예정':'b', '퇴근':'', '미출근':'r' };
+async function loadDash2(){
+  let d;
+  try{ d = await api('dash2', TOKEN); }catch(e){ return; }
+  const won = n => (+n||0).toLocaleString('ko-KR');
+
+  // ── 오픈까지 + 오늘 일정 ──
+  const hero = $('tdHero');
+  if(d.dday != null || (d.events||[]).length){
+    let h = '';
+    if(d.dday != null){
+      h += d.dday > 0
+        ? '<div class="dd"><span>오픈까지</span><b>D-'+d.dday+'</b><i>'+esc(String(d.open_date))+'</i></div>'
+        : (d.dday === 0 ? '<div class="dd"><span>오늘</span><b>오픈!</b></div>'
+                        : '<div class="dd"><span>오픈</span><b>'+(-d.dday)+'일째</b></div>');
+    }
+    if((d.events||[]).length){
+      h += '<div class="ev">'+d.events.map(e =>
+        '<div>📌 <b>'+esc(e.title)+'</b>'+(e.memo ? ' <span>'+esc(e.memo)+'</span>' : '')+'</div>').join('')+'</div>';
+    }else if(d.nextEvent){
+      h += '<div class="ev"><div>다음 일정 — <b>'+esc(d.nextEvent.title)+'</b> <span>D-'+d.nextEvent.dleft+'</span></div></div>';
+    }
+    hero.innerHTML = h;
+    hero.classList.remove('hidden');
+  }else hero.classList.add('hidden');
+
+  // ── 챙겨야 할 것 ──
+  const al = [];
+  if(d.staffPending) al.push(['r','가입 승인 대기 '+d.staffPending+'명','바로 승인해주세요',"tab('staffg')"]);
+  if(d.noContract)   al.push(['r','근로계약서 없는 직원 '+d.noContract+'명','안 쓰면 500만원 이하 과태료',"tab('staffg')"]);
+  if(d.noDocs)       al.push(['a','보건증 안 낸 직원 '+d.noDocs+'명','식품위생법 위반 — 사장이 과태료',"tab('staffg')"]);
+  if(d.healthSoon)   al.push(['a','보건증 만료 임박 '+d.healthSoon+'명','30일 안에 갱신해야 해요',"tab('staffg')"]);
+  if(d.tasksLate)    al.push(['a','기한 지난 오더 '+d.tasksLate+'건','',"tab('jobs')"]);
+  if(d.leavePending) al.push(['b','휴무 신청 '+d.leavePending+'건','승인을 기다리고 있어요',"tab('work')"]);
+  if(+d.unpaid > 0)  al.push(['b','미결제 입고 '+won(d.unpaid)+'원','',"tab('buy')"]);
+  if(d.soldout)      al.push(['a','품절 '+d.soldout+'건','',"tab('bar')"]);
+  $('tdAlert').innerHTML = al.length
+    ? '<div class="card" style="border-color:#FFD8A8; background:#FFFDF8">'
+      + '<h2>⚠️ 챙겨야 할 것 <span class="badge a">'+al.length+'</span></h2>'
+      + al.map(a => '<div class="tdal '+a[0]+'" onclick="'+a[3]+'">'
+        + '<div><b>'+esc(a[1])+'</b>'+(a[2] ? '<span>'+esc(a[2])+'</span>' : '')+'</div>'
+        + '<span class="go">›</span></div>').join('') + '</div>'
+    : '<div class="card" style="border-color:#B2F2BB; background:#F4FCF5">'
+      + '<div style="font-size:15.5px; font-weight:700; color:var(--green)">✓ 지금 급한 건 없어요</div></div>';
+
+  // ── 인력: 홀 / 주방 ──
+  const S = d.staff || [];
+  const depts = [['홀','🍽️ 홀'], ['주방','👨‍🍳 주방'], ['기타','· 그 외']];
+  const on = S.filter(x => x.state === '근무중').length;
+  $('tdManSum').textContent = '— 근무중 ' + on + '명 / 전체 ' + S.length + '명';
+  $('tdMan').innerHTML = depts.map(([k,label]) => {
+    const list = S.filter(x => x.dept === k);
+    if(!list.length) return '';
+    const w = list.filter(x => x.state === '근무중').length;
+    const p = list.filter(x => x.state === '예정').length;
+    return '<div class="tddept"><div class="hd">'+label
+      + ' <b>'+list.length+'명</b>'
+      + (w ? ' <span class="badge g">근무중 '+w+'</span>' : '')
+      + (p ? ' <span class="badge b">예정 '+p+'</span>' : '')+'</div>'
+      + '<div class="mem">' + list.map(x =>
+          '<div class="m '+(TD_STATE[x.state]||'')+'">'
+        + '<b>'+esc(x.name)+'</b><span>'+esc(x.position||'-')+'</span>'
+        + '<i>'+(x.in_at ? new Date(x.in_at).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})
+                : (x.start_time ? x.start_time.slice(0,5)+' 예정' : x.state))+'</i></div>').join('')
+      + '</div></div>';
+  }).join('') || '<div class="sub">등록된 직원이 없어요.</div>';
+
+  // ── 오늘 숫자 ──
+  $('tdNums').innerHTML =
+      '<div class="kpi"><div class="label">오늘 매출</div><div class="value">'+won(d.sales)+'<small>원</small></div></div>'
+    + '<div class="kpi"><div class="label">오늘 지출</div><div class="value v-red">'+won(d.expense)+'<small>원</small></div></div>'
+    + '<div class="kpi"><div class="label">통장 잔고</div><div class="value">'+won(d.cash_balance)+'<small>원</small></div></div>'
+    + '<div class="kpi"><div class="label">웨이팅</div><div class="value v-orange">'+d.waiting+'<small>팀</small></div></div>'
+    + '<div class="kpi"><div class="label">오늘 예약</div><div class="value">'+d.resv+'<small>팀</small></div></div>'
+    + '<div class="kpi"><div class="label">셀프바 요청</div><div class="value v-orange">'+d.barReq+'<small>건</small></div></div>';
 }
 
 /* ── 휴지통 ──────────────────────────────────────
