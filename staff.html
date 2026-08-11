@@ -131,6 +131,20 @@ label{display:block; font-size:12px; color:var(--sub); margin:10px 0 4px}
 .sprow:active .cp{background:#F26522; color:#fff}
 .spnotice{background:#FFF9DB; border:1px solid #FFE066; border-radius:12px; padding:12px 14px;
   margin-bottom:10px; font-size:15px; line-height:1.6; white-space:pre-wrap}
+/* 긴급연락망 — 급할 때 눈에 바로 들어와야 한다 */
+.emcard{border:2px solid #FFC9C9; background:#FFF5F5; border-radius:14px;
+  padding:12px 12px 6px; margin-bottom:12px}
+.emttl{font-weight:900; font-size:15px; color:#C92A2A; margin-bottom:8px}
+.emttl span{font-weight:600; font-size:12px; color:#E03131}
+.emitem{display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:4px 8px;
+  background:#fff; border:1px solid #FFD8D8; border-radius:12px;
+  padding:10px 12px; margin-bottom:6px; text-decoration:none; color:inherit}
+.emitem:active{background:#FFF0F0}
+.emwho{font-weight:800; font-size:14px; color:#20242E}
+.emnm{font-size:13px; color:#868E96}
+.emtel{grid-column:1/3; font-size:15px; font-weight:700; color:#C92A2A; letter-spacing:.3px}
+.emcall{grid-row:1/3; grid-column:3; background:#E03131; color:#fff; font-weight:800; font-size:13px;
+  border-radius:10px; padding:9px 14px}
 .ptnum{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px}
 .ptnum > div{background:#FFF9DB; border-radius:12px; padding:12px 8px; text-align:center}
 .ptnum .k{display:block; font-size:12.5px; color:#868E96; margin-bottom:2px}
@@ -881,7 +895,8 @@ async function loadProfile(){
       : '';
     const addr = [p.addr, p.addr_detail].filter(Boolean).join(' ');
     H.push(row('대표전화', p.tel, p.tel));
-    H.push(row('휴대폰', p.mobile, p.mobile));
+    H.push(row('가게 핸드폰', p.store_phone, p.store_phone));
+    H.push(row('사장님 휴대폰', p.mobile, p.mobile));
     H.push(row('주소', addr, addr));
     H.push(row('찾아오는 길', p.directions, p.directions));
     H.push(row('주차', p.parking));
@@ -896,9 +911,20 @@ async function loadProfile(){
     if(p.wifi_ssid) H.push(row('와이파이', p.wifi_ssid + (p.wifi_pw ? '  /  ' + p.wifi_pw : ''), p.wifi_pw || p.wifi_ssid));
     H.push(row('사업자번호', p.biz_no, p.biz_no));
     H.push(row('대표자', p.ceo));
+    // 긴급연락망 — 사고 났을 때 찾을 시간이 없다. 맨 위에, 누르면 바로 전화
+    const em = (p.emergency || []).filter(e => (e.phone||'').trim());
+    const emHtml = em.length
+      ? '<div class="emcard"><div class="emttl">🚨 긴급연락망 <span>— 누르면 바로 전화</span></div>'
+        + em.map(e => '<a class="emitem" href="tel:' + encodeURIComponent(e.phone.replace(/[^0-9+]/g,'')) + '">'
+            + '<span class="emwho">' + esc(e.role || '연락처') + '</span>'
+            + '<span class="emnm">' + esc(e.name || '') + '</span>'
+            + '<span class="emtel">' + esc(e.phone) + '</span>'
+            + '<span class="emcall">전화</span></a>').join('')
+        + '</div>'
+      : '';
     const body = H.filter(Boolean).join('');
-    $('spBox').innerHTML = (p.notice_pub
-        ? '<div class="spnotice">' + esc(p.notice_pub) + '</div>' : '')
+    $('spBox').innerHTML = emHtml
+      + (p.notice_pub ? '<div class="spnotice">' + esc(p.notice_pub) + '</div>' : '')
       + (body || '<div class="sub">아직 등록된 정보가 없어요. 사장님께 말씀드리세요.</div>');
   }catch(e){ $('spBox').innerHTML = '<div class="sub">' + esc(e.message) + '</div>'; }
 }
