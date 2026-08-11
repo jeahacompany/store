@@ -2453,6 +2453,11 @@
         <div><label>계좌번호</label><input id="smAcct" style="width:100%"></div>
       </div>
       <label>주소</label><input id="smAddr" style="width:100%">
+      <label style="display:flex; align-items:center; gap:9px; margin-top:14px; cursor:pointer">
+        <input type="checkbox" id="smNoAtt" style="width:20px; height:20px; accent-color:#F26522">
+        <span>출퇴근 대상 아님
+          <span class="sub">— 태블릿·업로드 같은 계정. 켜면 출근 현황·받아야 할 것에서 안 보여요</span></span>
+      </label>
       <label>제출 서류 <span class="sub">— 직원이 못 올리면 여기서 대신 올려주세요</span></label>
       <div id="smDocs" class="sub">불러오는 중...</div>
       <label>메모</label><textarea id="smMemo"></textarea>
@@ -3059,7 +3064,8 @@ function renderStaff(){
     // 사장 계정은 지울 수 없다 (서버에서도 막혀 있다)
     const del = (ME && ME.role==='owner' && s.role !== 'owner')
       ? '<button class="btn sm red" onclick="staffDel(\''+s.id+'\',\''+esc(s.name).replace(/'/g,"\\'")+'\')">삭제</button>' : '';
-    return '<tr><td><a class="link" onclick="openStaff(\''+s.id+'\')"><b>'+esc(s.name)+'</b></a></td>'
+    return '<tr><td><a class="link" onclick="openStaff(\''+s.id+'\')"><b>'+esc(s.name)+'</b></a>'
+      + (s.no_att ? ' <span class="badge">출퇴근 제외</span>' : '') + '</td>'
       + '<td><span class="sub">'+esc(s.username||'-')+'</span></td>'
       + '<td>'+esc(s.position||'-')+'</td><td>'+roleName(s.role)+'</td><td>'+pay+'</td>'
       + '<td>'+(s.hired_at||'-')+'</td><td>'+st+'</td><td>'+del+'</td></tr>';
@@ -3123,6 +3129,7 @@ async function openStaff(id){
   $('smTitle').textContent = s.name + (s.status==='pending' ? ' — 승인 대기중' : '');
   $('smName').value=s.name||''; $('smPhone').value=s.phone||''; posFillSelect('smPos', s.position||'');
   deptFill('smDept', s.dept_set || ''); deptAuto('smPos','smDept','smDeptHint');
+  $('smNoAtt').checked = !!s.no_att;
   $('smRole').value=s.role; $('smPayType').value=s.pay_type;
   $('smHourly').value=s.hourly_wage==null?'':cm(s.hourly_wage); $('smMonthly').value=s.monthly_wage==null?'':cm(s.monthly_wage);
   $('smHired').value=s.hired_at||''; $('smBirth').value=s.birth||'';
@@ -3299,6 +3306,7 @@ function staffPatch(){
   return {
     name:$('smName').value.trim(), phone:$('smPhone').value.trim(), position:$('smPos').value.trim(),
     dept:$('smDept').value,          // 빈 값이면 직급표를 따라간다
+    no_att:$('smNoAtt').checked,     // 태블릿·업로드 같은 계정은 출근 현황에서 뺀다
     role:$('smRole').value, pay_type:$('smPayType').value,
     hourly_wage:$('smHourly').value===''?null:mVal($('smHourly').value),
     monthly_wage:$('smMonthly').value===''?null:mVal($('smMonthly').value),
