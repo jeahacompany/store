@@ -261,6 +261,20 @@
   .bsrow .q { flex:none; font-size:12.5px; color:var(--sub); }
   .bsrow .v { flex:none; min-width:110px; text-align:right; font-weight:800;
               font-variant-numeric:tabular-nums; }
+  /* ── 휴지통 ── */
+  .trrow { display:flex; gap:12px; align-items:center; padding:12px 0;
+           border-bottom:1px solid #F1F3F5; }
+  .trrow:last-child { border-bottom:none; }
+  .trrow > .badge { flex:none; width:88px; text-align:center; }
+  .trrow .n { flex:1; min-width:0; font-size:15px; }
+  .trrow .n .s { font-size:12.5px; color:var(--sub); margin-top:2px; }
+  .trrow .d { flex:none; text-align:right; font-size:13px; color:var(--sub); min-width:60px; }
+  .trrow .d .s { font-size:11.5px; }
+  @media (max-width:720px){
+    .trrow { flex-wrap:wrap; }
+    .trrow > .badge { width:auto; }
+    .trrow .d { text-align:left; }
+  }
   /* ── 구매 URL ── */
   .buysum { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
   .buysum .bs { flex:1; min-width:150px; background:#fff; border:1px solid var(--line);
@@ -1445,6 +1459,25 @@
         <div id="buyBox"><div class="sub">불러오는 중...</div></div>
       </div>
 
+      <!-- 휴지통 -->
+      <div id="tab-trash" class="hidden">
+        <div class="card" style="border-color:#B2F2BB; background:#F4FCF5">
+          <h2>🗑 휴지통 <span class="sub" style="font-weight:400">— 지운 것을 되살립니다</span>
+            <button class="btn sm ghost" style="margin-left:auto" onclick="loadTrash()">↻ 새로고침</button></h2>
+          <div class="sub">여기서 지운 건 <b>진짜로 사라진 게 아니라</b> 잠시 치워둔 거예요.
+            언제든 되살릴 수 있습니다. 실수로 지워도 걱정하지 마세요.</div>
+          <div style="display:flex; gap:6px; margin-top:12px; flex-wrap:wrap">
+            <span class="sub" style="align-self:center">기간</span>
+            <button class="btn sm trd" onclick="trDays(7,this)">7일</button>
+            <button class="btn sm ghost trd" onclick="trDays(30,this)">30일</button>
+            <button class="btn sm ghost trd" onclick="trDays(90,this)">90일</button>
+            <button class="btn sm ghost trd" onclick="trDays(3650,this)">전체</button>
+          </div>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px" id="trFilter"></div>
+        <div id="trBox"><div class="sub">불러오는 중...</div></div>
+      </div>
+
       <!-- 구매 URL 모달 -->
       <div id="buyModal" class="modal-bg hidden"><div class="modal" style="max-width:620px">
         <h2 id="buyMTitle">구매 품목</h2>
@@ -2385,7 +2418,7 @@ let ME = null, STAFF = [], ATT = [], WAGES = null, TASKS = [];
 // 개별 탭은 전부 묶음(TAB_MERGE) 안으로 들어가서, 여기엔 묶음 이름과 단독 탭만 둔다
 const TABS = ['today','ai','cal','bar','cash','staffg','work','jobs','money','buy','acct','guest','docs','sys'];
 const TITLES = {today:'오늘', ai:'AI 비서', cal:'캘린더', staff:'직원', pos:'직책', shift:'근무표', att:'근태', staffg:'직원', work:'근무·근태', jobs:'오더·업무', money:'매출·지출', buy:'매입·재고',
-  acct:'정산', guest:'고객', docs:'매뉴얼·정보', sys:'설정', buylink:'구매 URL',
+  acct:'정산', guest:'고객', docs:'매뉴얼·정보', sys:'설정', buylink:'구매 URL', trash:'휴지통',
   labor:'인건비표', wage:'급여 계산기', kakao:'알림톡', tasks:'오더', board:'업무보드',
   manual:'매뉴얼', info:'매장정보', cust:'고객·포인트', cash:'자금', sales:'매출', dep:'입금', exp:'지출', pnl:'오늘 정산', book:'손익계산서', legal:'원산지 표시판', settle:'월 정산', inb:'입고 명세서', bar:'셀프바', vendor:'거래처', stock:'재고', price:'단가 변동', links:'연결 주소', logs:'시스템 로그', setup:'설정'};
 // 직책 — DB(store.positions)에서 읽어온다. 직책 탭에서 고치면 여기도 같이 바뀜
@@ -2538,6 +2571,7 @@ const TAB_MERGE = {
            {id:'manual', name:'📖 매뉴얼'}, {id:'info', name:'ℹ️ 매장정보'}, {id:'legal', name:'🥩 원산지'}] },
   sys:   { title:'설정', icon:'⚙️', subs:[
            {id:'setup', name:'⚙️ 설정'}, {id:'links', name:'🔗 연결 주소'},
+           {id:'trash', name:'🗑 휴지통', owner:true},
            {id:'logs', name:'🧾 시스템 로그', owner:true}] }
 };
 // 사이드바에 놓을 순서 (묶이지 않은 것 포함)
@@ -2648,6 +2682,7 @@ function loadForTab(name){
   if(name==='pos') loadPos();
   if(name==='mread') loadReadStatus();
   if(name==='buylink') loadBuy();
+  if(name==='trash') loadTrash();
   if(name==='wage') wcInit();
   if(name==='kakao') loadKakao();
   if(name==='legal') loadLegal();
@@ -4673,6 +4708,55 @@ async function wcSaveMin(){
   try{ await api('minWageSave', TOKEN, v); MIN_WAGE = v;
        toast('최저임금을 저장했어요 — 근로계약서 점검에도 함께 쓰입니다'); wcCalc(); }
   catch(e){ toast(e.message, true); }
+}
+
+/* ── 휴지통 ──────────────────────────────────────
+   지운 것은 사라지지 않고 deleted_at 만 찍힌다. 여기서 되살린다.               */
+let TRASH = [], TR_DAYS = 7, TR_FILTER = '전체';
+async function loadTrash(){
+  const box = $('trBox'); if(!box) return;
+  try{
+    TRASH = await api('trashList', TOKEN, TR_DAYS) || [];
+    const cats = ['전체', ...new Set(TRASH.map(t => t.label))];
+    $('trFilter').innerHTML = cats.map(c =>
+      '<button class="btn sm'+(c===TR_FILTER?'':' ghost')+'" onclick="trFilterSet(\''+esc(c)+'\')">'
+      + esc(c) + (c==='전체' ? ' <b>'+TRASH.length+'</b>' : ' <b>'+TRASH.filter(t=>t.label===c).length+'</b>')
+      + '</button>').join('');
+    renderTrash();
+  }catch(e){ box.innerHTML = '<div class="card"><div class="sub" style="color:var(--red)">'+esc(e.message)+'</div></div>'; }
+}
+function trDays(d, btn){
+  TR_DAYS = d; TR_FILTER = '전체';
+  document.querySelectorAll('.trd').forEach(b => b.classList.toggle('ghost', b !== btn));
+  loadTrash();
+}
+function trFilterSet(c){ TR_FILTER = c; loadTrash(); }
+function renderTrash(){
+  const list = TR_FILTER === '전체' ? TRASH : TRASH.filter(t => t.label === TR_FILTER);
+  if(!list.length){
+    $('trBox').innerHTML = '<div class="card"><div class="sub">이 기간에 지운 게 없어요 👍</div></div>';
+    return;
+  }
+  $('trBox').innerHTML = '<div class="card">' + list.map(t => {
+    const d = new Date(t.deleted_at);
+    const ago = Math.floor((Date.now() - d) / 86400000);
+    return '<div class="trrow">'
+      + '<span class="badge">'+esc(t.label)+'</span>'
+      + '<div class="n"><b>'+esc(t.title)+'</b>'
+      +   (t.sub ? '<div class="s">'+esc(t.sub)+'</div>' : '')+'</div>'
+      + '<div class="d">'+d.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'})
+      +   '<div class="s">'+(ago===0?'오늘':ago+'일 전')+'</div></div>'
+      + '<button class="btn sm" onclick="trRestore(\''+t.kind+'\',\''+t.id+'\',\''+esc(t.title)+'\')">되살리기</button>'
+      + '</div>';
+  }).join('') + '</div>';
+}
+async function trRestore(kind, id, title){
+  if(!confirm('"'+title+'"을 되살릴까요?\n\n원래 있던 목록으로 돌아갑니다.')) return;
+  try{
+    await api('trashRestore', TOKEN, kind, id);
+    toast('되살렸어요');
+    loadTrash();
+  }catch(e){ toast(e.message, true); }
 }
 
 /* ── 목록에서 바로 삭제 ──────────────────────────
