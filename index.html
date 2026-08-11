@@ -5238,13 +5238,16 @@ async function loadChecklist(){
     STAFF_DEPTS.forEach(([key, label]) => {
       const list = rows.filter(r => r.dept === key);
       if(!list.length) return;
+      // 투자자는 근로자가 아니라 서류를 받을 대상이 아니다
+      const need = key !== '투자자';
       const done = list.filter(r => r.has_pos && r.has_phone && r.has_rrn && r.has_addr
         && r.doc_id && r.doc_bank && r.doc_health && r.has_acct && r.has_holder
         && r.has_wage && r.contract === '완료').length;
       ckHtml += '<tr class="deptrow"><td colspan="12">'+label
         + ' <span class="sub">'+list.length+'명</span>'
-        + (done === list.length ? ' <span class="badge g">전원 완료</span>'
-                                : ' <span class="badge r">'+(list.length-done)+'명 미완</span>')
+        + (!need ? ' <span class="badge">서류 대상 아님</span>'
+           : done === list.length ? ' <span class="badge g">전원 완료</span>'
+                                  : ' <span class="badge r">'+(list.length-done)+'명 미완</span>')
         + '</td></tr>' + list.map(oneCk).join('');
     });
     $('ckBody').innerHTML = ckHtml || '<tr><td colspan="12" class="sub">재직 중인 직원이 없어요.</td></tr>';
