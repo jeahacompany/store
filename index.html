@@ -2945,7 +2945,7 @@ async function loadDash(){
       + '<button class="btn sm ghost" style="color:var(--red)" onclick="rowDel(\'reqDelete\',\''+q.id+'\',\''+esc(q.body).slice(0,20)+'\',loadDash)">삭제</button></div>'
     ).join('') : '새 요청 없음';
     let cin=0, cwork=0, cno=0;
-    $('todayBody').innerHTML = d.today.map(r => {
+    const oneAtt = r => {
       let st;
       if(r.in_at && !r.out_at){ st='<span class="badge g">근무중</span>'; cin++; cwork++; }
       else if(r.in_at && r.out_at){ st='<span class="badge">퇴근</span>'; cin++; }
@@ -2953,7 +2953,17 @@ async function loadDash(){
       return '<tr><td class="name-cell">'+esc(r.name)+'</td><td>'+esc(r.position||'-')+'</td>'
         + '<td>'+fmtTime(r.in_at)+(r.edited?' <span class="badge a">수정</span>':'')+'</td>'
         + '<td>'+fmtTime(r.out_at)+'</td><td>'+st+'</td></tr>';
-    }).join('') || '<tr><td colspan="5" class="sub">활동중인 직원이 없어요. 직원이 가입하면 여기 떠요.</td></tr>';
+    };
+    // 홀·주방으로 묶어서 본다 (투자자는 서버에서 이미 빠져 있다)
+    let attHtml = '';
+    STAFF_DEPTS.forEach(([key, label]) => {
+      const list = d.today.filter(r => (r.dept || '기타') === key);
+      if(!list.length) return;
+      attHtml += '<tr class="deptrow"><td colspan="5">'+label
+        + ' <span class="sub">'+list.length+'명</span></td></tr>' + list.map(oneAtt).join('');
+    });
+    $('todayBody').innerHTML = attHtml
+      || '<tr><td colspan="5" class="sub">활동중인 직원이 없어요. 직원이 가입하면 여기 떠요.</td></tr>';
     $('stIn').textContent=cin; $('stWork').textContent=cwork; $('stNo').textContent=cno;
     loadNotices(); loadShiftNotes();
   }catch(e){ toast(e.message); }
