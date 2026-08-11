@@ -43,6 +43,15 @@ label{display:block; font-size:14px; color:var(--sub); margin:10px 0 4px}
 .badge.a{background:var(--amber-bg); color:var(--amber)} .badge.b{background:var(--brand-soft); color:var(--brand-dark)}
 .badge.bl{background:var(--blue-bg); color:var(--blue)}
 .badge.or{background:#FFF0E6; color:#D9480F}   /* 손님이 직접 넣은 예약 */
+/* 예약판 — 날짜 한 덩어리씩 */
+.rbday{border:1px solid var(--line); border-radius:14px; margin-bottom:12px; overflow:hidden}
+.rbhd{display:flex; align-items:center; gap:10px; background:#F8F9FA; padding:11px 14px;
+  border-bottom:1px solid var(--line)}
+.rbhd .rbdt{font-size:18px; font-weight:800; font-variant-numeric:tabular-nums}
+.rbhd .rbdt small{font-size:14px; color:var(--sub); font-weight:700}
+.rbhd .rbcnt{margin-left:auto; font-size:15px; font-weight:700; color:var(--sub)}
+.rbday .resv{padding:12px 14px}
+.rbday .resv:last-child{border-bottom:0}
 .resv{display:flex; align-items:center; gap:14px; padding:14px 0; border-bottom:1px solid #F1F2F4}
 .resv:last-child{border-bottom:0}
 .resv .time{font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; width:70px; flex:none}
@@ -114,6 +123,7 @@ label{display:block; font-size:14px; color:var(--sub); margin:10px 0 4px}
     <button class="vtab active" data-v="all"  onclick="showView('all',this)">📋 전체 현황판</button>
     <button class="vtab" data-v="wait" onclick="showView('wait',this)">⏳ 웨이팅 관리<span class="vcnt hidden" id="vcWait"></span></button>
     <button class="vtab" data-v="resv" onclick="showView('resv',this)">📅 오늘 예약<span class="vcnt hidden" id="vcResv"></span></button>
+    <button class="vtab" data-v="rboard" onclick="showView('rboard',this)">🗓 예약판<span class="vcnt hidden" id="vcRb"></span></button>
     <button class="vtab" data-v="task" onclick="showView('task',this)">✅ 오늘 할 일<span class="vcnt hidden" id="vcTask"></span></button>
     <button class="vtab" data-v="late" onclick="showView('late',this)">⚠️ 밀린 할 일<span class="vcnt hidden" id="vcLate"></span></button>
   </div>
@@ -141,6 +151,27 @@ label{display:block; font-size:14px; color:var(--sub); margin:10px 0 4px}
       <h2>📅 오늘 예약 <span class="badge b" id="resvCnt2">0</span>
         <button class="btn sm" style="margin-left:auto" onclick="openResv()">+ 예약 등록</button></h2>
       <div id="resvListFull"><div class="sub">불러오는 중...</div></div>
+    </div>
+  </div>
+
+  <!-- 예약판 — 앞으로 잡힌 예약을 날짜별로 -->
+  <div id="view-rboard" class="hidden">
+    <div class="card">
+      <h2>🗓 예약판 <span class="sub" id="rbSum" style="font-weight:400"></span>
+        <button class="btn sm" style="margin-left:auto" onclick="openResv()">+ 예약 등록</button></h2>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin:10px 0">
+        <button class="btn sm rb-f" onclick="rbFilter(0,this)">오늘</button>
+        <button class="btn sm ghost rb-f" onclick="rbFilter(1,this)">내일까지</button>
+        <button class="btn sm ghost rb-f" onclick="rbFilter(7,this)">이번주</button>
+        <button class="btn sm ghost rb-f" onclick="rbFilter(30,this)">한 달</button>
+        <button class="btn sm ghost rb-f active" onclick="rbFilter(365,this)">전체</button>
+        <button class="btn sm ghost rb-f" onclick="rbFilter(-30,this)">지난 예약</button>
+        <label style="display:flex; align-items:center; gap:6px; margin-left:auto; font-size:14px; font-weight:700">
+          <input type="checkbox" id="rbOnline" onchange="rbRender()" style="width:18px;height:18px;accent-color:#F26522">
+          손님예약만</label>
+      </div>
+      <div id="rbNext" class="sub" style="margin-bottom:10px"></div>
+      <div id="rbBody"><div class="sub">불러오는 중...</div></div>
     </div>
   </div>
 
@@ -320,6 +351,84 @@ async function api(fn, ...args){
 const $ = id => document.getElementById(id);
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2200); }
+/* ── 예약판 — 앞으로 잡힌 예약을 날짜별로 ──
+   현황판이 '오늘'만 보면 9/17에 잡힌 예약이 어디에서도 안 보인다.        */
+const RB_DOW = ['일','월','화','수','목','금','토'];
+let RB = null, RB_DAYS = 365;
+function ddayLabel(n){
+  return n === 0 ? 'D-DAY' : n > 0 ? 'D-' + n : 'D+' + (-n);
+}
+async function loadRb(){
+  $('rbBody').innerHTML = '<div class="sub">불러오는 중...</div>';
+  try{ RB = await api('resvBoard', TOKEN, String(RB_DAYS)); rbRender(); }
+  catch(e){ $('rbBody').innerHTML = '<div class="sub">'+esc(e.message)+'</div>'; }
+}
+function rbFilter(n, btn){
+  RB_DAYS = n;
+  document.querySelectorAll('.rb-f').forEach(b => {
+    b.classList.toggle('active', b === btn); b.classList.toggle('ghost', b !== btn); });
+  loadRb();
+}
+function rbRender(){
+  if(!RB) return;
+  const onlyOn = $('rbOnline').checked;
+  const days = (RB.days || []).map(d => {
+    const rows = (d.rows || []).filter(r => !onlyOn || r.source === '온라인');
+    return Object.assign({}, d, { rows });
+  }).filter(d => d.rows.length);
+
+  // 위 한 줄 요약
+  $('rbSum').textContent = RB.sumTeams + '팀 · ' + (RB.sumPeople || 0) + '명'
+    + (RB.sumOnline ? ' (손님예약 ' + RB.sumOnline + '건)' : '');
+  const vc = $('vcRb');
+  vc.textContent = RB.sumTeams || ''; vc.classList.toggle('hidden', !RB.sumTeams);
+
+  // 다음 예약이 언제인지 — 오늘 비어 있어도 이건 보여준다
+  const nx = RB.next;
+  $('rbNext').innerHTML = nx
+    ? '가장 가까운 예약 — <b>' + nx.res_date + ' (' + RB_DOW[new Date(nx.res_date+'T00:00:00').getDay()] + ') '
+      + esc(nx.res_time||'') + '</b> ' + esc(nx.name) + '님 ' + nx.people + '명 '
+      + '<span class="badge or">' + ddayLabel(nx.dday) + '</span>'
+    : '아직 잡힌 예약이 없어요.';
+
+  if(!days.length){
+    $('rbBody').innerHTML = '<div class="sub" style="padding:16px 0">'
+      + (onlyOn ? '손님이 직접 넣은 예약이 없어요.' : '이 기간에 잡힌 예약이 없어요.') + '</div>';
+    return;
+  }
+  $('rbBody').innerHTML = days.map(d => {
+    const teams = d.rows.filter(r => r.status === '예약').length;
+    const ppl   = d.rows.filter(r => r.status === '예약').reduce((s,r) => s + r.people, 0);
+    return '<div class="rbday">'
+      + '<div class="rbhd">'
+        + '<span class="rbdt">' + d.res_date.slice(5) + ' <small>(' + RB_DOW[d.dow] + ')</small></span>'
+        + '<span class="badge ' + (d.dday === 0 ? 'r' : d.dday < 0 ? '' : 'or') + '">'
+        + ddayLabel(d.dday) + '</span>'
+        + '<span class="rbcnt">' + teams + '팀 · ' + ppl + '명</span>'
+      + '</div>'
+      + d.rows.map(r =>
+          '<div class="resv' + (r.status !== '예약' ? ' done' : '') + '">'
+        + '<div class="time">' + esc(r.time||'-') + '</div>'
+        + '<div class="who"><div class="nm">' + esc(r.name)
+          + ' <span class="badge ' + (r.source==='네이버'?'g':r.source==='전화'?'bl':r.source==='온라인'?'or':'') + '">'
+          + (r.source==='온라인' ? '📱 손님예약' : esc(r.source)) + '</span> '
+          + (r.status==='도착'?'<span class="badge g">도착 ✓</span>'
+            :r.status==='노쇼'?'<span class="badge r">노쇼</span>':'')
+          + '</div><div class="dt">' + r.people + '명'
+          + (r.phone ? ' · ' + esc(r.phone) : '')
+          + (r.book_no ? ' · ' + esc(r.book_no) : '')
+          + (r.memo ? ' · ' + esc(r.memo) : '') + '</div></div>'
+        + (r.status === '예약'
+            ? '<div style="white-space:nowrap">'
+              + '<button class="btn sm green" onclick="setResv(\''+r.id+'\',\'도착\')">도착</button> '
+              + '<button class="btn sm red" onclick="setResv(\''+r.id+'\',\'노쇼\')">노쇼</button> '
+              + '<button class="btn sm ghost" onclick="editResv(\''+r.id+'\')">✎</button></div>'
+            : '<button class="btn sm ghost" onclick="setResv(\''+r.id+'\',\'예약\')">되돌리기</button>')
+        + '</div>').join('')
+      + '</div>';
+  }).join('');
+}
+
 /* 새 예약이 들어왔을 때 — 카운터에서 화면을 안 보고 있어도 알게 */
 function resvAlert(list){
   const one = list[0];
@@ -418,9 +527,10 @@ async function pmSkip(){
 
 /* ---------- 화면 전환 (태블릿 상단 탭) ---------- */
 function showView(v, btn){
-  ['all','wait','resv','task','late'].forEach(x => $('view-'+x).classList.toggle('hidden', x!==v));
+  ['all','wait','resv','rboard','task','late'].forEach(x => $('view-'+x).classList.toggle('hidden', x!==v));
   document.querySelectorAll('.vtab').forEach(b => b.classList.toggle('active', b===btn));
   if(v==='wait') renderWaitFull();
+  if(v==='rboard') loadRb();
 }
 function showViewByName(v){ showView(v, document.querySelector('.vtab[data-v="'+v+'"]')); }
 function fmtDate(s){
@@ -656,7 +766,9 @@ async function loadResv(){
           + '<button class="btn sm ghost" onclick="editResv(\''+x.id+'\')">✎</button></div>'
         : '<button class="btn sm ghost" onclick="setResv(\''+x.id+'\',\'예약\')">되돌리기</button>')
       + '</div>'
-    ).join('') : '<div class="sub" style="padding:14px 0">오늘 예약이 없어요. 전화 오면 "+ 예약 등록"을 눌러주세요.</div>';
+    ).join('') : '<div class="sub" style="padding:14px 0">오늘 예약이 없어요.'
+      + '<br><a onclick="showViewByName(\'rboard\')" style="color:#F26522; font-weight:700; cursor:pointer">'
+      + '🗓 예약판에서 앞으로 잡힌 예약 보기 →</a></div>';
     $('resvListFull').innerHTML = $('resvList').innerHTML;
     $('resvCnt2').textContent = active.length + '팀';
     const vr = $('vcResv'); vr.textContent = active.length || ''; vr.classList.toggle('hidden', !active.length);

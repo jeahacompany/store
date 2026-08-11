@@ -129,6 +129,18 @@
   .sp-sec{ margin:18px 0 8px; font-size:15px; font-weight:800; color:#20242E;
     padding-bottom:6px; border-bottom:2px solid #F1F3F5 }
   .sp-sec:first-of-type{ margin-top:4px }
+  /* 예약판 — 날짜 한 덩어리씩 */
+  .rbday{ border:1px solid #E9ECEF; border-radius:14px; margin-bottom:12px; overflow:hidden }
+  .rbhd{ display:flex; align-items:center; gap:10px; background:#F8F9FA; padding:10px 14px;
+    border-bottom:1px solid #E9ECEF }
+  .rbhd .rbdt{ font-size:16px; font-weight:800; font-variant-numeric:tabular-nums }
+  .rbhd .rbdt small{ font-size:13px; color:#868E96; font-weight:700 }
+  .rbhd .rbcnt{ margin-left:auto; font-size:14px; font-weight:700; color:#868E96 }
+  .rbrow{ display:flex; gap:14px; align-items:flex-start; padding:10px 14px; border-bottom:1px solid #F1F3F5 }
+  .rbrow:last-child{ border-bottom:0 }
+  .rbrow .t{ font-size:17px; font-weight:800; font-variant-numeric:tabular-nums; width:56px; flex:none }
+  .rbrow .n{ flex:1; min-width:0 }
+  .rbrow.done{ opacity:.45 }
   /* 긴급연락망 */
   .emrow{ display:grid; grid-template-columns:28px 1.1fr 1fr 1.2fr 32px; gap:8px;
     align-items:center; margin-bottom:8px }
@@ -1185,6 +1197,24 @@
           <label style="margin-top:14px">예약 페이지에 띄울 안내 <span class="sub">— 손님이 제일 먼저 봐요</span></label>
           <textarea id="bkNotice" placeholder="예: 무한리필 성인 16,900원 / 만 5세 이하 무료&#10;예약은 10분까지만 기다려드려요. 늦으시면 꼭 전화 주세요."></textarea>
           <div style="margin-top:12px"><button class="btn" onclick="bkSave()">저장</button></div>
+        </div>
+
+        <div class="card">
+          <h2>🗓 예약판 <span class="sub" id="rbSum" style="font-weight:400; margin-left:8px"></span>
+            <button class="btn sm ghost" style="margin-left:auto" onclick="loadRb()">↻ 새로고침</button></h2>
+          <div class="sub">앞으로 잡힌 예약을 <b>날짜별</b>로 봅니다. 오픈까지 남은 날도 같이 보여요.</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin:10px 0">
+            <button class="btn sm ghost rb-f" onclick="rbFilter(0,this)">오늘</button>
+            <button class="btn sm ghost rb-f" onclick="rbFilter(7,this)">이번주</button>
+            <button class="btn sm ghost rb-f" onclick="rbFilter(30,this)">한 달</button>
+            <button class="btn sm rb-f active" onclick="rbFilter(365,this)">전체</button>
+            <button class="btn sm ghost rb-f" onclick="rbFilter(-30,this)">지난 예약</button>
+            <label style="display:flex; align-items:center; gap:6px; margin-left:auto; font-size:14px; font-weight:700">
+              <input type="checkbox" id="rbOnline" onchange="rbRender()" style="width:18px;height:18px;accent-color:#F26522">
+              손님예약만</label>
+          </div>
+          <div id="rbNext" class="sub" style="margin-bottom:10px"></div>
+          <div id="rbBody"><div class="sub">불러오는 중...</div></div>
         </div>
 
         <div class="card">
@@ -2818,7 +2848,7 @@ function loadForTab(name){
   if(name==='bar') loadBar();
   if(name==='pnl') loadPnl();
   if(name==='book') loadBook();
-  if(name==='booking') loadBooking();
+  if(name==='booking'){ loadBooking(); loadRb(); }
   if(name==='pos') loadPos();
   if(name==='mread') loadReadStatus();
   if(name==='buylink') loadBuy();
@@ -4782,6 +4812,64 @@ function renderCommonDocs(){
    전화 받으면 링크만 보내주면 손님이 직접 넣고, 현황판에 자동으로 뜬다.  */
 const BK_DOW = ['일','월','화','수','목','금','토'];
 let BK = null;
+
+/* 예약판 — 앞으로 잡힌 예약을 날짜별로 (현황판과 같은 화면을 관리자에도 둔다) */
+let RB = null, RB_DAYS = 365;
+function ddayLabel(n){ return n === 0 ? 'D-DAY' : n > 0 ? 'D-' + n : 'D+' + (-n); }
+async function loadRb(){
+  if(!$('rbBody')) return;
+  $('rbBody').innerHTML = '<div class="sub">불러오는 중...</div>';
+  try{ RB = await api('resvBoard', TOKEN, String(RB_DAYS)); rbRender(); }
+  catch(e){ $('rbBody').innerHTML = '<div class="sub">'+esc(e.message)+'</div>'; }
+}
+function rbFilter(n, btn){
+  RB_DAYS = n;
+  document.querySelectorAll('.rb-f').forEach(b => b.classList.toggle('ghost', b !== btn));
+  loadRb();
+}
+function rbRender(){
+  if(!RB) return;
+  const onlyOn = $('rbOnline').checked;
+  const days = (RB.days || [])
+    .map(d => Object.assign({}, d, { rows: (d.rows||[]).filter(r => !onlyOn || r.source === '온라인') }))
+    .filter(d => d.rows.length);
+
+  $('rbSum').textContent = RB.sumTeams + '팀 · ' + (RB.sumPeople || 0) + '명'
+    + (RB.sumOnline ? ' (손님예약 ' + RB.sumOnline + '건)' : '');
+  const nx = RB.next;
+  $('rbNext').innerHTML = nx
+    ? '가장 가까운 예약 — <b>' + nx.res_date + ' ('
+      + BK_DOW[new Date(nx.res_date+'T00:00:00').getDay()] + ') ' + esc(nx.res_time||'') + '</b> '
+      + esc(nx.name) + '님 ' + nx.people + '명 <span class="badge a">' + ddayLabel(nx.dday) + '</span>'
+    : '아직 잡힌 예약이 없어요.';
+
+  if(!days.length){
+    $('rbBody').innerHTML = '<div class="sub" style="padding:14px 0">'
+      + (onlyOn ? '손님이 직접 넣은 예약이 없어요.' : '이 기간에 잡힌 예약이 없어요.') + '</div>';
+    return;
+  }
+  $('rbBody').innerHTML = days.map(d => {
+    const act   = d.rows.filter(r => r.status === '예약');
+    const teams = act.length, ppl = act.reduce((s,r) => s + r.people, 0);
+    return '<div class="rbday"><div class="rbhd">'
+      + '<span class="rbdt">' + d.res_date.slice(5) + ' <small>(' + BK_DOW[d.dow] + ')</small></span>'
+      + '<span class="badge ' + (d.dday === 0 ? 'r' : d.dday < 0 ? '' : 'a') + '">' + ddayLabel(d.dday) + '</span>'
+      + '<span class="rbcnt">' + teams + '팀 · ' + ppl + '명</span></div>'
+      + d.rows.map(r =>
+          '<div class="rbrow' + (r.status !== '예약' ? ' done' : '') + '">'
+        + '<span class="t">' + esc(r.time||'-') + '</span>'
+        + '<span class="n"><b>' + esc(r.name) + '</b> '
+          + '<span class="badge ' + (r.source==='온라인'?'a':r.source==='네이버'?'g':'b') + '">'
+          + (r.source==='온라인' ? '📱 손님예약' : esc(r.source)) + '</span>'
+          + (r.status==='도착'?' <span class="badge g">도착</span>'
+            :r.status==='노쇼'?' <span class="badge r">노쇼</span>':'')
+          + '<div class="sub">' + r.people + '명'
+          + (r.phone ? ' · ' + esc(r.phone) : '')
+          + (r.book_no ? ' · ' + esc(r.book_no) : '')
+          + (r.memo ? ' · ' + esc(r.memo) : '') + '</div></span></div>').join('')
+      + '</div>';
+  }).join('');
+}
 function bkUrlOf(code){
   return location.origin + location.pathname.replace(/[^/]*$/, '') + 'resv.html?c=' + code;
 }
