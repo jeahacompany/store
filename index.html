@@ -677,12 +677,14 @@
               <button class="btn sm ghost sf-pill" data-f="active" onclick="sfFilter('active',this)">재직</button>
               <button class="btn sm ghost sf-pill" data-f="pending" onclick="sfFilter('pending',this)">승인대기</button>
               <button class="btn sm ghost sf-pill" data-f="quit" onclick="sfFilter('quit',this)">퇴사</button>
+              <button class="btn sm ghost sf-pill" data-f="deleted" onclick="sfFilter('deleted',this)">🗑 삭제</button>
             </span>
             <button class="btn sm" id="btnStaffCreate" onclick="openStaffCreate()" style="float:right">+ 직원 계정 만들기</button>
           </h2>
           <div class="sub" style="margin-bottom:8px">이름을 누르면 상세 정보·제출 서류·아이디/비밀번호를 관리할 수 있어요. 급여·주민번호는 사장님만 보여요.</div>
-          <div class="table-scroll"><table><thead><tr><th>이름</th><th>아이디</th><th>직책</th><th>역할</th><th>급여</th><th>입사일</th><th>상태</th></tr></thead>
+          <div class="table-scroll"><table><thead><tr><th>이름</th><th>아이디</th><th>직책</th><th>역할</th><th>급여</th><th>입사일</th><th>상태</th><th></th></tr></thead>
           <tbody id="staffBody"></tbody></table></div>
+          <div class="sub" id="sfNote" style="margin-top:8px"></div>
         </div>
         <div id="lg-ct">
           <div class="card">
@@ -2926,7 +2928,12 @@ async function loadStaff(){
     renderStaff();
   }catch(e){ toast(e.message); }
 }
+function roleName(r){ return r==='owner'?'사장':r==='manager'?'관리자':r==='viewer'?'투자자':'직원'; }
 function renderStaff(){
+  // 🗑 삭제 칸은 아예 다른 목록(지워진 직원)을 본다
+  if(SF_FILTER === 'deleted') return renderStaffDeleted();
+  $('sfNote').textContent = '';
+
   const order = {pending:0, active:1, quit:2};
   const rows = [...STAFF].filter(s => !SF_FILTER || s.status===SF_FILTER)
     .sort((a,b)=>(order[a.status]-order[b.status])||a.name.localeCompare(b.name));
@@ -2936,20 +2943,57 @@ function renderStaff(){
              : s.status==='active' ? '<span class="badge g">재직</span>' : '<span class="badge r">퇴사</span>';
     const pay = s.hourly_wage==null ? '<span class="sub">비공개</span>'
               : s.pay_type==='monthly' ? fmtWon(s.monthly_wage)+'/월' : fmtWon(s.hourly_wage)+'/시';
-    const role = s.role==='owner'?'사장':s.role==='manager'?'관리자':s.role==='viewer'?'투자자':'직원';
+    // 사장 계정은 지울 수 없다 (서버에서도 막혀 있다)
+    const del = (ME && ME.role==='owner' && s.role !== 'owner')
+      ? '<button class="btn sm red" onclick="staffDel(\''+s.id+'\',\''+esc(s.name).replace(/'/g,"\\'")+'\')">삭제</button>' : '';
     return '<tr><td><a class="link" onclick="openStaff(\''+s.id+'\')"><b>'+esc(s.name)+'</b></a></td>'
       + '<td><span class="sub">'+esc(s.username||'-')+'</span></td>'
-      + '<td>'+esc(s.position||'-')+'</td><td>'+role+'</td><td>'+pay+'</td>'
-      + '<td>'+(s.hired_at||'-')+'</td><td>'+st+'</td></tr>';
+      + '<td>'+esc(s.position||'-')+'</td><td>'+roleName(s.role)+'</td><td>'+pay+'</td>'
+      + '<td>'+(s.hired_at||'-')+'</td><td>'+st+'</td><td>'+del+'</td></tr>';
   };
   let html = '';
   STAFF_DEPTS.forEach(([key, label]) => {
     const list = rows.filter(s => staffDept(s) === key);
     if(!list.length) return;
-    html += '<tr class="deptrow"><td colspan="7">'+label+' <span class="sub">'+list.length+'명</span></td></tr>'
+    html += '<tr class="deptrow"><td colspan="8">'+label+' <span class="sub">'+list.length+'명</span></td></tr>'
           + list.map(one).join('');
   });
-  $('staffBody').innerHTML = html || '<tr><td colspan="7" class="sub">해당하는 직원이 없어요.</td></tr>';
+  $('staffBody').innerHTML = html || '<tr><td colspan="8" class="sub">해당하는 직원이 없어요.</td></tr>';
+}
+/* 삭제 — 지워도 사라지지 않고 🗑 삭제 칸에 남는다 */
+async function staffDel(id, name){
+  if(!confirm('"'+name+'"을 직원 목록에서 삭제할까요?\n\n'
+    + '• 로그인이 바로 차단됩니다\n'
+    + '• 근태·급여 기록은 그대로 남습니다\n'
+    + '• 🗑 삭제 칸에서 언제든 되살릴 수 있어요\n\n'
+    + '※ 일을 그만두신 거라면 삭제 말고 "퇴사 처리"가 맞아요.')) return;
+  try{ await api('staffDelete', TOKEN, id); toast('삭제했어요 — 🗑 삭제 칸에서 되살릴 수 있어요'); loadStaff(); }
+  catch(e){ toast(e.message, true); }
+}
+/* 🗑 삭제 칸 — 지워진 직원 목록 */
+async function renderStaffDeleted(){
+  $('staffBody').innerHTML = '<tr><td colspan="8" class="sub">불러오는 중...</td></tr>';
+  $('sfNote').textContent = '삭제해도 지워지지 않아요. 여기서 언제든 되살릴 수 있습니다. (최근 200명)';
+  try{
+    const rows = await api('staffDeleted', TOKEN);
+    const one = s =>
+        '<tr><td><b>'+esc(s.name)+'</b></td>'
+      + '<td><span class="sub">'+esc(s.username||'-')+'</span></td>'
+      + '<td>'+esc(s.position||'-')+'<div class="sub">'+esc(s.dept||'')+'</div></td>'
+      + '<td>'+roleName(s.role)+'</td><td class="sub">-</td>'
+      + '<td>'+(s.hired_at||'-')+'</td>'
+      + '<td><span class="badge r">삭제됨</span><div class="sub">'+(s.deleted_at||'').slice(0,10)+'</div></td>'
+      + '<td>' + ((ME && ME.role==='owner')
+          ? '<button class="btn sm green" onclick="staffRestore(\''+s.id+'\',\''+esc(s.name).replace(/'/g,"\\'")+'\')">되살리기</button>'
+          : '<span class="sub">사장님만</span>') + '</td></tr>';
+    $('staffBody').innerHTML = rows.map(one).join('')
+      || '<tr><td colspan="8" class="sub">삭제된 직원이 없어요.</td></tr>';
+  }catch(e){ $('staffBody').innerHTML = '<tr><td colspan="8" class="sub">'+esc(e.message)+'</td></tr>'; }
+}
+async function staffRestore(id, name){
+  if(!confirm('"'+name+'"을 직원 목록으로 되살릴까요?\n\n되살아나면 "퇴사" 상태로 돌아옵니다.\n다시 일하실 거면 카드에서 "재직으로 전환"을 눌러주세요.')) return;
+  try{ await api('trashRestore', TOKEN, 'staff', id); toast('되살렸어요'); renderStaffDeleted(); loadStaff(); }
+  catch(e){ toast(e.message, true); }
 }
 function fillWhoSelects(){
   const act = STAFF.filter(s=>s.status==='active');
