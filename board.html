@@ -23,6 +23,13 @@ body{margin:0; font-family:Pretendard,-apple-system,'Malgun Gothic',sans-serif; 
 .topbar .store{font-size:20px; font-weight:700}
 .topbar .clock{font-size:26px; font-weight:800; font-variant-numeric:tabular-nums; margin-left:auto}
 .topbar .date{color:#AEB4C0; font-size:16px}
+.datenav{display:inline-flex; align-items:center; gap:4px}
+.dnav{background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.18); color:#DDE1E8;
+  border-radius:9px; width:30px; height:30px; font-size:17px; font-weight:800; cursor:pointer;
+  font-family:inherit; line-height:1; padding:0}
+.dnav:hover{background:rgba(255,255,255,.2); color:#fff}
+.dnav.today{width:auto; padding:0 11px; font-size:13px; background:var(--brand); border-color:var(--brand); color:#fff}
+.topbar .date.other{color:#FFC078; font-weight:800}
 .topbar a{color:#6A7080; font-size:14px; cursor:pointer; text-decoration:none}
 .grid{display:grid; grid-template-columns:1.1fr 1fr; gap:14px; padding:14px; max-width:1280px; margin:0 auto}
 @media(max-width:820px){ .grid{grid-template-columns:1fr} }
@@ -110,7 +117,12 @@ label{display:block; font-size:14px; color:var(--sub); margin:10px 0 4px}
 <div id="mainView" class="hidden">
   <div class="topbar">
     <span class="store" id="hdStore">우리매장</span>
-    <span class="date" id="hdDate"></span>
+    <span class="datenav">
+      <button class="dnav" onclick="dayMove(-1)" title="앞날">‹</button>
+      <span class="date" id="hdDate"></span>
+      <button class="dnav" onclick="dayMove(1)" title="뒷날">›</button>
+      <button class="dnav today hidden" id="dnavToday" onclick="dayToday()">오늘로</button>
+    </span>
     <span class="clock" id="hdClock">--:--</span>
     <button class="btn sm" onclick="openPay()" style="font-size:16px; position:relative">💳 결제 적립
       <span id="payBadge" class="hidden" style="background:#fff; color:var(--brand); border-radius:11px; padding:1px 7px; margin-left:5px; font-size:13px"></span></button>
@@ -148,7 +160,7 @@ label{display:block; font-size:14px; color:var(--sub); margin:10px 0 4px}
   <!-- 예약 전체 -->
   <div id="view-resv" class="hidden">
     <div class="card">
-      <h2>📅 오늘 예약 <span class="badge b" id="resvCnt2">0</span>
+      <h2>📅 <span id="resvTitle2">오늘 예약</span> <span class="badge b" id="resvCnt2">0</span>
         <button class="btn sm" style="margin-left:auto" onclick="openResv()">+ 예약 등록</button></h2>
       <div id="resvListFull"><div class="sub">불러오는 중...</div></div>
     </div>
@@ -202,7 +214,7 @@ label{display:block; font-size:14px; color:var(--sub); margin:10px 0 4px}
         <div id="waitList"><div class="sub">불러오는 중...</div></div>
       </div>
       <div class="card" style="margin-top:14px">
-        <h2>📅 오늘 예약 <span class="badge b" id="resvCnt">0</span>
+        <h2>📅 <span id="resvTitle">오늘 예약</span> <span class="badge b" id="resvCnt">0</span>
           <span class="sub" id="resvExtra" style="font-weight:400"></span>
           <button class="btn sm" style="margin-left:auto" onclick="openResv()">+ 예약 등록</button></h2>
         <div id="resvList"><div class="sub">불러오는 중...</div></div>
@@ -450,6 +462,29 @@ function resvAlert(list){
 }
 function show(v){ ['loginView','mainView'].forEach(x=>$(x).classList.toggle('hidden', x!==v)); }
 function localDate(){ const d=new Date(), p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+/* ── 보는 날짜 — ‹ › 로 앞뒤 날을 넘겨본다 ──
+   웨이팅·할일은 지금 벌어지는 일이라 늘 오늘이고, 예약만 날짜를 따라간다. */
+let VIEW_DATE = '';
+function viewDate(){ return VIEW_DATE || localDate(); }
+function dayMove(n){
+  const d = new Date(viewDate() + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  const p = x => String(x).padStart(2,'0');
+  const s = d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+  VIEW_DATE = (s === localDate()) ? '' : s;
+  paintDate(); loadResv();
+}
+function dayToday(){ VIEW_DATE = ''; paintDate(); loadResv(); }
+function paintDate(){
+  const s = viewDate(), other = !!VIEW_DATE;
+  const d = new Date(s + 'T00:00:00');
+  $('hdDate').textContent = d.toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'})
+    + (other ? '' : ' (오늘)');
+  $('hdDate').classList.toggle('other', other);
+  $('dnavToday').classList.toggle('hidden', !other);
+  const t = $('resvTitle'); if(t) t.textContent = other ? (d.getMonth()+1)+'/'+d.getDate()+' 예약' : '오늘 예약';
+  const t2 = $('resvTitle2'); if(t2) t2.textContent = t ? t.textContent : '오늘 예약';
+}
 function fmtTime(iso){ return iso ? new Date(iso).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '-'; }
 
 setInterval(()=>{ const n=new Date();
@@ -469,7 +504,7 @@ async function doLogin(){
 async function doLogout(){ try{ await api('logout', TOKEN); }catch(e){} localStorage.removeItem('store_board_token'); TOKEN=''; show('loginView'); }
 
 async function loadAll(){
-  $('hdDate').textContent = new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'});
+  paintDate();
   loadWait(); loadResv(); loadNotices(); loadSold(); loadTasksB(); loadWork(); loadSn(); loadPay();
 }
 setInterval(() => { if(TOKEN) loadPay(); }, 8000);   // 결제는 더 자주 확인 (계산대에서 바로 떠야 하니까)
@@ -739,11 +774,14 @@ async function saveWait(){
 let RESV_SEEN = null;
 async function loadResv(){
   try{
-    const r = await api('resvList', TOKEN, localDate());
+    const isToday = !VIEW_DATE || VIEW_DATE === localDate();
+    const r = await api('resvList', TOKEN, viewDate());
     RESV = r.rows;
     // 처음 켤 때는 전부 "이미 본 것"으로 두고, 그 뒤에 새로 생긴 것만 알린다
+    // (다른 날을 보고 있을 땐 알리지 않는다 — 오늘 얘기가 아니니까)
     const ids = new Set(RESV.map(x => x.id));
-    if(RESV_SEEN === null){ RESV_SEEN = ids; }
+    if(!isToday){ /* 다른 날 보는 중 — 기준을 건드리지 않는다 */ }
+    else if(RESV_SEEN === null){ RESV_SEEN = ids; }
     else {
       const fresh = RESV.filter(x => !RESV_SEEN.has(x.id) && x.status === '예약');
       RESV_SEEN = ids;

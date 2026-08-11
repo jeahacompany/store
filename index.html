@@ -1200,6 +1200,20 @@
         </div>
 
         <div class="card">
+          <h2>🔴 공휴일 <span class="sub" style="font-weight:400; margin-left:8px">— 예약 달력에 빨갛게 표시돼요</span></h2>
+          <div class="sub">2026~2027년 공휴일은 미리 넣어뒀어요. <b>대체공휴일은 해마다 정부 발표로 바뀌니</b>
+            달력 보시고 틀린 게 있으면 여기서 고쳐주세요. 가게 자체 휴무일(창립기념일 등)도 여기 추가하면 됩니다.</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; margin-top:12px">
+            <div><label>날짜</label><input type="date" id="hlDate" style="width:170px"></div>
+            <div><label>이름</label><input id="hlName" placeholder="예: 창립기념일 / 개인사정 휴무" style="width:220px"></div>
+            <button class="btn sm" onclick="hlSave()">추가</button>
+          </div>
+          <div class="table-scroll" style="margin-top:12px; max-height:320px; overflow:auto"><table><thead><tr>
+            <th>날짜</th><th>요일</th><th>이름</th><th>남은 날</th><th>구분</th><th></th>
+          </tr></thead><tbody id="hlBody"></tbody></table></div>
+        </div>
+
+        <div class="card">
           <h2>🗓 예약판 <span class="sub" id="rbSum" style="font-weight:400; margin-left:8px"></span>
             <button class="btn sm ghost" style="margin-left:auto" onclick="loadRb()">↻ 새로고침</button></h2>
           <div class="sub">앞으로 잡힌 예약을 <b>날짜별</b>로 봅니다. 오픈까지 남은 날도 같이 보여요.</div>
@@ -2848,7 +2862,7 @@ function loadForTab(name){
   if(name==='bar') loadBar();
   if(name==='pnl') loadPnl();
   if(name==='book') loadBook();
-  if(name==='booking'){ loadBooking(); loadRb(); }
+  if(name==='booking'){ loadBooking(); loadRb(); loadHl(); }
   if(name==='pos') loadPos();
   if(name==='mread') loadReadStatus();
   if(name==='buylink') loadBuy();
@@ -4812,6 +4826,40 @@ function renderCommonDocs(){
    전화 받으면 링크만 보내주면 손님이 직접 넣고, 현황판에 자동으로 뜬다.  */
 const BK_DOW = ['일','월','화','수','목','금','토'];
 let BK = null;
+
+/* 공휴일 — 예약 달력에 빨갛게 칠할 날.
+   대체공휴일은 해마다 바뀌니 내가 코드에 박지 않고 사장님이 고칠 수 있게 둔다. */
+async function loadHl(){
+  if(!$('hlBody')) return;
+  try{
+    const rows = await api('holidayList', TOKEN);
+    $('hlBody').innerHTML = rows.map(r => {
+      const dw = BK_DOW[new Date(r.hol_date + 'T00:00:00').getDay()];
+      const dd = r.dday === 0 ? '<b>오늘</b>' : r.dday > 0 ? 'D-' + r.dday
+               : '<span class="sub">지남</span>';
+      return '<tr><td><b>'+r.hol_date+'</b></td><td>'+dw+'</td>'
+        + '<td style="color:#E03131; font-weight:700">'+esc(r.name)+'</td><td>'+dd+'</td>'
+        + '<td>'+(r.mine ? '<span class="badge a">우리가 넣음</span>'
+                        : '<span class="badge">기본 공휴일</span>')+'</td>'
+        + '<td>'+(r.mine
+            ? '<button class="btn sm red" onclick="hlDel(\''+r.id+'\',\''+esc(r.name).replace(/'/g,"\\'")+'\')">삭제</button>'
+            : '<span class="sub">이름만 수정 가능</span>')+'</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="sub">등록된 공휴일이 없어요.</td></tr>';
+  }catch(e){ $('hlBody').innerHTML = '<tr><td colspan="6" class="sub">'+esc(e.message)+'</td></tr>'; }
+}
+async function hlSave(){
+  const d = $('hlDate').value;
+  if(!d){ toast('날짜를 골라주세요', true); return; }
+  try{ await api('holidaySave', TOKEN, { date:d, name:$('hlName').value.trim() });
+    toast('추가했어요 — 예약 달력에 빨갛게 표시됩니다');
+    $('hlDate').value=''; $('hlName').value=''; loadHl(); }
+  catch(e){ toast(e.message, true); }
+}
+async function hlDel(id, name){
+  if(!confirm('"'+name+'"을 공휴일에서 뺄까요?\n\n예약 달력에서 빨간 표시가 사라집니다.')) return;
+  try{ await api('holidayDelete', TOKEN, id); toast('뺐어요'); loadHl(); }
+  catch(e){ toast(e.message, true); }
+}
 
 /* 예약판 — 앞으로 잡힌 예약을 날짜별로 (현황판과 같은 화면을 관리자에도 둔다) */
 let RB = null, RB_DAYS = 365;

@@ -40,19 +40,29 @@ input[type=tel],input[type=text],input[type=date],textarea{ width:100%; padding:
 textarea{ font-size:16px; min-height:74px; resize:vertical }
 input:focus,textarea:focus{ outline:none; border-color:var(--brand) }
 
-/* 날짜 가로 스크롤 */
-.days{ display:flex; gap:8px; overflow-x:auto; padding:4px 0 6px; scrollbar-width:none }
-.days::-webkit-scrollbar{ display:none }
-.day{ flex:none; width:62px; border:1px solid var(--line); background:#fff; border-radius:14px; padding:10px 0;
-  text-align:center; cursor:pointer; font-family:inherit; color:var(--ink) }
-.day .dw{ font-size:12px; color:var(--sub); font-weight:700 }
-.day .dd{ font-size:19px; font-weight:800; margin-top:2px }
-.day .dm{ font-size:11px; color:var(--sub) }
-.day.sun .dw,.day.sun .dd{ color:#E03131 }
-.day.sat .dw,.day.sat .dd{ color:#1971C2 }
-.day.on{ background:var(--brand); border-color:var(--brand) }
-.day.on .dw,.day.on .dd,.day.on .dm{ color:#fff }
-.day.off{ opacity:.35; cursor:not-allowed }
+/* 달력 */
+.calhd{ display:flex; align-items:center; gap:10px; margin:6px 0 12px }
+.calhd .mm{ flex:1; text-align:center; font-size:19px; font-weight:800 }
+.calnav{ width:44px; height:44px; border:1px solid var(--line); background:#fff; border-radius:12px;
+  font-size:20px; font-weight:800; cursor:pointer; font-family:inherit; color:var(--ink); flex:none }
+.calnav:disabled{ opacity:.28; cursor:not-allowed }
+.calgrid{ display:grid; grid-template-columns:repeat(7,1fr); gap:5px }
+.caldw{ text-align:center; font-size:12.5px; font-weight:800; color:var(--sub); padding-bottom:4px }
+.caldw.s{ color:#E03131 } .caldw.t{ color:#1971C2 }
+.cell{ aspect-ratio:1/1; border:1px solid var(--line); background:#fff; border-radius:12px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+  cursor:pointer; font-family:inherit; color:var(--ink); padding:0 }
+.cell .n{ font-size:17px; font-weight:800; line-height:1 }
+.cell .h{ font-size:9px; font-weight:700; color:#E03131; line-height:1.1; max-width:100%;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.cell.hol .n, .cell.sun .n{ color:#E03131 }
+.cell.sat .n{ color:#1971C2 }
+.cell.on{ background:var(--brand); border-color:var(--brand) }
+.cell.on .n, .cell.on .h{ color:#fff }
+.cell.off{ opacity:.25; cursor:not-allowed; background:#F8F9FA }
+.cell.blank{ border:none; background:none; cursor:default }
+.callgd{ display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; font-size:12.5px; color:var(--sub) }
+.callgd i{ font-style:normal; color:#E03131; font-weight:700 }
 
 /* 시간 */
 .times{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:4px }
@@ -124,8 +134,14 @@ input:focus,textarea:focus{ outline:none; border-color:var(--brand) }
 
     <div class="card">
       <h2><span class="step">1</span>언제 오시나요?</h2>
-      <div class="sub">날짜를 골라주세요</div>
-      <div class="days" id="days"></div>
+      <div class="calhd">
+        <button class="calnav" id="calPrev" onclick="calMove(-1)">‹</button>
+        <div class="mm" id="calMM">—</div>
+        <button class="calnav" id="calNext" onclick="calMove(1)">›</button>
+      </div>
+      <div class="calgrid" id="calDw"></div>
+      <div class="calgrid" id="calBody" style="margin-top:5px"></div>
+      <div class="callgd"><span><i>빨간 날</i> 공휴일·일요일</span><span>흐린 날 예약 불가</span></div>
       <div id="timeWrap" style="margin-top:14px">
         <div class="sub" id="timeLb">시간을 골라주세요</div>
         <div class="times" id="times"></div>
@@ -175,12 +191,9 @@ input:focus,textarea:focus{ outline:none; border-color:var(--brand) }
       <h2>예약이 잡혔어요</h2>
       <div class="sub" id="dHello"></div>
     </div>
-    <div class="bigno">
-      <div class="lb">예약번호</div>
-      <div class="no" id="dNo">—</div>
-      <div class="sub" style="margin-top:6px">이 번호는 예약 확인·취소할 때 필요해요</div>
-    </div>
     <div class="sum" id="dSum"></div>
+    <div class="note" style="margin-top:14px">확인하거나 취소하실 땐 <b>연락처만</b> 넣으시면 돼요.
+따로 적어두실 것 없습니다.</div>
     <div class="note" style="margin-top:16px">오시는 날 뵙겠습니다.
 못 오시게 되면 <b>미리 취소</b>만 해주세요. 그 자리를 기다리는 다른 손님이 계세요.</div>
     <button class="btn ghost" onclick="location.reload()">처음으로</button>
@@ -195,12 +208,10 @@ input:focus,textarea:focus{ outline:none; border-color:var(--brand) }
 <div id="checkView" class="hidden wrap" style="padding-top:24px">
   <div class="card">
     <h2>예약 확인 · 취소</h2>
-    <div class="sub">예약번호와 연락처 뒤 4자리를 넣어주세요.</div>
-    <label>예약번호</label>
-    <input type="text" id="cNo" placeholder="예: A1B2C3" maxlength="6" style="text-transform:uppercase">
-    <label>연락처 뒤 4자리</label>
-    <input type="tel" id="cLast4" placeholder="0000" inputmode="numeric" maxlength="4">
-    <button class="btn" onclick="doCheck()">확인하기</button>
+    <div class="sub">예약하실 때 넣으신 연락처만 넣으시면 돼요.</div>
+    <label>연락처</label>
+    <input type="tel" id="cPhone" placeholder="010-0000-0000" inputmode="numeric" maxlength="13">
+    <button class="btn" onclick="doCheck()">내 예약 찾기</button>
     <button class="btn ghost" onclick="location.reload()">돌아가기</button>
     <div id="cResult" style="margin-top:16px"></div>
   </div>
@@ -302,24 +313,52 @@ function renderInfo(id){
 const DW = ['일','월','화','수','목','금','토'];
 function ymd(dt){ return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0')
                        + '-' + String(dt.getDate()).padStart(2,'0'); }
+let CAL_Y = 0, CAL_M = 0;      // 지금 보고 있는 달
+
 function renderDays(){
-  const closed = (INFO.closedDow||'').split(',').filter(Boolean);
-  const min = new Date(INFO.minDate + 'T00:00:00'), max = new Date(INFO.maxDate + 'T00:00:00');
-  let html = '';
-  for(let dt = new Date(min); dt <= max; dt.setDate(dt.getDate()+1)){
-    const s = ymd(dt), dow = dt.getDay(), off = closed.includes(String(dow));
-    html += '<button class="day' + (dow===0?' sun':dow===6?' sat':'') + (off?' off':'') + '" data-d="'+s+'"'
-          + (off ? ' disabled' : ' onclick="pickDay(\''+s+'\',this)"') + '>'
-          + '<div class="dw">'+DW[dow]+'</div><div class="dd">'+dt.getDate()+'</div>'
-          + '<div class="dm">'+(dt.getMonth()+1)+'월</div></button>';
-  }
-  $('days').innerHTML = html;
+  const min = new Date(INFO.minDate + 'T00:00:00');
+  CAL_Y = min.getFullYear(); CAL_M = min.getMonth();
+  $('calDw').innerHTML = DW.map((d, i) =>
+    '<div class="caldw'+(i===0?' s':i===6?' t':'')+'">'+d+'</div>').join('');
+  renderCal();
   $('times').innerHTML = '';
   $('timeLb').textContent = '날짜를 먼저 골라주세요';
 }
+function calMove(n){
+  const d = new Date(CAL_Y, CAL_M + n, 1);
+  CAL_Y = d.getFullYear(); CAL_M = d.getMonth();
+  renderCal();
+}
+function renderCal(){
+  const closed = (INFO.closedDow||'').split(',').filter(Boolean);
+  const hol = INFO.holidays || {};
+  const min = INFO.minDate, max = INFO.maxDate;
+  $('calMM').textContent = CAL_Y + '년 ' + (CAL_M + 1) + '월';
+
+  // 예약 가능한 달 밖으로는 못 넘어가게
+  const minM = new Date(min + 'T00:00:00'), maxM = new Date(max + 'T00:00:00');
+  $('calPrev').disabled = (CAL_Y * 12 + CAL_M) <= (minM.getFullYear() * 12 + minM.getMonth());
+  $('calNext').disabled = (CAL_Y * 12 + CAL_M) >= (maxM.getFullYear() * 12 + maxM.getMonth());
+
+  const first = new Date(CAL_Y, CAL_M, 1), last = new Date(CAL_Y, CAL_M + 1, 0);
+  let html = '';
+  for(let i = 0; i < first.getDay(); i++) html += '<div class="cell blank"></div>';
+  for(let day = 1; day <= last.getDate(); day++){
+    const dt = new Date(CAL_Y, CAL_M, day), s = ymd(dt), dow = dt.getDay();
+    const isHol = !!hol[s];
+    const off = s < min || s > max || closed.includes(String(dow));
+    html += '<button class="cell'
+          + (off ? ' off' : '') + (isHol ? ' hol' : dow===0 ? ' sun' : dow===6 ? ' sat' : '')
+          + (s === PICK_D ? ' on' : '') + '" data-d="'+s+'"'
+          + (off ? ' disabled' : ' onclick="pickDay(\''+s+'\',this)"') + '>'
+          + '<span class="n">'+day+'</span>'
+          + (isHol ? '<span class="h">'+esc(hol[s])+'</span>' : '') + '</button>';
+  }
+  $('calBody').innerHTML = html;
+}
 async function pickDay(d, btn){
   PICK_D = d; PICK_T = '';
-  document.querySelectorAll('.day').forEach(b => b.classList.toggle('on', b === btn));
+  document.querySelectorAll('.cell').forEach(b => b.classList.toggle('on', b.dataset.d === d));
   $('timeLb').textContent = '시간 불러오는 중...';
   $('times').innerHTML = '';
   try{
@@ -344,7 +383,7 @@ function ppl(n){
   PEOPLE = Math.max(1, Math.min((INFO && INFO.maxPeople) || 20, PEOPLE + n));
   $('pplN').textContent = PEOPLE;
   // 인원이 바뀌면 자리가 모자란 시간은 다시 계산해야 한다
-  if(PICK_D){ const b = document.querySelector('.day.on'); pickDay(PICK_D, b); }
+  if(PICK_D){ pickDay(PICK_D); }
 }
 
 async function submitBook(){
@@ -363,7 +402,6 @@ async function submitBook(){
     const dt = new Date(r.date + 'T00:00:00');
     $('dHello').textContent = r.name + '님, ' + (dt.getMonth()+1) + '월 ' + dt.getDate() + '일 '
       + DW[dt.getDay()] + '요일 ' + r.time + ' 에 뵙겠습니다.';
-    $('dNo').textContent = r.no;
     $('dSum').innerHTML =
         '<div class="r"><span class="lb">가게</span><span class="vl">'+esc(r.store)+'</span></div>'
       + '<div class="r"><span class="lb">날짜</span><span class="vl">'+r.date+' ('+DW[dt.getDay()]+')</span></div>'
@@ -373,40 +411,59 @@ async function submitBook(){
     show('doneView');
   }catch(e){
     toast(e.message, true);
-    if(PICK_D){ const b = document.querySelector('.day.on'); pickDay(PICK_D, b); }   // 자리가 찼으면 다시 그린다
+    if(PICK_D){ pickDay(PICK_D); }   // 자리가 찼으면 다시 그린다
   }finally{ SENDING = false; $('btnGo').disabled = false; $('btnGo').textContent = '예약하기'; }
 }
 
-/* ── 확인 · 취소 ── */
-function showCheck(){ show('checkView'); }
-let CHK = null;
+/* ── 확인 · 취소 — 연락처만 넣으면 내 예약이 다 나온다 ── */
+function showCheck(){
+  show('checkView');
+  if(!$('cPhone').value && $('fPhone').value) $('cPhone').value = $('fPhone').value;
+}
+(function(){    // 여기도 010 미리 넣고 자동으로 - 붙인다
+  const el = $('cPhone');
+  el.addEventListener('focus', () => { if(!el.value) el.value = '010-'; });
+  el.addEventListener('input', () => {
+    let v = el.value.replace(/[^0-9]/g,'').slice(0,11);
+    el.value = v.length > 7 ? v.slice(0,3)+'-'+v.slice(3,7)+'-'+v.slice(7)
+             : v.length > 3 ? v.slice(0,3)+'-'+v.slice(3) : v;
+  });
+  el.addEventListener('keydown', e => { if(e.key === 'Enter') doCheck(); });
+})();
 async function doCheck(){
-  const no = $('cNo').value.trim().toUpperCase(), l4 = $('cLast4').value.replace(/[^0-9]/g,'');
-  if(!no || l4.length !== 4){ toast('예약번호와 뒤 4자리를 넣어주세요', true); return; }
-  $('cResult').innerHTML = '<div class="sub">확인 중...</div>';
+  const ph = $('cPhone').value.replace(/[^0-9]/g,'');
+  if(ph.length < 10){ toast('연락처를 정확히 넣어주세요', true); return; }
+  $('cResult').innerHTML = '<div class="sub">찾는 중...</div>';
   try{
-    const r = await api('bookGet', CODE, no, l4); CHK = r;
-    const dt = new Date(r.date + 'T00:00:00');
-    $('cResult').innerHTML =
-        '<div class="sum">'
-      + '<div class="r"><span class="lb">예약자</span><span class="vl">'+esc(r.name)+'</span></div>'
-      + '<div class="r"><span class="lb">날짜</span><span class="vl">'+r.date+' ('+DW[dt.getDay()]+')</span></div>'
-      + '<div class="r"><span class="lb">시간</span><span class="vl">'+r.time+'</span></div>'
-      + '<div class="r"><span class="lb">인원</span><span class="vl">'+r.people+'명</span></div>'
-      + '<div class="r"><span class="lb">상태</span><span class="vl">'+esc(r.status)+'</span></div>'
-      + '</div>'
-      + (r.status === '예약'
-          ? '<button class="btn line" onclick="doCancel()">예약 취소하기</button>'
-          : '<div class="sub" style="margin-top:12px">이미 처리된 예약이에요. 바꾸시려면 가게로 전화 주세요.</div>');
+    const rows = await api('bookMine', CODE, ph);
+    if(!rows.length){
+      $('cResult').innerHTML = '<div class="sub">그 번호로 잡힌 예약이 없어요.<br>'
+        + '다른 번호로 하셨는지 확인해주세요.</div>';
+      return;
+    }
+    $('cResult').innerHTML = rows.map(r => {
+      const dt = new Date(r.res_date + 'T00:00:00');
+      const dd = r.dday === 0 ? '오늘' : r.dday > 0 ? 'D-' + r.dday : '지난 예약';
+      return '<div class="sum" style="margin-top:14px">'
+        + '<div class="r"><span class="lb">날짜</span><span class="vl">'
+          + r.res_date + ' (' + DW[dt.getDay()] + ') · ' + dd + '</span></div>'
+        + '<div class="r"><span class="lb">시간</span><span class="vl">'+esc(r.res_time||'')+'</span></div>'
+        + '<div class="r"><span class="lb">인원</span><span class="vl">'+r.people+'명</span></div>'
+        + '<div class="r"><span class="lb">예약자</span><span class="vl">'+esc(r.name)+'</span></div>'
+        + '<div class="r"><span class="lb">상태</span><span class="vl">'+esc(r.status)+'</span></div>'
+        + '</div>'
+        + (r.status === '예약' && r.dday >= 0
+            ? '<button class="btn line" onclick="doCancel(\''+r.id+'\')">이 예약 취소하기</button>'
+            : '');
+    }).join('');
   }catch(e){ $('cResult').innerHTML = '<div class="sub" style="color:#E03131">'+esc(e.message)+'</div>'; }
 }
-async function doCancel(){
+async function doCancel(id){
   if(!confirm('예약을 취소할까요?\n\n취소하면 되돌릴 수 없어요. 다시 잡으시려면 새로 예약해주세요.')) return;
   try{
-    await api('bookCancel', CODE, $('cNo').value.trim().toUpperCase(),
-              $('cLast4').value.replace(/[^0-9]/g,''));
-    $('cResult').innerHTML = '<div class="note">예약이 취소됐어요. 알려주셔서 감사합니다.<br>'
-      + '다음에 다시 뵐 수 있으면 좋겠습니다.</div>';
+    await api('bookCancel', CODE, id, $('cPhone').value.replace(/[^0-9]/g,''));
+    toast('취소했어요');
+    doCheck();
   }catch(e){ toast(e.message, true); }
 }
 </script>
