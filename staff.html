@@ -891,7 +891,8 @@ async function loadProfile(){
     const row = (lb, val, copy) => val
       ? '<div class="sprow"' + (copy ? ' onclick="spCopy(\''+encodeURIComponent(copy)+'\')"' : '') + '>'
         + '<span class="lb">' + lb + '</span>'
-        + '<span class="vl">' + esc(val) + (copy ? '<span class="cp">복사</span>' : '') + '</span></div>'
+        + '<span class="vl">' + esc(val).replace(/\n/g, '<br>')
+          + (copy ? '<span class="cp">복사</span>' : '') + '</span></div>'
       : '';
     const addr = [p.addr, p.addr_detail].filter(Boolean).join(' ');
     H.push(row('대표전화', p.tel, p.tel));
