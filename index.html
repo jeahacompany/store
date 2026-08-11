@@ -2892,6 +2892,8 @@ function sfFilter(f, btn){
 }
 async function loadStaff(){
   try{
+    // 직급표가 있어야 홀·주방을 나눌 수 있다 (없으면 전부 '기타'로 뭉친다)
+    if(!POS_ROWS.length) await loadPositions().catch(()=>{});
     STAFF = await api('staffList', TOKEN);
     fillWhoSelects();
     $('btnStaffCreate').style.display = (ME && ME.role==='owner') ? '' : 'none';
