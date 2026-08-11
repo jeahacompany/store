@@ -130,13 +130,16 @@
     padding-bottom:6px; border-bottom:2px solid #F1F3F5 }
   .sp-sec:first-of-type{ margin-top:4px }
   /* 긴급연락망 */
-  .emrow{ display:grid; grid-template-columns:28px 1.1fr 1fr 1.2fr; gap:8px;
+  .emrow{ display:grid; grid-template-columns:28px 1.1fr 1fr 1.2fr 32px; gap:8px;
     align-items:center; margin-bottom:8px }
+  .emrow .emdel{ width:30px; height:34px; border:1px solid #E9ECEF; background:#fff; color:#ADB5BD;
+    border-radius:9px; font-size:14px; cursor:pointer }
+  .emrow .emdel:hover{ border-color:#FFC9C9; background:#FFF5F5; color:#E03131 }
   .emrow .emno{ width:26px; height:26px; border-radius:8px; background:#FFF1F0; color:#E03131;
     font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center }
   .emrow input{ width:100% }
-  @media(max-width:700px){ .emrow{ grid-template-columns:24px 1fr; grid-auto-rows:min-content }
-    .emrow .emno{ grid-row:span 3 } }
+  @media(max-width:700px){ .emrow{ grid-template-columns:24px 1fr 32px; grid-auto-rows:min-content }
+    .emrow .emno{ grid-row:span 3 } .emrow .emdel{ grid-row:span 3 } }
   /* 손익계산서 (엑셀형 시트) */
   table.book { border-collapse:separate; border-spacing:0; font-size:14px; min-width:100%; white-space:nowrap }
   table.book td, table.book th { border-bottom:1px solid #E9ECEF; border-right:1px solid #E9ECEF; padding:7px 10px }
@@ -878,6 +881,10 @@
 
           <div class="sp-sec">🚨 긴급연락망 <span class="sub">— 사고·고장 났을 때 직원이 바로 누를 번호. 직원 앱 맨 위에 뜹니다</span></div>
           <div id="emGrid"></div>
+          <div style="display:flex; gap:8px; align-items:center; margin:4px 0 2px">
+            <button class="btn sm ghost" onclick="emAdd()">＋ 연락처 추가</button>
+            <span class="sub" id="emCnt"></span>
+          </div>
 
           <div class="sp-sec">📍 주소</div>
           <div class="grid2">
@@ -3476,32 +3483,52 @@ const SP_MAP = {
 /* 긴급연락망 5줄 — 누구인지 / 이름 / 번호 */
 const EM_ROLES = ['사장님','점장','건물주','119 소방·구급','112 경찰','가스','전기·차단기',
                   '수도·배관','포스 AS','냉장·냉동 AS','인테리어','간판','정수기 AS','보험사'];
-function emRender(list){
-  const L = (list || []).slice(0, 5);
-  while(L.length < 5) L.push({role:'', name:'', phone:''});
+const EM_MAX = 20;
+let EM_ROWS = [];          // 화면에 떠 있는 줄 (저장 눌러야 서버로 간다)
+function emRender(){
+  while(EM_ROWS.length < 5) EM_ROWS.push({role:'', name:'', phone:''});   // 기본 5줄은 항상 보이게
   $('emGrid').innerHTML =
       '<datalist id="emRoleList">' + EM_ROLES.map(r => '<option value="'+r+'">').join('') + '</datalist>'
-    + L.map((e, i) =>
+    + EM_ROWS.map((e, i) =>
       '<div class="emrow">'
       + '<div class="emno">'+(i+1)+'</div>'
       + '<input id="emRole'+i+'" list="emRoleList" placeholder="누구인지 (예: 건물주)" value="'+esc(e.role||'')+'">'
       + '<input id="emName'+i+'" placeholder="이름" value="'+esc(e.name||'')+'">'
       + '<input id="emPhone'+i+'" placeholder="010-0000-0000" value="'+esc(e.phone||'')+'">'
+      + '<button class="emdel" title="이 줄 지우기" onclick="emDel('+i+')">✕</button>'
       + '</div>').join('');
+  if($('emCnt')) $('emCnt').textContent = EM_ROWS.length + '줄 / 최대 ' + EM_MAX + '줄'
+    + '  ·  저장을 눌러야 반영돼요';
 }
-function emCollect(){
-  return [0,1,2,3,4].map(i => ({
-    role:  ($('emRole'+i)  || {}).value ? $('emRole'+i).value.trim()  : '',
-    name:  ($('emName'+i)  || {}).value ? $('emName'+i).value.trim()  : '',
-    phone: ($('emPhone'+i) || {}).value ? $('emPhone'+i).value.trim() : ''
+function emSync(){          // 지금 화면에 적힌 값을 EM_ROWS 로 걷어온다
+  EM_ROWS = EM_ROWS.map((_, i) => ({
+    role:  ($('emRole'+i)  || {}).value || '',
+    name:  ($('emName'+i)  || {}).value || '',
+    phone: ($('emPhone'+i) || {}).value || ''
   }));
 }
+function emAdd(){
+  emSync();
+  if(EM_ROWS.length >= EM_MAX){ toast('연락처는 '+EM_MAX+'개까지 넣을 수 있어요', true); return; }
+  EM_ROWS.push({role:'', name:'', phone:''});
+  emRender();
+  const el = $('emRole' + (EM_ROWS.length - 1)); if(el) el.focus();
+}
+function emDel(i){
+  emSync();
+  const e = EM_ROWS[i] || {};
+  const who = [e.role, e.name].filter(Boolean).join(' ') || (i+1)+'번 줄';
+  if((e.role || e.name || e.phone) && !confirm('"'+who+'"을 지울까요?\n\n저장을 눌러야 실제로 지워집니다.')) return;
+  EM_ROWS.splice(i, 1);
+  emRender();
+}
+function emCollect(){ emSync(); return EM_ROWS; }
 async function loadProfile(){
   try{
     const p = await api('storeProfile', TOKEN);
     Object.entries(SP_MAP).forEach(([el, key]) => { if($(el)) $(el).value = p[key] || ''; });
     if($('spOpen')) $('spOpen').value = p.open_date || '';
-    if($('emGrid')) emRender(p.emergency);
+    if($('emGrid')){ EM_ROWS = (p.emergency || []).slice(0, EM_MAX); emRender(); }
   }catch(e){}
 }
 async function spSave(){
