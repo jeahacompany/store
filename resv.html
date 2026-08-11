@@ -17,7 +17,8 @@
 :root{ --brand:#F26522; --ink:#20242E; --line:#E9ECEF; --sub:#868E96; --green:#2F9E44; --red:#E03131; }
 *{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent }
 body{ font-family:Pretendard,-apple-system,sans-serif; background:#F8F9FA; color:var(--ink); font-size:17px;
-  line-height:1.55; padding:0 0 40px; max-width:520px; margin:0 auto }
+  line-height:1.55; padding:0 0 40px; max-width:520px; margin:0 auto;
+  word-break:keep-all; overflow-wrap:break-word }   /* 한글이 낱말 가운데서 안 끊기게 */
 .wrap{ padding:0 16px }
 .hidden{ display:none !important }
 .sub{ color:var(--sub); font-size:14.5px }
@@ -63,6 +64,17 @@ input:focus,textarea:focus{ outline:none; border-color:var(--brand) }
 .cell.blank{ border:none; background:none; cursor:default }
 .callgd{ display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; font-size:12.5px; color:var(--sub) }
 .callgd i{ font-style:normal; color:#E03131; font-weight:700 }
+/* 시간 밑 안내 · 마지막 인사 — 문단으로 읽히게 */
+.tmnote{ margin-top:14px; padding:13px 15px; background:#FFF8F3; border:1px solid #FFE3D0;
+  border-radius:12px; font-size:14px; line-height:1.75; color:#5C4033 }
+.tmnote b{ color:#20242E }
+.closing{ margin-top:16px; padding-top:15px; border-top:1px solid var(--line);
+  font-size:14.5px; line-height:1.8; color:#495057 }
+.closing b{ color:var(--ink) }
+.closing .priv{ margin-top:12px; font-size:12.5px; color:var(--sub); line-height:1.6 }
+.pplnote{ margin-top:10px; font-size:14px; line-height:1.75; color:var(--sub) }
+.pplnote b{ color:var(--ink) }
+.pplnote a{ color:var(--brand); font-weight:700; text-decoration:none; white-space:nowrap }
 
 /* 시간 */
 .times{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:4px }
@@ -125,7 +137,10 @@ input:focus,textarea:focus{ outline:none; border-color:var(--brand) }
   <div class="hero">
     <div class="brand">SUNCHANGDAM</div>
     <h1 id="hStore">순창담 본점</h1>
-    <p id="hDesc">원하시는 날짜와 시간을 직접 골라주세요.<br>번거로운 통화 없이 30초면 끝납니다.</p>
+    <p id="hDesc"><b>순창(淳昌)의 장(醬), 그 깊은 맛을 담다.</b><br>
+      장류의 고장 순창에서 우려낸 육수 한 솥.<br>
+      급하게 드시고 나가는 자리가 아니라,<br>
+      좋은 분들과 오래 앉아 계시라고 만든 자리입니다.</p>
     <div class="pre hidden" id="hPre"></div>
   </div>
 
@@ -145,6 +160,11 @@ input:focus,textarea:focus{ outline:none; border-color:var(--brand) }
       <div id="timeWrap" style="margin-top:14px">
         <div class="sub" id="timeLb">시간을 골라주세요</div>
         <div class="times" id="times"></div>
+        <div class="tmnote" id="tmNote">
+          <b>고르신 시간에 맞춰 육수를 올려두고 자리를 비워둡니다.</b><br>
+          드시는 시간은 넉넉히 잡으셔도 돼요. 저희가 재촉하지 않습니다.<br>
+          늦어지시면 <b>10분까지</b> 자리를 지켜드려요. 그보다 늦으실 것 같으면 전화 한 통만 부탁드립니다.
+        </div>
       </div>
     </div>
 
@@ -155,7 +175,7 @@ input:focus,textarea:focus{ outline:none; border-color:var(--brand) }
         <div class="n"><span id="pplN">2</span><span style="font-size:17px">명</span></div>
         <button onclick="ppl(1)">＋</button>
       </div>
-      <div class="sub" id="pplNote" style="margin-top:8px"></div>
+      <div class="pplnote" id="pplNote"></div>
     </div>
 
     <div class="card">
@@ -164,12 +184,14 @@ input:focus,textarea:focus{ outline:none; border-color:var(--brand) }
       <input type="text" id="fName" placeholder="홍길동" autocomplete="name" maxlength="20">
       <label>연락처 <span class="sub">— 자리 준비되면 연락드려요</span></label>
       <input type="tel" id="fPhone" placeholder="010-0000-0000" inputmode="numeric" maxlength="13">
-      <label>남기실 말씀 <span class="sub">— 없으면 비워두셔도 돼요</span></label>
-      <textarea id="fMemo" maxlength="200" placeholder="예: 아기 의자 하나 부탁드려요 / 창가 자리면 좋겠어요"></textarea>
       <input type="text" id="fHp" class="hp" tabindex="-1" autocomplete="off">
       <button class="btn" id="btnGo" onclick="submitBook()">예약하기</button>
-      <div class="sub" style="margin-top:10px; text-align:center">
-        입력하신 정보는 예약 확인 용도로만 쓰이고, 방문 후 정리됩니다.</div>
+      <div class="closing">
+        <b>순창담은 손님을 기다리는 집입니다.</b><br>
+        예약을 넣어주시면 그 시간에 맞춰 준비해두고 기다리겠습니다.
+        혹시 못 오시게 되면 미리 알려만 주세요 — 그 자리를 기다리는 다른 분이 계세요.
+        <div class="priv">입력하신 정보는 예약 확인 용도로만 쓰이고, 방문 후 정리됩니다.</div>
+      </div>
     </div>
 
     <div class="card">
@@ -261,7 +283,7 @@ function show(v){ ['loading','formView','doneView','checkView']
 /* 엔터 치면 다음 칸으로 */
 document.addEventListener('keydown', e => {
   if(e.key !== 'Enter') return;
-  const f = ['fName','fPhone','fMemo'], i = f.indexOf(e.target.id);
+  const f = ['fName','fPhone'], i = f.indexOf(e.target.id);
   if(i >= 0 && i < f.length - 1){ e.preventDefault(); $(f[i+1]).focus(); }
 });
 
@@ -286,8 +308,12 @@ document.addEventListener('keydown', e => {
       $('hPre').classList.remove('hidden');
     }
     if(INFO.notice){ $('vNotice').textContent = INFO.notice; $('vNotice').classList.remove('hidden'); }
-    $('pplNote').textContent = INFO.maxPeople + '명까지 온라인으로 예약할 수 있어요.'
-      + (INFO.tel ? ' 더 많으시면 ' + INFO.tel + ' 로 전화 주세요.' : '');
+    $('pplNote').innerHTML = '온라인으로는 <b>' + INFO.maxPeople + '명까지</b> 잡으실 수 있어요.<br>'
+      + '단체로 오시면 방 배치와 준비가 달라져서, '
+      + (INFO.tel
+          ? '<a href="tel:' + esc(INFO.tel.replace(/[^0-9+]/g,'')) + '">' + esc(INFO.tel) + '</a> 로 '
+            + '전화 주시면 맞춰 준비해두겠습니다.'
+          : '가게로 전화 주시면 맞춰 준비해두겠습니다.');
     renderInfo('vInfo'); renderInfo('dInfo');
     renderDays();
     show('formView');
@@ -398,7 +424,7 @@ async function submitBook(){
   SENDING = true; $('btnGo').disabled = true; $('btnGo').textContent = '예약 중...';
   try{
     const r = await api('bookCreate', CODE, { date:PICK_D, time:PICK_T, people:PEOPLE,
-      name:name, phone:phone, memo:$('fMemo').value.trim(), hp:$('fHp').value });
+      name:name, phone:phone, hp:$('fHp').value });
     const dt = new Date(r.date + 'T00:00:00');
     $('dHello').textContent = r.name + '님, ' + (dt.getMonth()+1) + '월 ' + dt.getDate() + '일 '
       + DW[dt.getDay()] + '요일 ' + r.time + ' 에 뵙겠습니다.';
