@@ -679,7 +679,9 @@
               <button class="btn sm ghost" style="margin-left:auto" onclick="loadChecklist()">↻ 새로고침</button></h2>
             <div class="sub">서류·계약서·인적사항을 한 줄로 봅니다. <b>✖</b> 는 아직 안 받은 것이에요.</div>
             <div class="table-scroll" style="margin-top:10px"><table><thead><tr>
-              <th>이름</th><th>신분증</th><th>통장사본</th><th>보건증</th><th>주소</th><th>계좌</th><th>근로계약서</th>
+              <th>이름</th><th>직급</th><th>연락처</th><th>주민번호</th><th>주소</th>
+              <th>신분증</th><th>통장사본</th><th>보건증</th>
+              <th>계좌</th><th>예금주</th><th>급여</th><th>근로계약서</th>
             </tr></thead><tbody id="ckBody"></tbody></table></div>
           </div>
 
@@ -2900,7 +2902,8 @@ function renderStaff(){
   const order = {pending:0, active:1, quit:2};
   const rows = [...STAFF].filter(s => !SF_FILTER || s.status===SF_FILTER)
     .sort((a,b)=>(order[a.status]-order[b.status])||a.name.localeCompare(b.name));
-  $('staffBody').innerHTML = rows.map(s => {
+  // 부서(홀·주방·투자자·기타)로 묶어서 본다
+  const one = s => {
     const st = s.status==='pending' ? '<span class="badge a">승인대기</span>'
              : s.status==='active' ? '<span class="badge g">재직</span>' : '<span class="badge r">퇴사</span>';
     const pay = s.hourly_wage==null ? '<span class="sub">비공개</span>'
@@ -2910,7 +2913,15 @@ function renderStaff(){
       + '<td><span class="sub">'+esc(s.username||'-')+'</span></td>'
       + '<td>'+esc(s.position||'-')+'</td><td>'+role+'</td><td>'+pay+'</td>'
       + '<td>'+(s.hired_at||'-')+'</td><td>'+st+'</td></tr>';
-  }).join('') || '<tr><td colspan="7" class="sub">해당하는 직원이 없어요.</td></tr>';
+  };
+  let html = '';
+  STAFF_DEPTS.forEach(([key, label]) => {
+    const list = rows.filter(s => staffDept(s) === key);
+    if(!list.length) return;
+    html += '<tr class="deptrow"><td colspan="7">'+label+' <span class="sub">'+list.length+'명</span></td></tr>'
+          + list.map(one).join('');
+  });
+  $('staffBody').innerHTML = html || '<tr><td colspan="7" class="sub">해당하는 직원이 없어요.</td></tr>';
 }
 function fillWhoSelects(){
   const act = STAFF.filter(s=>s.status==='active');
@@ -5161,6 +5172,15 @@ async function loadStaffLegal(){
 }
 
 /* 직원별 받아야 할 것 */
+/* 부서 구분 — 직원 목록·체크리스트가 같은 기준을 쓴다 */
+const STAFF_DEPTS = [['홀','🍽️ 홀'], ['주방','👨‍🍳 주방'],
+                     ['기타','⚙️ 관리·기타'], ['투자자','💼 투자자']];
+function staffDept(s){
+  if(s.role === 'viewer') return '투자자';
+  const p = POS_ROWS.find(x => x.name === (s.position||''));
+  return p ? p.dept : '기타';
+}
+
 let CK_ROWS = [];
 /* 체크리스트 칸 클릭 — 있으면 보고, 없으면 그 자리에서 올린다 */
 function ckDoc(staffId, kind, docId){
@@ -5185,7 +5205,7 @@ async function loadChecklist(){
         '<button class="ckcell'+(v?' g':'')+'" title="눌러서 직원 정보 열기"'
       + ' onclick="openStaff(\''+staffId+'\')">'+(v?'✔':'✖')+'</button>';
 
-    $('ckBody').innerHTML = rows.map(r => {
+    const oneCk = r => {
       let ct;
       if(r.contract === '완료')      ct = '<span class="badge g">✔ 서명완료</span>';
       else if(r.contract === '서명대기') ct = '<span class="badge a">직원 서명 대기</span>';
@@ -5198,13 +5218,34 @@ async function loadChecklist(){
         if(left < 0)       hLabel = '만료됨';
         else if(left < 30) hLabel = left+'일 남음';
       }
-      return '<tr><td><b>'+esc(r.name)+'</b> <span class="sub">'+esc(r.position||'')+'</span></td>'
+      return '<tr><td><b>'+esc(r.name)+'</b></td>'
+        + '<td>'+(r.has_pos ? '<span class="sub">'+esc(r.position)+'</span>' : infoCell(r.id, false))+'</td>'
+        + '<td>'+infoCell(r.id, r.has_phone)+'</td>'
+        + '<td>'+infoCell(r.id, r.has_rrn)+'</td>'
+        + '<td>'+infoCell(r.id, r.has_addr)+'</td>'
         + '<td>'+docCell(r.id,'idcard',   r.id_did)+'</td>'
         + '<td>'+docCell(r.id,'bankbook', r.bank_did)+'</td>'
         + '<td>'+docCell(r.id,'health',   r.health_did, hLabel)+'</td>'
-        + '<td>'+infoCell(r.id, r.has_addr)+'</td>'
-        + '<td>'+infoCell(r.id, r.has_acct)+'</td><td>'+ct+'</td></tr>';
-    }).join('') || '<tr><td colspan="7" class="sub">재직 중인 직원이 없어요.</td></tr>';
+        + '<td>'+infoCell(r.id, r.has_acct)+'</td>'
+        + '<td>'+infoCell(r.id, r.has_holder)+'</td>'
+        + '<td>'+infoCell(r.id, r.has_wage)+'</td>'
+        + '<td>'+ct+'</td></tr>';
+    };
+    // 부서로 묶는다 (직원 목록과 같은 기준)
+    let ckHtml = '';
+    STAFF_DEPTS.forEach(([key, label]) => {
+      const list = rows.filter(r => r.dept === key);
+      if(!list.length) return;
+      const done = list.filter(r => r.has_pos && r.has_phone && r.has_rrn && r.has_addr
+        && r.doc_id && r.doc_bank && r.doc_health && r.has_acct && r.has_holder
+        && r.has_wage && r.contract === '완료').length;
+      ckHtml += '<tr class="deptrow"><td colspan="12">'+label
+        + ' <span class="sub">'+list.length+'명</span>'
+        + (done === list.length ? ' <span class="badge g">전원 완료</span>'
+                                : ' <span class="badge r">'+(list.length-done)+'명 미완</span>')
+        + '</td></tr>' + list.map(oneCk).join('');
+    });
+    $('ckBody').innerHTML = ckHtml || '<tr><td colspan="12" class="sub">재직 중인 직원이 없어요.</td></tr>';
   }catch(e){}
 }
 
