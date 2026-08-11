@@ -1141,6 +1141,63 @@
         </div>
       </div>
 
+      <!-- 손님이 직접 잡는 예약 -->
+      <div id="tab-booking" class="hidden">
+        <div class="card" style="border-color:#FFD8A8; background:#FFFBF7">
+          <h2>📅 손님이 직접 잡는 예약
+            <label style="margin-left:auto; display:flex; align-items:center; gap:8px; font-size:14px; font-weight:700">
+              <input type="checkbox" id="bkOn" onchange="bkSave()" style="width:20px;height:20px;accent-color:#F26522">
+              온라인 예약 받기</label></h2>
+          <div class="sub" style="margin-bottom:12px">예약 전화가 오면 <b>"문자로 링크 보내드릴게요"</b> 하고 아래 주소만 보내세요.
+            손님이 직접 날짜·시간·인원·이름을 넣으면 <b>현황판에 자동으로 뜹니다.</b> 받아적을 필요가 없어요.</div>
+
+          <label>손님에게 보낼 주소</label>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+            <input id="bkUrl" readonly style="flex:1; min-width:260px; background:#fff; font-size:14px">
+            <button class="btn sm" onclick="bkCopy()">복사</button>
+            <a class="btn sm ghost" id="bkOpen" target="_blank">열어보기</a>
+          </div>
+          <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap">
+            <button class="btn sm ghost" onclick="bkSms()">📱 문자로 보내기</button>
+            <button class="btn sm ghost" onclick="bkCopyMsg()">📋 안내문구까지 복사</button>
+            <button class="btn sm red" onclick="bkReset()">주소 새로 발급</button>
+          </div>
+          <div class="sub" style="margin-top:8px">주소가 새어나갔거나 장난 예약이 들어오면 <b>주소 새로 발급</b>을 누르세요.
+            예전 주소는 바로 막힙니다. (기존 예약은 그대로 남아요)</div>
+        </div>
+
+        <div class="card">
+          <h2>예약 규칙 <button class="btn sm" style="margin-left:auto" onclick="bkSave()">저장</button></h2>
+          <div class="sub" style="margin-bottom:10px">여기서 정한 대로만 손님이 고를 수 있어요.</div>
+          <div class="grid2">
+            <div><label>예약 시작 시간</label><input id="bkOpenT" type="time" style="width:100%"></div>
+            <div><label>예약 마지막 시간</label><input id="bkCloseT" type="time" style="width:100%"></div>
+            <div><label>예약 간격 (분)</label><input id="bkSlot" type="number" min="10" step="10" style="width:100%"></div>
+            <div><label>한 타임 받을 인원</label><input id="bkCap" type="number" min="1" style="width:100%"></div>
+            <div><label>1건 최대 인원 <span class="sub">— 넘으면 전화 안내</span></label>
+                 <input id="bkMaxP" type="number" min="1" style="width:100%"></div>
+            <div><label>며칠 앞까지 받을까</label><input id="bkDays" type="number" min="1" max="180" style="width:100%"></div>
+            <div><label>몇 분 뒤부터 예약 가능 <span class="sub">— 준비 시간</span></label>
+                 <input id="bkLead" type="number" min="0" step="10" style="width:100%"></div>
+            <div><label>쉬는 요일</label>
+              <div id="bkDow" style="display:flex; gap:5px; flex-wrap:wrap; margin-top:6px"></div></div>
+          </div>
+          <label style="margin-top:14px">예약 페이지에 띄울 안내 <span class="sub">— 손님이 제일 먼저 봐요</span></label>
+          <textarea id="bkNotice" placeholder="예: 무한리필 성인 16,900원 / 만 5세 이하 무료&#10;예약은 10분까지만 기다려드려요. 늦으시면 꼭 전화 주세요."></textarea>
+          <div style="margin-top:12px"><button class="btn" onclick="bkSave()">저장</button></div>
+        </div>
+
+        <div class="card">
+          <h2>📥 온라인으로 들어온 예약
+            <span class="badge b" id="bkTodayCnt" style="margin-left:8px">오늘 0건</span>
+            <button class="btn sm ghost" style="margin-left:auto" onclick="loadBooking()">↻ 새로고침</button></h2>
+          <div class="sub">손님 연락처는 가려서 보여요. 전체 번호와 도착·노쇼 처리는 <b>현황판</b>에서 하세요.</div>
+          <div class="table-scroll" style="margin-top:10px"><table><thead><tr>
+            <th>예약일시</th><th>예약자</th><th>연락처</th><th>인원</th><th>남긴 말</th><th>상태</th><th>예약번호</th><th>접수</th>
+          </tr></thead><tbody id="bkBody"></tbody></table></div>
+        </div>
+      </div>
+
       <!-- 카카오 알림톡 -->
       <div id="tab-kakao" class="hidden">
         <div class="card" style="border-color:#FFE066; background:#FFFDF5">
@@ -2500,7 +2557,7 @@ let ME = null, STAFF = [], ATT = [], WAGES = null, TASKS = [];
 const TABS = ['today','ai','cal','bar','cash','staffg','work','jobs','money','buy','acct','guest','docs','sys'];
 const TITLES = {today:'오늘', ai:'AI 비서', cal:'캘린더', staff:'직원', pos:'직책', shift:'근무표', att:'근태', staffg:'직원', work:'근무·근태', jobs:'오더·업무', money:'매출·지출', buy:'매입·재고',
   acct:'정산', guest:'고객', docs:'매뉴얼·정보', sys:'설정', buylink:'구매 URL', trash:'휴지통',
-  labor:'인건비표', wage:'급여 계산기', kakao:'알림톡', tasks:'오더', board:'업무보드',
+  labor:'인건비표', wage:'급여 계산기', kakao:'알림톡', booking:'예약 받기', tasks:'오더', board:'업무보드',
   manual:'매뉴얼', info:'매장정보', cust:'고객·포인트', cash:'자금', sales:'매출', dep:'입금', exp:'지출', pnl:'오늘 정산', book:'손익계산서', legal:'원산지 표시판', settle:'월 정산', inb:'입고 명세서', bar:'셀프바', vendor:'거래처', stock:'재고', price:'단가 변동', links:'연결 주소', logs:'시스템 로그', setup:'설정'};
 // 직책 — DB(store.positions)에서 읽어온다. 직책 탭에서 고치면 여기도 같이 바뀜
 // 홀 5단계(총괄>리더>매니저>홀바>서포터) + 주방 4단계(메인셰프>부셰프>조리>보조)
@@ -2647,7 +2704,8 @@ const TAB_MERGE = {
            {id:'pnl', name:'🧮 오늘 정산', owner:true}, {id:'settle', name:'📊 월 정산'},
            {id:'book', name:'📒 손익계산서', owner:true}] },
   guest: { title:'고객', icon:'🧑‍🤝‍🧑', subs:[
-           {id:'cust', name:'🧑‍🤝‍🧑 고객·포인트'}, {id:'kakao', name:'💬 알림톡'}] },
+           {id:'cust', name:'🧑‍🤝‍🧑 고객·포인트'}, {id:'booking', name:'📅 예약 받기'},
+           {id:'kakao', name:'💬 알림톡'}] },
   docs:  { title:'매뉴얼·정보', icon:'📖', subs:[
            {id:'manual', name:'📖 매뉴얼'}, {id:'info', name:'ℹ️ 매장정보'}, {id:'legal', name:'🥩 원산지'}] },
   sys:   { title:'설정', icon:'⚙️', subs:[
@@ -2760,6 +2818,7 @@ function loadForTab(name){
   if(name==='bar') loadBar();
   if(name==='pnl') loadPnl();
   if(name==='book') loadBook();
+  if(name==='booking') loadBooking();
   if(name==='pos') loadPos();
   if(name==='mread') loadReadStatus();
   if(name==='buylink') loadBuy();
@@ -4405,6 +4464,7 @@ async function loadLinks(){
   try{ const st = await api('storeGet', TOKEN); sid = st.storeId || ''; pos = st.posKey || ''; STORE_ID = sid; }catch(e){}
   let rc = '', od = '';
   try{ const r = await api('reportCodeGet', TOKEN); rc = r.code || ''; od = r.open_date || ''; }catch(e){}
+  if(!BK){ try{ BK = await api('bookAdmin', TOKEN); }catch(e){} }   // 예약 주소도 여기 같이 보여준다
   $('odInput').value = od || '';
 
   const G = [
@@ -4413,6 +4473,8 @@ async function loadLinks(){
         who:'손님 (입구에 세워두기)', desc:'번호·인원 넣으면 대기번호 발급. 그 화면이 실시간 현황판이 되고, 30분마다 할인쿠폰이 쌓여요.' },
       { icon:'⭐', name:'포인트 회원가입', url: base+'my.html?s='+sid, qr:true,
         who:'손님 (계산대에 세워두기)', desc:'전화번호만 남기면 가입 즉시 포인트. 이미 회원이면 포인트 조회도 돼요.' },
+      { icon:'📅', name:'예약하기', url: base+'resv.html?c='+(BK ? BK.code : '…'), qr:true,
+        who:'손님 (예약 전화 오면 문자로)', desc:'날짜·시간·인원·이름을 손님이 직접 넣으면 현황판에 자동으로 떠요. 주소·설정은 고객 → 📅 예약 받기에서.' },
     ]},
     { title:'👨‍🍳 매장 직원용 — 태블릿·폰에 띄워두세요', color:'#D0EBFF', rows:[
       { icon:'🗂️', name:'홀 태블릿 (현황판)', url: base+'board.html',
@@ -4716,6 +4778,98 @@ function renderCommonDocs(){
   el.innerHTML = '<div class="docwrap"><div class="hd">ALL STAFF · 전 직원 공통</div>'
                + docToggles(rest, true, '') + '</div>';
 }
+/* ── 손님이 직접 잡는 예약 ─────────────────────────
+   전화 받으면 링크만 보내주면 손님이 직접 넣고, 현황판에 자동으로 뜬다.  */
+const BK_DOW = ['일','월','화','수','목','금','토'];
+let BK = null;
+function bkUrlOf(code){
+  return location.origin + location.pathname.replace(/[^/]*$/, '') + 'resv.html?c=' + code;
+}
+async function loadBooking(){
+  if(!$('bkBody')) return;
+  $('bkBody').innerHTML = '<tr><td colspan="8" class="sub">불러오는 중...</td></tr>';
+  try{
+    BK = await api('bookAdmin', TOKEN);
+    const url = bkUrlOf(BK.code);
+    $('bkUrl').value = url; $('bkOpen').href = url;
+    $('bkOn').checked   = !!BK.on;
+    $('bkOpenT').value  = BK.open;      $('bkCloseT').value = BK.close;
+    $('bkSlot').value   = BK.slot_min;  $('bkCap').value    = BK.cap;
+    $('bkMaxP').value   = BK.max_people;$('bkDays').value   = BK.days;
+    $('bkLead').value   = BK.lead_min;  $('bkNotice').value = BK.notice || '';
+    const off = (BK.closed_dow || '').split(',').filter(Boolean);
+    $('bkDow').innerHTML = BK_DOW.map((d, i) =>
+      '<button class="btn sm '+(off.includes(String(i)) ? 'red' : 'ghost')+'" data-d="'+i+'" '
+      + 'onclick="bkDowToggle(this)">'+d+'</button>').join('');
+    $('bkTodayCnt').textContent = '오늘 ' + BK.todayCnt + '건';
+
+    $('bkBody').innerHTML = (BK.recent || []).map(r => {
+      const dt = new Date(r.res_date + 'T00:00:00');
+      const st = r.status === '예약' ? '<span class="badge b">예약</span>'
+               : r.status === '도착' ? '<span class="badge g">도착</span>'
+               : r.status === '노쇼' ? '<span class="badge r">노쇼</span>'
+                                     : '<span class="badge">취소</span>';
+      return '<tr><td><b>'+r.res_date.slice(5)+'</b> ('+BK_DOW[dt.getDay()]+') <b>'+esc(r.res_time)+'</b></td>'
+        + '<td><b>'+esc(r.name)+'</b></td><td class="sub">'+esc(r.phone)+'</td>'
+        + '<td>'+r.people+'명</td>'
+        + '<td class="sub" style="max-width:220px; white-space:pre-wrap">'+esc(r.memo||'-')+'</td>'
+        + '<td>'+st+'</td><td class="sub">'+esc(r.book_no||'-')+'</td>'
+        + '<td class="sub">'+String(r.created_at||'').slice(5,16).replace('T',' ')+'</td></tr>';
+    }).join('') || '<tr><td colspan="8" class="sub">아직 온라인 예약이 없어요. 위 주소를 손님께 보내보세요.</td></tr>';
+  }catch(e){ $('bkBody').innerHTML = '<tr><td colspan="8" class="sub">'+esc(e.message)+'</td></tr>'; }
+}
+function bkDowToggle(btn){
+  const on = btn.classList.contains('red');
+  btn.classList.toggle('red', !on); btn.classList.toggle('ghost', on);
+}
+function bkDowValue(){
+  return [...document.querySelectorAll('#bkDow button.red')].map(b => b.dataset.d).join(',');
+}
+async function bkSave(){
+  try{
+    await api('bookAdminSave', TOKEN, {
+      on: $('bkOn').checked, open: $('bkOpenT').value, close: $('bkCloseT').value,
+      slot_min: +$('bkSlot').value || 30, cap: +$('bkCap').value || 40,
+      max_people: +$('bkMaxP').value || 20, days: +$('bkDays').value || 30,
+      lead_min: +$('bkLead').value || 0, closed_dow: bkDowValue(),
+      notice: $('bkNotice').value });
+    toast($('bkOn').checked ? '저장했어요' : '저장했어요 — 온라인 예약을 잠시 닫았습니다');
+  }catch(e){ toast(e.message, true); }
+}
+function bkMsg(){
+  const s = (BK && BK.store) || '순창담 본점';
+  return s + ' 예약 안내드립니다.\n\n'
+    + '아래 주소에서 원하시는 날짜와 시간을 직접 골라주세요.\n'
+    + bkUrlOf(BK.code) + '\n\n'
+    + '30초면 끝나고, 예약번호가 바로 나옵니다.\n감사합니다.';
+}
+function bkCopy(){ bkClip($('bkUrl').value, '주소를 복사했어요'); }
+function bkCopyMsg(){ bkClip(bkMsg(), '안내문구까지 복사했어요 — 문자에 그대로 붙여넣으세요'); }
+function bkClip(t, ok){
+  const done = () => toast(ok);
+  if(navigator.clipboard && navigator.clipboard.writeText)
+    navigator.clipboard.writeText(t).then(done).catch(() => bkClipOld(t, done));
+  else bkClipOld(t, done);
+}
+function bkClipOld(t, done){
+  const ta = document.createElement('textarea');
+  ta.value = t; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); done(); }catch(e){ prompt('아래 내용을 복사하세요', t); }
+  document.body.removeChild(ta);
+}
+function bkSms(){ location.href = 'sms:?body=' + encodeURIComponent(bkMsg()); }
+async function bkReset(){
+  if(!confirm('예약 주소를 새로 발급할까요?\n\n'
+    + '• 지금 주소는 바로 막힙니다\n'
+    + '• 이미 들어온 예약은 그대로 남아요\n'
+    + '• 손님께 이미 보낸 옛 링크는 안 열립니다\n\n'
+    + '장난 예약이 들어오거나 주소가 새어나갔을 때만 쓰세요.')) return;
+  try{ const r = await api('bookCodeReset', TOKEN); toast('새 주소를 발급했어요');
+    if(BK) BK.code = r.code; loadBooking(); }
+  catch(e){ toast(e.message, true); }
+}
+
 /* ── 카카오 알림톡 템플릿 ───────────────────────── */
 let KK = [];
 async function loadKakao(){

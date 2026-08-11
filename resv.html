@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>순창담_본점 예약하기</title>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="순창담_본점">
+<meta property="og:title" content="순창담_본점 예약하기">
+<meta property="og:description" content="원하시는 날짜와 시간을 직접 골라주세요. 30초면 예약이 끝납니다.">
+<meta name="description" content="순창담_본점 예약하기">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<style>
+:root{ --brand:#F26522; --ink:#20242E; --line:#E9ECEF; --sub:#868E96; --green:#2F9E44; --red:#E03131; }
+*{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent }
+body{ font-family:Pretendard,-apple-system,sans-serif; background:#F8F9FA; color:var(--ink); font-size:17px;
+  line-height:1.55; padding:0 0 40px; max-width:520px; margin:0 auto }
+.wrap{ padding:0 16px }
+.hidden{ display:none !important }
+.sub{ color:var(--sub); font-size:14.5px }
+
+/* 머리 — 우리 가게가 어떤 곳인지 한 줄로 */
+.hero{ background:linear-gradient(160deg,#F26522 0%,#D94F12 100%); color:#fff; padding:26px 20px 24px; margin-bottom:14px }
+.hero .brand{ font-size:12.5px; letter-spacing:3px; opacity:.85; font-weight:700 }
+.hero h1{ font-size:25px; margin:6px 0 8px; font-weight:800; letter-spacing:-.5px }
+.hero p{ font-size:14.5px; opacity:.93; line-height:1.6 }
+.hero .pre{ display:inline-block; margin-top:12px; background:rgba(255,255,255,.18);
+  border:1px solid rgba(255,255,255,.35); border-radius:999px; padding:6px 14px; font-size:13.5px; font-weight:700 }
+
+.card{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:20px 18px; margin-top:12px }
+.card h2{ font-size:17px; font-weight:800; margin-bottom:4px }
+.step{ display:inline-flex; align-items:center; justify-content:center; width:23px; height:23px; border-radius:8px;
+  background:var(--brand); color:#fff; font-size:13px; font-weight:800; margin-right:8px; flex:none }
+label{ display:block; font-size:14.5px; color:var(--sub); margin:14px 0 6px; font-weight:600 }
+input[type=tel],input[type=text],input[type=date],textarea{ width:100%; padding:15px; border:1px solid var(--line);
+  border-radius:12px; font-size:18px; font-family:inherit; background:#fff; color:var(--ink) }
+textarea{ font-size:16px; min-height:74px; resize:vertical }
+input:focus,textarea:focus{ outline:none; border-color:var(--brand) }
+
+/* 날짜 가로 스크롤 */
+.days{ display:flex; gap:8px; overflow-x:auto; padding:4px 0 6px; scrollbar-width:none }
+.days::-webkit-scrollbar{ display:none }
+.day{ flex:none; width:62px; border:1px solid var(--line); background:#fff; border-radius:14px; padding:10px 0;
+  text-align:center; cursor:pointer; font-family:inherit; color:var(--ink) }
+.day .dw{ font-size:12px; color:var(--sub); font-weight:700 }
+.day .dd{ font-size:19px; font-weight:800; margin-top:2px }
+.day .dm{ font-size:11px; color:var(--sub) }
+.day.sun .dw,.day.sun .dd{ color:#E03131 }
+.day.sat .dw,.day.sat .dd{ color:#1971C2 }
+.day.on{ background:var(--brand); border-color:var(--brand) }
+.day.on .dw,.day.on .dd,.day.on .dm{ color:#fff }
+.day.off{ opacity:.35; cursor:not-allowed }
+
+/* 시간 */
+.times{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:4px }
+.tm{ border:1px solid var(--line); background:#fff; border-radius:12px; padding:11px 0; text-align:center;
+  cursor:pointer; font-family:inherit; font-size:16px; font-weight:700; color:var(--ink) }
+.tm small{ display:block; font-size:11px; font-weight:600; color:var(--green); margin-top:1px }
+.tm.on{ background:var(--brand); border-color:var(--brand); color:#fff }
+.tm.on small{ color:rgba(255,255,255,.9) }
+.tm.full{ opacity:.4; cursor:not-allowed }
+.tm.full small{ color:var(--red) }
+
+/* 인원 */
+.ppl{ display:flex; align-items:center; gap:14px; margin-top:4px }
+.ppl button{ width:52px; height:52px; border:1px solid var(--line); background:#fff; border-radius:14px;
+  font-size:24px; font-weight:700; cursor:pointer; font-family:inherit; color:var(--ink) }
+.ppl .n{ flex:1; text-align:center; font-size:24px; font-weight:800 }
+
+.btn{ display:block; width:100%; padding:17px; border:none; border-radius:12px; background:var(--brand); color:#fff;
+  font-size:18px; font-weight:800; font-family:inherit; cursor:pointer; margin-top:18px }
+.btn:disabled{ opacity:.45 }
+.btn.ghost{ background:#fff; color:var(--ink); border:1px solid var(--line); font-weight:600; font-size:16px; padding:14px }
+.btn.line{ background:#fff; color:var(--red); border:1px solid #FFC9C9; font-weight:700; font-size:15px; padding:13px }
+
+.note{ background:#FFF9DB; border:1px solid #FFE066; border-radius:12px; padding:13px 15px; font-size:14.5px;
+  line-height:1.6; margin-top:12px; white-space:pre-wrap }
+.info{ border-top:1px solid var(--line); margin-top:16px; padding-top:14px }
+.irow{ display:flex; gap:10px; padding:7px 0; font-size:15px }
+.irow .lb{ width:74px; flex:none; color:var(--sub); font-size:14px }
+.irow .vl{ flex:1; word-break:break-all }
+
+/* 완료 */
+.done{ text-align:center; padding:8px 0 4px }
+.done .ic{ font-size:52px }
+.done h2{ font-size:22px; margin:8px 0 4px; font-weight:800 }
+.bigno{ background:#FFF4ED; border:2px dashed #FFC9A8; border-radius:14px; padding:16px; margin-top:16px; text-align:center }
+.bigno .lb{ font-size:13px; color:var(--sub); font-weight:700 }
+.bigno .no{ font-size:30px; font-weight:900; letter-spacing:4px; color:var(--brand); margin-top:2px }
+.sum{ margin-top:16px; border:1px solid var(--line); border-radius:14px; overflow:hidden }
+.sum .r{ display:flex; padding:13px 15px; border-bottom:1px solid var(--line); font-size:16px }
+.sum .r:last-child{ border-bottom:none }
+.sum .r .lb{ width:70px; color:var(--sub); font-size:14.5px; flex:none }
+.sum .r .vl{ font-weight:700 }
+
+.snack{ position:fixed; left:50%; bottom:22px; transform:translate(-50%,140%); background:#20242E; color:#fff;
+  padding:15px 20px; border-radius:14px; font-size:15.5px; font-weight:600; line-height:1.5;
+  box-shadow:0 10px 30px rgba(0,0,0,.28); z-index:200; max-width:calc(100% - 32px); width:max-content;
+  transition:transform .28s cubic-bezier(.2,.9,.3,1.2) }
+.snack.show{ transform:translate(-50%,0) }
+.snack.warn{ background:#E03131 }
+.hp{ position:absolute; left:-9999px; width:1px; height:1px; opacity:0 }
+.foot{ text-align:center; color:var(--sub); font-size:13px; margin-top:22px; line-height:1.7 }
+</style>
+</head>
+<body>
+
+<div id="loading" class="wrap" style="padding-top:60px; text-align:center; color:#868E96">불러오는 중...</div>
+
+<!-- ── 예약하기 ── -->
+<div id="formView" class="hidden">
+  <div class="hero">
+    <div class="brand">SUNCHANGDAM</div>
+    <h1 id="hStore">순창담 본점</h1>
+    <p id="hDesc">원하시는 날짜와 시간을 직접 골라주세요.<br>번거로운 통화 없이 30초면 끝납니다.</p>
+    <div class="pre hidden" id="hPre"></div>
+  </div>
+
+  <div class="wrap">
+    <div class="note hidden" id="vNotice"></div>
+
+    <div class="card">
+      <h2><span class="step">1</span>언제 오시나요?</h2>
+      <div class="sub">날짜를 골라주세요</div>
+      <div class="days" id="days"></div>
+      <div id="timeWrap" style="margin-top:14px">
+        <div class="sub" id="timeLb">시간을 골라주세요</div>
+        <div class="times" id="times"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">2</span>몇 분이 오시나요?</h2>
+      <div class="ppl">
+        <button onclick="ppl(-1)">−</button>
+        <div class="n"><span id="pplN">2</span><span style="font-size:17px">명</span></div>
+        <button onclick="ppl(1)">＋</button>
+      </div>
+      <div class="sub" id="pplNote" style="margin-top:8px"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">3</span>예약자 정보</h2>
+      <label>성함</label>
+      <input type="text" id="fName" placeholder="홍길동" autocomplete="name" maxlength="20">
+      <label>연락처 <span class="sub">— 자리 준비되면 연락드려요</span></label>
+      <input type="tel" id="fPhone" placeholder="010-0000-0000" inputmode="numeric" maxlength="13">
+      <label>남기실 말씀 <span class="sub">— 없으면 비워두셔도 돼요</span></label>
+      <textarea id="fMemo" maxlength="200" placeholder="예: 아기 의자 하나 부탁드려요 / 창가 자리면 좋겠어요"></textarea>
+      <input type="text" id="fHp" class="hp" tabindex="-1" autocomplete="off">
+      <button class="btn" id="btnGo" onclick="submitBook()">예약하기</button>
+      <div class="sub" style="margin-top:10px; text-align:center">
+        입력하신 정보는 예약 확인 용도로만 쓰이고, 방문 후 정리됩니다.</div>
+    </div>
+
+    <div class="card">
+      <h2>가게 안내</h2>
+      <div class="info" id="vInfo" style="border-top:none; margin-top:2px; padding-top:4px"></div>
+    </div>
+
+    <div class="foot">
+      이미 예약하셨나요? <a href="#" onclick="showCheck();return false" style="color:#F26522; font-weight:700">예약 확인 · 취소</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── 완료 ── -->
+<div id="doneView" class="hidden wrap" style="padding-top:24px">
+  <div class="card">
+    <div class="done">
+      <div class="ic">🎉</div>
+      <h2>예약이 잡혔어요</h2>
+      <div class="sub" id="dHello"></div>
+    </div>
+    <div class="bigno">
+      <div class="lb">예약번호</div>
+      <div class="no" id="dNo">—</div>
+      <div class="sub" style="margin-top:6px">이 번호는 예약 확인·취소할 때 필요해요</div>
+    </div>
+    <div class="sum" id="dSum"></div>
+    <div class="note" style="margin-top:16px">오시는 날 뵙겠습니다.
+못 오시게 되면 <b>미리 취소</b>만 해주세요. 그 자리를 기다리는 다른 손님이 계세요.</div>
+    <button class="btn ghost" onclick="location.reload()">처음으로</button>
+  </div>
+  <div class="card">
+    <h2>가게 안내</h2>
+    <div class="info" id="dInfo" style="border-top:none; margin-top:2px; padding-top:4px"></div>
+  </div>
+</div>
+
+<!-- ── 예약 확인 · 취소 ── -->
+<div id="checkView" class="hidden wrap" style="padding-top:24px">
+  <div class="card">
+    <h2>예약 확인 · 취소</h2>
+    <div class="sub">예약번호와 연락처 뒤 4자리를 넣어주세요.</div>
+    <label>예약번호</label>
+    <input type="text" id="cNo" placeholder="예: A1B2C3" maxlength="6" style="text-transform:uppercase">
+    <label>연락처 뒤 4자리</label>
+    <input type="tel" id="cLast4" placeholder="0000" inputmode="numeric" maxlength="4">
+    <button class="btn" onclick="doCheck()">확인하기</button>
+    <button class="btn ghost" onclick="location.reload()">돌아가기</button>
+    <div id="cResult" style="margin-top:16px"></div>
+  </div>
+</div>
+
+<div class="snack" id="snack"></div>
+
+<script>
+const SUPABASE_URL  = 'https://zcjvriedzememkiltqfa.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjanZyaWVkemVtZW1raWx0cWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMjg2MTIsImV4cCI6MjA5OTYwNDYxMn0.2nZh82xFUNORqcKObAHUnz8K5EjjL-Nym0T4YkDHxMk';
+const Q = new URLSearchParams(location.search);
+const CODE = Q.get('c') || '';
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let INFO = null, PICK_D = '', PICK_T = '', PEOPLE = 2, SENDING = false;
+
+async function api(fn, ...args){
+  const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/store_api', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'apikey':SUPABASE_ANON, 'Authorization':'Bearer '+SUPABASE_ANON },
+    body: JSON.stringify({ p_fn: fn, p_args: args })
+  });
+  const data = await res.json();
+  if(!data || data.ok === false) throw new Error((data && data.error) || '잠시 후 다시 시도해주세요.');
+  return data.result;
+}
+let snackT = null;
+function toast(msg, warn){
+  const el = $('snack'); el.textContent = msg;
+  el.classList.toggle('warn', !!warn); el.classList.add('show');
+  clearTimeout(snackT); snackT = setTimeout(() => el.classList.remove('show'), 3800);
+}
+function show(v){ ['loading','formView','doneView','checkView']
+  .forEach(x => $(x).classList.toggle('hidden', x !== v)); window.scrollTo(0,0); }
+
+/* 010은 미리 넣어둔다 — 요즘 010 아닌 번호가 거의 없다 */
+(function(){
+  const el = $('fPhone');
+  el.addEventListener('focus', () => { if(!el.value) el.value = '010-'; });
+  el.addEventListener('input', () => {
+    let v = el.value.replace(/[^0-9]/g,'').slice(0,11);
+    el.value = v.length > 7 ? v.slice(0,3)+'-'+v.slice(3,7)+'-'+v.slice(7)
+             : v.length > 3 ? v.slice(0,3)+'-'+v.slice(3) : v;
+  });
+})();
+/* 엔터 치면 다음 칸으로 */
+document.addEventListener('keydown', e => {
+  if(e.key !== 'Enter') return;
+  const f = ['fName','fPhone','fMemo'], i = f.indexOf(e.target.id);
+  if(i >= 0 && i < f.length - 1){ e.preventDefault(); $(f[i+1]).focus(); }
+});
+
+/* ── 시작 ── */
+(async function init(){
+  if(!CODE){ $('loading').textContent = '주소가 올바르지 않아요. 가게에 링크를 다시 요청해주세요.'; return; }
+  try{
+    INFO = await api('bookInfo', CODE);
+    document.title = INFO.store + ' 예약하기';
+    $('hStore').textContent = INFO.store;
+    if(!INFO.on){
+      $('loading').innerHTML = '<div style="font-size:44px">☎️</div>'
+        + '<div style="font-size:19px; font-weight:800; margin-top:10px; color:#20242E">지금은 온라인 예약을 받지 않아요</div>'
+        + '<div style="margin-top:8px">번거로우시겠지만 가게로 전화 주세요.</div>'
+        + (INFO.tel ? '<a href="tel:'+esc(INFO.tel.replace(/[^0-9+]/g,''))+'" '
+          + 'style="display:inline-block; margin-top:16px; background:#F26522; color:#fff; padding:14px 26px; '
+          + 'border-radius:12px; font-weight:800; text-decoration:none">'+esc(INFO.tel)+' 전화걸기</a>' : '');
+      return;
+    }
+    if(INFO.preopen){
+      $('hPre').textContent = '🎊 ' + INFO.open_date + ' 오픈 — 오픈일부터 예약받아요';
+      $('hPre').classList.remove('hidden');
+    }
+    if(INFO.notice){ $('vNotice').textContent = INFO.notice; $('vNotice').classList.remove('hidden'); }
+    $('pplNote').textContent = INFO.maxPeople + '명까지 온라인으로 예약할 수 있어요.'
+      + (INFO.tel ? ' 더 많으시면 ' + INFO.tel + ' 로 전화 주세요.' : '');
+    renderInfo('vInfo'); renderInfo('dInfo');
+    renderDays();
+    show('formView');
+  }catch(e){ $('loading').textContent = e.message; }
+})();
+
+function renderInfo(id){
+  const p = INFO, H = [];
+  const row = (lb, v) => v ? '<div class="irow"><span class="lb">'+lb+'</span><span class="vl">'+esc(v)+'</span></div>' : '';
+  H.push(row('주소', p.addr));
+  H.push(row('찾아오는 길', p.directions));
+  H.push(row('주차', p.parking));
+  H.push(row('평일', p.hours_weekday));
+  H.push(row('주말', p.hours_weekend));
+  H.push(row('브레이크', p.break_time));
+  H.push(row('휴무', p.holiday));
+  if(p.tel) H.push('<div class="irow"><span class="lb">전화</span><span class="vl">'
+    + '<a href="tel:'+esc(p.tel.replace(/[^0-9+]/g,''))+'" style="color:#F26522; font-weight:700">'
+    + esc(p.tel)+'</a></span></div>');
+  $(id).innerHTML = H.filter(Boolean).join('') || '<div class="sub">준비 중이에요.</div>';
+}
+
+const DW = ['일','월','화','수','목','금','토'];
+function ymd(dt){ return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0')
+                       + '-' + String(dt.getDate()).padStart(2,'0'); }
+function renderDays(){
+  const closed = (INFO.closedDow||'').split(',').filter(Boolean);
+  const min = new Date(INFO.minDate + 'T00:00:00'), max = new Date(INFO.maxDate + 'T00:00:00');
+  let html = '';
+  for(let dt = new Date(min); dt <= max; dt.setDate(dt.getDate()+1)){
+    const s = ymd(dt), dow = dt.getDay(), off = closed.includes(String(dow));
+    html += '<button class="day' + (dow===0?' sun':dow===6?' sat':'') + (off?' off':'') + '" data-d="'+s+'"'
+          + (off ? ' disabled' : ' onclick="pickDay(\''+s+'\',this)"') + '>'
+          + '<div class="dw">'+DW[dow]+'</div><div class="dd">'+dt.getDate()+'</div>'
+          + '<div class="dm">'+(dt.getMonth()+1)+'월</div></button>';
+  }
+  $('days').innerHTML = html;
+  $('times').innerHTML = '';
+  $('timeLb').textContent = '날짜를 먼저 골라주세요';
+}
+async function pickDay(d, btn){
+  PICK_D = d; PICK_T = '';
+  document.querySelectorAll('.day').forEach(b => b.classList.toggle('on', b === btn));
+  $('timeLb').textContent = '시간 불러오는 중...';
+  $('times').innerHTML = '';
+  try{
+    const r = await api('bookSlots', CODE, d);
+    if(r.closed){ $('timeLb').textContent = '그 날은 쉬는 날이에요.'; return; }
+    const ok = r.slots.filter(s => !s.past);
+    if(!ok.length){ $('timeLb').textContent = '오늘은 예약 가능한 시간이 지났어요. 내일부터 골라주세요.'; return; }
+    $('timeLb').textContent = '시간을 골라주세요';
+    $('times').innerHTML = ok.map(s => {
+      const full = s.left < PEOPLE;
+      return '<button class="tm'+(full?' full':'')+'" data-t="'+s.time+'"'
+        + (full ? ' disabled' : ' onclick="pickTime(\''+s.time+'\',this)"') + '>'
+        + s.time + '<small>' + (full ? '마감' : s.left + '석') + '</small></button>';
+    }).join('');
+  }catch(e){ $('timeLb').textContent = e.message; }
+}
+function pickTime(t, btn){
+  PICK_T = t;
+  document.querySelectorAll('.tm').forEach(b => b.classList.toggle('on', b === btn));
+}
+function ppl(n){
+  PEOPLE = Math.max(1, Math.min((INFO && INFO.maxPeople) || 20, PEOPLE + n));
+  $('pplN').textContent = PEOPLE;
+  // 인원이 바뀌면 자리가 모자란 시간은 다시 계산해야 한다
+  if(PICK_D){ const b = document.querySelector('.day.on'); pickDay(PICK_D, b); }
+}
+
+async function submitBook(){
+  if(SENDING) return;
+  if(!PICK_D){ toast('날짜를 골라주세요', true); return; }
+  if(!PICK_T){ toast('시간을 골라주세요', true); return; }
+  const name = $('fName').value.trim();
+  const phone = $('fPhone').value.replace(/[^0-9]/g,'');
+  if(name.length < 2){ toast('성함을 적어주세요', true); $('fName').focus(); return; }
+  if(phone.length < 10){ toast('연락처를 정확히 적어주세요', true); $('fPhone').focus(); return; }
+
+  SENDING = true; $('btnGo').disabled = true; $('btnGo').textContent = '예약 중...';
+  try{
+    const r = await api('bookCreate', CODE, { date:PICK_D, time:PICK_T, people:PEOPLE,
+      name:name, phone:phone, memo:$('fMemo').value.trim(), hp:$('fHp').value });
+    const dt = new Date(r.date + 'T00:00:00');
+    $('dHello').textContent = r.name + '님, ' + (dt.getMonth()+1) + '월 ' + dt.getDate() + '일 '
+      + DW[dt.getDay()] + '요일 ' + r.time + ' 에 뵙겠습니다.';
+    $('dNo').textContent = r.no;
+    $('dSum').innerHTML =
+        '<div class="r"><span class="lb">가게</span><span class="vl">'+esc(r.store)+'</span></div>'
+      + '<div class="r"><span class="lb">날짜</span><span class="vl">'+r.date+' ('+DW[dt.getDay()]+')</span></div>'
+      + '<div class="r"><span class="lb">시간</span><span class="vl">'+r.time+'</span></div>'
+      + '<div class="r"><span class="lb">인원</span><span class="vl">'+r.people+'명</span></div>'
+      + '<div class="r"><span class="lb">예약자</span><span class="vl">'+esc(r.name)+'</span></div>';
+    show('doneView');
+  }catch(e){
+    toast(e.message, true);
+    if(PICK_D){ const b = document.querySelector('.day.on'); pickDay(PICK_D, b); }   // 자리가 찼으면 다시 그린다
+  }finally{ SENDING = false; $('btnGo').disabled = false; $('btnGo').textContent = '예약하기'; }
+}
+
+/* ── 확인 · 취소 ── */
+function showCheck(){ show('checkView'); }
+let CHK = null;
+async function doCheck(){
+  const no = $('cNo').value.trim().toUpperCase(), l4 = $('cLast4').value.replace(/[^0-9]/g,'');
+  if(!no || l4.length !== 4){ toast('예약번호와 뒤 4자리를 넣어주세요', true); return; }
+  $('cResult').innerHTML = '<div class="sub">확인 중...</div>';
+  try{
+    const r = await api('bookGet', CODE, no, l4); CHK = r;
+    const dt = new Date(r.date + 'T00:00:00');
+    $('cResult').innerHTML =
+        '<div class="sum">'
+      + '<div class="r"><span class="lb">예약자</span><span class="vl">'+esc(r.name)+'</span></div>'
+      + '<div class="r"><span class="lb">날짜</span><span class="vl">'+r.date+' ('+DW[dt.getDay()]+')</span></div>'
+      + '<div class="r"><span class="lb">시간</span><span class="vl">'+r.time+'</span></div>'
+      + '<div class="r"><span class="lb">인원</span><span class="vl">'+r.people+'명</span></div>'
+      + '<div class="r"><span class="lb">상태</span><span class="vl">'+esc(r.status)+'</span></div>'
+      + '</div>'
+      + (r.status === '예약'
+          ? '<button class="btn line" onclick="doCancel()">예약 취소하기</button>'
+          : '<div class="sub" style="margin-top:12px">이미 처리된 예약이에요. 바꾸시려면 가게로 전화 주세요.</div>');
+  }catch(e){ $('cResult').innerHTML = '<div class="sub" style="color:#E03131">'+esc(e.message)+'</div>'; }
+}
+async function doCancel(){
+  if(!confirm('예약을 취소할까요?\n\n취소하면 되돌릴 수 없어요. 다시 잡으시려면 새로 예약해주세요.')) return;
+  try{
+    await api('bookCancel', CODE, $('cNo').value.trim().toUpperCase(),
+              $('cLast4').value.replace(/[^0-9]/g,''));
+    $('cResult').innerHTML = '<div class="note">예약이 취소됐어요. 알려주셔서 감사합니다.<br>'
+      + '다음에 다시 뵐 수 있으면 좋겠습니다.</div>';
+  }catch(e){ toast(e.message, true); }
+}
+</script>
+</body>
+</html>

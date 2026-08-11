@@ -319,6 +319,25 @@ async function api(fn, ...args){
 const $ = id => document.getElementById(id);
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2200); }
+/* 새 예약이 들어왔을 때 — 카운터에서 화면을 안 보고 있어도 알게 */
+function resvAlert(list){
+  const one = list[0];
+  toast('📅 새 예약 ' + (list.length > 1 ? list.length + '건 — ' : '')
+    + one.name + '님 ' + (one.res_time||'') + ' ' + one.people + '명');
+  try{
+    const C = window.AudioContext || window.webkitAudioContext; if(!C) return;
+    const ac = new C();
+    [880, 1320].forEach((f, i) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, ac.currentTime + i*0.18);
+      g.gain.exponentialRampToValueAtTime(0.25, ac.currentTime + i*0.18 + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + i*0.18 + 0.22);
+      o.connect(g); g.connect(ac.destination);
+      o.start(ac.currentTime + i*0.18); o.stop(ac.currentTime + i*0.18 + 0.25);
+    });
+  }catch(e){}
+}
 function show(v){ ['loginView','mainView'].forEach(x=>$(x).classList.toggle('hidden', x!==v)); }
 function localDate(){ const d=new Date(), p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
 function fmtTime(iso){ return iso ? new Date(iso).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '-'; }
@@ -344,6 +363,7 @@ async function loadAll(){
   loadWait(); loadResv(); loadNotices(); loadSold(); loadTasksB(); loadWork(); loadSn(); loadPay();
 }
 setInterval(() => { if(TOKEN) loadPay(); }, 8000);   // 결제는 더 자주 확인 (계산대에서 바로 떠야 하니까)
+setInterval(() => { if(TOKEN) loadResv(); }, 30000); // 손님이 직접 넣은 예약을 자동으로 받아온다
 
 /* ---------- 카드결제 → 적립 (포스 연동) ---------- */
 let PAYS = [], PM_CUR = null, PM_SEEN = new Set();
@@ -604,10 +624,20 @@ async function saveWait(){
 }
 
 /* 예약 */
+/* 손님이 직접 넣은 예약은 아무도 안 알려주니 화면이 스스로 알아채야 한다 */
+let RESV_SEEN = null;
 async function loadResv(){
   try{
     const r = await api('resvList', TOKEN, localDate());
     RESV = r.rows;
+    // 처음 켤 때는 전부 "이미 본 것"으로 두고, 그 뒤에 새로 생긴 것만 알린다
+    const ids = new Set(RESV.map(x => x.id));
+    if(RESV_SEEN === null){ RESV_SEEN = ids; }
+    else {
+      const fresh = RESV.filter(x => !RESV_SEEN.has(x.id) && x.status === '예약');
+      RESV_SEEN = ids;
+      if(fresh.length) resvAlert(fresh);
+    }
     const active = RESV.filter(x=>x.status==='예약');
     $('resvCnt').textContent = active.length + '팀 ' + active.reduce((s,x)=>s+x.people,0) + '명';
     $('resvExtra').textContent = '내일 ' + r.tomorrowCnt + '팀 · 최근 노쇼 ' + r.noshow30 + '건';
