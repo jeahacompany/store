@@ -4716,7 +4716,13 @@ let TRASH = [], TR_DAYS = 7, TR_FILTER = '전체';
 async function loadTrash(){
   const box = $('trBox'); if(!box) return;
   try{
-    TRASH = await api('trashList', TOKEN, TR_DAYS) || [];
+    // 되돌릴 수 있는 것(soft) + 통째로 보관해둔 것(hard) 를 한 목록으로
+    const [soft, hard] = await Promise.all([
+      api('trashList', TOKEN, TR_DAYS),
+      api('trashHard', TOKEN, TR_DAYS).catch(() => [])
+    ]);
+    TRASH = [...(soft||[]), ...(hard||[])]
+      .sort((a,b) => new Date(b.deleted_at) - new Date(a.deleted_at));
     const cats = ['전체', ...new Set(TRASH.map(t => t.label))];
     $('trFilter').innerHTML = cats.map(c =>
       '<button class="btn sm'+(c===TR_FILTER?'':' ghost')+'" onclick="trFilterSet(\''+esc(c)+'\')">'
@@ -4753,7 +4759,9 @@ function renderTrash(){
 async function trRestore(kind, id, title){
   if(!confirm('"'+title+'"을 되살릴까요?\n\n원래 있던 목록으로 돌아갑니다.')) return;
   try{
-    await api('trashRestore', TOKEN, kind, id);
+    // HARD: 로 시작하면 보관함에서 통째로 되살린다
+    if(kind.indexOf('HARD:') === 0) await api('trashHardRestore', TOKEN, id);
+    else                            await api('trashRestore', TOKEN, kind, id);
     toast('되살렸어요');
     loadTrash();
   }catch(e){ toast(e.message, true); }
