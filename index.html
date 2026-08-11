@@ -2330,7 +2330,10 @@
       <div class="grid2">
         <div><label>이름</label><input id="smName" style="width:100%"></div>
         <div><label>연락처</label><input id="smPhone" style="width:100%"></div>
-        <div><label>직급</label><select id="smPos" style="width:100%" onchange="posHint('smPos','smPosHint')"></select>
+        <div><label>소속 <span class="sub">— 목록·근무인력이 이걸로 나뉩니다</span></label>
+          <select id="smDept" style="width:100%"></select>
+          <div class="sub" id="smDeptHint" style="margin-top:5px"></div></div>
+        <div><label>직급</label><select id="smPos" style="width:100%" onchange="posHint('smPos','smPosHint'); deptAuto('smPos','smDept','smDeptHint')"></select>
           <div class="sub" id="smPosHint" style="margin-top:5px"></div>
           <datalist id="posList"></datalist></div>
         <div><label>역할</label><select id="smRole" style="width:100%">
@@ -2390,8 +2393,10 @@
         <div><label>아이디</label><input id="scU" style="width:100%" placeholder="영문·숫자 3자 이상"></div>
         <div><label>비밀번호</label><input id="scPw" style="width:100%" placeholder="4자 이상"></div>
         <div><label>이름</label><input id="scName" style="width:100%"></div>
-        <div><label>직급</label><select id="scPos" style="width:100%" onchange="posHint('scPos','scPosHint')"></select>
+        <div><label>직급</label><select id="scPos" style="width:100%" onchange="posHint('scPos','scPosHint'); deptAuto('scPos','scDept','scDeptHint')"></select>
           <div class="sub" id="scPosHint" style="margin-top:5px"></div></div>
+        <div><label>소속</label><select id="scDept" style="width:100%"></select>
+          <div class="sub" id="scDeptHint" style="margin-top:5px"></div></div>
         <div><label>역할</label><select id="scRole" style="width:100%">
           <option value="staff">직원</option><option value="manager">관리자</option><option value="viewer">투자자 (열람 전용)</option></select></div>
         <div><label>급여 방식</label><select id="scPayType" style="width:100%">
@@ -2960,6 +2965,7 @@ async function openStaff(id){
   $('smId').value = s.id;
   $('smTitle').textContent = s.name + (s.status==='pending' ? ' — 승인 대기중' : '');
   $('smName').value=s.name||''; $('smPhone').value=s.phone||''; posFillSelect('smPos', s.position||'');
+  deptFill('smDept', s.dept_set || ''); deptAuto('smPos','smDept','smDeptHint');
   $('smRole').value=s.role; $('smPayType').value=s.pay_type;
   $('smHourly').value=s.hourly_wage==null?'':cm(s.hourly_wage); $('smMonthly').value=s.monthly_wage==null?'':cm(s.monthly_wage);
   $('smHired').value=s.hired_at||''; $('smBirth').value=s.birth||'';
@@ -2996,6 +3002,7 @@ async function delStaff(){
 }
 function openStaffCreate(){
   $('scU').value=''; $('scPw').value=''; $('scName').value=''; posFillSelect('scPos', '');
+  deptFill('scDept', ''); deptAuto('scPos','scDept','scDeptHint');
   $('scRole').value='staff'; $('scPayType').value='hourly'; $('scHourly').value='10,030'; $('scMonthly').value='';
   $('scModal').classList.remove('hidden');
 }
@@ -3006,6 +3013,7 @@ async function scSave(){
       name:$('scName').value.trim(), position:$('scPos').value.trim(),
       role:$('scRole').value, pay_type:$('scPayType').value,
       hourly_wage:mVal($('scHourly').value), monthly_wage:mVal($('scMonthly').value) });
+    if(r.id && $('scDept').value) await api('staffSave', TOKEN, r.id, { dept:$('scDept').value });
     toast('계정을 만들었어요 — 아이디 '+r.username+'를 직원에게 알려주세요');
     closeModal('scModal'); loadStaff();
   }catch(e){ alert(e.message); }
@@ -3133,6 +3141,7 @@ function shrinkImage(file){
 function staffPatch(){
   return {
     name:$('smName').value.trim(), phone:$('smPhone').value.trim(), position:$('smPos').value.trim(),
+    dept:$('smDept').value,          // 빈 값이면 직급표를 따라간다
     role:$('smRole').value, pay_type:$('smPayType').value,
     hourly_wage:$('smHourly').value===''?null:mVal($('smHourly').value),
     monthly_wage:$('smMonthly').value===''?null:mVal($('smMonthly').value),
@@ -5244,10 +5253,29 @@ async function loadStaffLegal(){
 /* 부서 구분 — 직원 목록·체크리스트가 같은 기준을 쓴다 */
 const STAFF_DEPTS = [['홀','🍽️ 홀'], ['주방','👨‍🍳 주방'],
                      ['기타','⚙️ 관리·기타'], ['투자자','💼 투자자']];
+/* 소속은 서버(staff_dept)가 이미 계산해 내려준다.
+   순서 — ① 직원 카드에서 직접 고른 값  ② 직급표  ③ 투자자/기타 */
 function staffDept(s){
+  if(s.dept) return s.dept;
   if(s.role === 'viewer') return '투자자';
   const p = POS_ROWS.find(x => x.name === (s.position||''));
   return p ? p.dept : '기타';
+}
+/* 소속 칸 채우기 — 직접 고른 값이 없으면 "직급 따라감"으로 둔다 */
+function deptFill(selId, cur){
+  const el = $(selId); if(!el) return;
+  el.innerHTML = '<option value="">— 직급 따라감 —</option>'
+    + STAFF_DEPTS.map(([v, lb]) => '<option value="'+v+'">'+lb+'</option>').join('');
+  el.value = cur || '';
+}
+/* 직급을 고르면 소속을 자동으로 알려준다 (직접 고른 값이 없을 때만) */
+function deptAuto(posId, deptId, hintId){
+  const p = POS_ROWS.find(x => x.name === ($(posId)||{}).value);
+  const h = $(hintId); if(!h) return;
+  h.textContent = ($(deptId) && $(deptId).value)
+    ? '직접 고른 소속으로 들어갑니다.'
+    : (p ? '직급이 ' + p.dept + '이라 ' + p.dept + '으로 들어갑니다.'
+         : '직급이 없으면 관리·기타로 들어가요. 직접 골라주세요.');
 }
 
 let CK_ROWS = [];
