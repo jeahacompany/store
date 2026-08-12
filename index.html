@@ -368,6 +368,9 @@
            font-size:14.5px; font-weight:700; font-family:inherit; color:#495057; cursor:pointer; }
   .deptb.on { background:var(--ink); border-color:var(--ink); color:#fff; }
   /* 근무표 부서 구분줄 */
+  /* 아이디·비밀번호는 O 와 0 이 구분되게 */
+  .mono{ font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:14px;
+    letter-spacing:.3px; user-select:all }
   tr.deptrow td { background:#F1F3F5; font-size:14.5px; font-weight:800;
                   border-top:2px solid var(--ink); padding-top:10px; padding-bottom:10px; }
   /* 묶인 탭 안의 서브탭 */
@@ -957,6 +960,62 @@
         <div class="card">
           <h2>매장 정보 목록</h2>
           <div class="table-scroll"><table><thead><tr><th>분류</th><th>제목</th><th>내용</th><th>공개</th><th></th></tr></thead><tbody id="infoBody"></tbody></table></div>
+        </div>
+
+        <!-- 업체 사이트 계정 보관함 (사장님 전용) -->
+        <div class="card" id="siteCard" style="border-color:#FFC9C9">
+          <h2>🔐 업체 사이트 계정 <span class="badge r" style="margin-left:6px">사장님만</span>
+            <button class="btn sm" style="margin-left:auto" onclick="siteOpen('')">+ 추가</button></h2>
+          <div class="sub" style="margin-bottom:4px">식자재몰·주류몰·포스 관리자·배달앱 사장님창구처럼
+            <b>회원가입해둔 곳</b>을 여기 모아둡니다. 업체명을 누르면 그 사이트로 바로 갑니다.</div>
+          <div class="sub" style="background:#FFF5F5; border:1px solid #FFD8D8; border-radius:10px;
+               padding:10px 12px; margin:10px 0 12px; line-height:1.7">
+            <b style="color:#C92A2A">비밀번호는 암호를 걸어서 저장합니다.</b>
+            화면에는 <b>••••••</b> 로만 보이고, <b>「보기」를 눌러야</b> 그때 한 번 꺼냅니다.
+            누가 언제 봤는지는 <b>시스템 로그</b>에 남습니다. 사장님 계정으로만 열립니다.
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px">
+            <button class="btn sm site-f active" onclick="siteFilter('',this)">전체</button>
+            <button class="btn sm ghost site-f" onclick="siteFilter('식자재',this)">식자재</button>
+            <button class="btn sm ghost site-f" onclick="siteFilter('주류',this)">주류</button>
+            <button class="btn sm ghost site-f" onclick="siteFilter('포스',this)">포스·결제</button>
+            <button class="btn sm ghost site-f" onclick="siteFilter('배달',this)">배달·플랫폼</button>
+            <button class="btn sm ghost site-f" onclick="siteFilter('관공서',this)">관공서·세무</button>
+            <button class="btn sm ghost site-f" onclick="siteFilter('통신',this)">통신·공과금</button>
+            <button class="btn sm ghost site-f" onclick="siteFilter('기타',this)">기타</button>
+          </div>
+          <div class="table-scroll"><table><thead><tr>
+            <th>분류</th><th>업체 (누르면 이동)</th><th>아이디</th><th>비밀번호</th><th>담당자</th><th>메모</th><th></th>
+          </tr></thead><tbody id="siteBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- 업체 계정 입력 모달 -->
+      <div class="modal-bg hidden" id="siteModal">
+        <div class="modal">
+          <h2 id="siTitle">업체 사이트 계정</h2>
+          <input type="hidden" id="siId">
+          <div class="grid2">
+            <div><label>분류</label><select id="siCat" style="width:100%">
+              <option>식자재</option><option>주류</option><option>포스</option><option>배달</option>
+              <option>관공서</option><option>통신</option><option>기타</option></select></div>
+            <div><label>업체 이름 *</label><input id="siName" style="width:100%" placeholder="예: 식자재마트 / 배민 사장님광장"></div>
+            <div><label>사이트 주소</label><input id="siUrl" style="width:100%" placeholder="www.example.com"></div>
+            <div><label>담당자 연락처</label><input id="siContact" style="width:100%" placeholder="010-0000-0000"></div>
+            <div><label>아이디</label><input id="siUser" style="width:100%" autocomplete="off"></div>
+            <div><label>비밀번호</label>
+              <input id="siPw" type="password" style="width:100%" autocomplete="new-password"
+                     placeholder="바꿀 때만 입력">
+              <div class="sub" id="siPwHint" style="margin-top:5px"></div></div>
+          </div>
+          <label>메모</label>
+          <textarea id="siMemo" placeholder="예: 결제일 매월 25일 / 세금계산서는 이메일로 옴"></textarea>
+          <div class="sub" style="margin-top:6px">보안질문 답이나 계좌 비밀번호는 여기 적지 마세요.</div>
+          <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap">
+            <button class="btn" onclick="siteSave()">저장</button>
+            <button class="btn red hidden" id="siDel" onclick="siteDel()">삭제</button>
+            <button class="btn ghost" onclick="closeModal('siteModal')">닫기</button>
+          </div>
         </div>
       </div>
 
@@ -3713,8 +3772,99 @@ async function spSave(){
   catch(e){ alert(e.message); }
 }
 
+/* ── 업체 사이트 계정 보관함 (사장님 전용) ──
+   비밀번호는 서버에서 암호화해 두고, 「보기」를 눌렀을 때만 한 건씩 꺼낸다.
+   목록 응답에는 비밀번호가 아예 실려오지 않는다.                          */
+let SITES = [], SITE_CAT = '';
+async function loadSites(){
+  const card = $('siteCard'); if(!card) return;
+  // 사장님 전용 — 매니저에게는 카드 자체를 안 보여준다
+  card.style.display = (ME && ME.role === 'owner') ? '' : 'none';
+  if(!ME || ME.role !== 'owner') return;
+  try{ SITES = await api('siteList', TOKEN) || []; siteRender(); }
+  catch(e){ $('siteBody').innerHTML = '<tr><td colspan="7" class="sub">'+esc(e.message)+'</td></tr>'; }
+}
+function siteFilter(c, btn){
+  SITE_CAT = c;
+  document.querySelectorAll('.site-f').forEach(b => b.classList.toggle('ghost', b !== btn));
+  siteRender();
+}
+function siteRender(){
+  const rows = SITES.filter(s => !SITE_CAT || s.category === SITE_CAT);
+  $('siteBody').innerHTML = rows.map(s => {
+    const link = s.url
+      ? '<a class="link" href="'+esc(s.url)+'" target="_blank" rel="noopener"><b>'+esc(s.name)+'</b> ↗</a>'
+      : '<b>'+esc(s.name)+'</b>';
+    const idCell = s.username
+      ? '<span class="mono">'+esc(s.username)+'</span> '
+        + '<button class="btn sm ghost" onclick="siteCopy(\''+encodeURIComponent(s.username)+'\',\'아이디\')">복사</button>'
+      : '<span class="sub">-</span>';
+    const pwCell = s.has_pw
+      ? '<span class="mono" id="pw-'+s.id+'">••••••••</span> '
+        + '<button class="btn sm ghost" onclick="sitePw(\''+s.id+'\')">보기</button>'
+      : '<span class="sub">없음</span>';
+    return '<tr><td><span class="badge">'+esc(s.category)+'</span></td>'
+      + '<td>'+link+'</td><td>'+idCell+'</td><td>'+pwCell+'</td>'
+      + '<td class="sub">'+esc(s.contact||'-')+'</td>'
+      + '<td class="sub" style="max-width:220px; white-space:pre-wrap">'+esc(s.memo||'-')+'</td>'
+      + '<td><button class="btn sm ghost" onclick="siteOpen(\''+s.id+'\')">수정</button></td></tr>';
+  }).join('') || '<tr><td colspan="7" class="sub">'
+      + (SITE_CAT ? '이 분류에 등록된 곳이 없어요.' : '아직 등록된 계정이 없어요. 「+ 추가」로 넣어보세요.')
+      + '</td></tr>';
+}
+/* 비밀번호는 누를 때 한 건만 꺼내고, 30초 뒤 자동으로 다시 가린다 */
+async function sitePw(id){
+  const el = $('pw-'+id); if(!el) return;
+  try{
+    const r = await api('sitePw', TOKEN, id);
+    el.textContent = r.pw || '(없음)';
+    el.style.color = '#C92A2A';
+    siteCopy(encodeURIComponent(r.pw || ''), '비밀번호');
+    setTimeout(() => { if($('pw-'+id)){ $('pw-'+id).textContent = '••••••••';
+      $('pw-'+id).style.color = ''; } }, 30000);
+  }catch(e){ toast(e.message, true); }
+}
+function siteCopy(enc, what){
+  const t = decodeURIComponent(enc); if(!t) return;
+  const done = () => toast(what + '를 복사했어요' + (what === '비밀번호' ? ' — 30초 뒤 다시 가려집니다' : ''));
+  if(navigator.clipboard && navigator.clipboard.writeText)
+    navigator.clipboard.writeText(t).then(done).catch(() => bkClipOld(t, done));
+  else bkClipOld(t, done);
+}
+function siteOpen(id){
+  const s = SITES.find(x => x.id === id) || {};
+  $('siId').value = s.id || '';
+  $('siTitle').textContent = s.id ? s.name : '업체 사이트 계정 추가';
+  $('siCat').value = s.category || '식자재';
+  $('siName').value = s.name || ''; $('siUrl').value = s.url || '';
+  $('siUser').value = s.username || ''; $('siContact').value = s.contact || '';
+  $('siMemo').value = s.memo || ''; $('siPw').value = '';
+  $('siPwHint').textContent = s.has_pw
+    ? '이미 저장돼 있어요. 바꿀 때만 새로 입력하세요 (비워두면 그대로).'
+    : '';
+  $('siDel').classList.toggle('hidden', !s.id);
+  $('siteModal').classList.remove('hidden');
+}
+async function siteSave(){
+  if(!$('siName').value.trim()){ toast('업체 이름을 넣어주세요', true); return; }
+  try{
+    await api('siteSave', TOKEN, {
+      id:$('siId').value, category:$('siCat').value, name:$('siName').value.trim(),
+      url:$('siUrl').value.trim(), username:$('siUser').value.trim(),
+      pw:$('siPw').value, contact:$('siContact').value.trim(), memo:$('siMemo').value });
+    toast('저장했어요'); $('siPw').value = ''; closeModal('siteModal'); loadSites();
+  }catch(e){ toast(e.message, true); }
+}
+async function siteDel(){
+  const s = SITES.find(x => x.id === $('siId').value) || {};
+  if(!confirm('"'+(s.name||'이 계정')+'"을 삭제할까요?\n\n삭제 기록은 시스템 로그에 남습니다.')) return;
+  try{ await api('siteDelete', TOKEN, $('siId').value); toast('삭제했어요');
+    closeModal('siteModal'); loadSites(); }
+  catch(e){ toast(e.message, true); }
+}
+
 async function loadInfos(){
-  loadProfile();
+  loadProfile(); loadSites();
   try{
     INFOS = await api('infoList', TOKEN);
     $('infoBody').innerHTML = INFOS.map(x =>
