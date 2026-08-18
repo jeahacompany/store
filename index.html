@@ -2969,7 +2969,9 @@ function boot(){
   const navShow = (id, ok) => { const el = document.getElementById(id); if(el) el.style.display = ok ? '' : 'none'; };
   const isOwner = !!(ME && ME.role==='owner');
   const isAdmin = !!(ME && (ME.role==='owner' || ME.role==='manager'));
-  ['navLabor','navLogs','navCash','navAi','navPnl','navBook'].forEach(id => navShow(id, isOwner));
+  ['navLabor','navLogs','navAi','navPnl','navBook'].forEach(id => navShow(id, isOwner));
+  // 자금(입출금)은 투자자도 봐야 한다 — 자기 돈이 어디로 갔는지가 제일 궁금한 것
+  navShow('navCash', isOwner || !!(ME && ME.role === 'viewer'));
   navShow('navLegal', isAdmin);
   navShow('navPos',   isAdmin);
   navShow('navWage',  isAdmin);
