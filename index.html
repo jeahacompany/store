@@ -7286,18 +7286,24 @@ function csAcctFill(cur){
   csAcctHint();
 }
 /* 분류에 맞는 계정을 자동으로 골라준다 */
-function csAcctAuto(){
-  const cat = $('csCat').value;
-  const hit = BS_ACCTS.find(a => (a.cats||[]).includes(cat));
-  if(hit) $('csAcct2').value = hit.id;
-  csAcctHint();
-}
+/* 회계 계정은 사장님이 직접 정할 때까지 건드리지 않는다.
+   전에는 분류를 고르면 계정이 저절로 바뀌었는데, 사장님이 정리하시기 전까지
+   기존 값을 그대로 두기로 했다. 대신 맞는 계정을 아래에 추천만 한다. */
+function csAcctAuto(){ csAcctHint(); }
+function csAcctApply(id){ $('csAcct2').value = id; csAcctHint(); }
 function csAcctHint(){
   const el = $('csAcctHint'); if(!el) return;
   const a = BS_ACCTS.find(x => x.id === $('csAcct2').value);
-  if(!a){ el.innerHTML = '<span style="color:var(--red)">계정을 정해두면 나중에 세무 정리가 쉬워요</span>'; return; }
-  el.innerHTML = '<b>'+esc(a.section)+'</b> · '+esc(a.note||'')
-    + (a.life_years ? ' · <b>'+a.life_years+'년 감가상각</b> 대상' : '');
+  if(a){
+    el.innerHTML = '<b>'+esc(a.section)+'</b> · '+esc(a.note||'')
+      + (a.life_years ? ' · <b>'+a.life_years+'년 감가상각</b> 대상' : '');
+    return;
+  }
+  const hit = BS_ACCTS.find(x => (x.cats||[]).includes($('csCat').value));
+  el.innerHTML = '<span class="sub">계정은 나중에 정하셔도 돼요.</span>'
+    + (hit ? ' <button class="btn sm ghost" style="padding:3px 9px; font-size:12.5px"'
+           + ' onclick="csAcctApply(&quot;'+hit.id+'&quot;)">추천: '
+           + esc(hit.code+' '+hit.name)+'</button>' : '');
 }
 /* 계정별 현황 — 자산이 얼마나 쌓였나 */
 function renderBsSummary(){
@@ -7392,11 +7398,13 @@ async function csPhoto(id){
     $('imgView').src = r.b64; $('imgOverlay').classList.remove('hidden');
   }catch(e){ toast(e.message, true); }
 }
-function csReset(){
+function csReset(keepDir){
+  // keepDir=true 면 구분·분류·통장을 그대로 둔다 (출금 여러 건 연속 입력용)
   $('csId').value=''; $('csDate').value = localDate(); $('csAmt').value=''; $('csMemo').value='';
-  $('csDir').value='입금'; csDirChange();
+  if(!keepDir){ $('csDir').value='입금'; csDirChange(); }
   CS_PHOTO = null; csShowPhoto('');
-  csAcctFill(''); csAcctAuto();
+  if(!keepDir) csAcctFill('');
+  csAcctHint();
 }
 let ACCTS = [];
 async function loadCash(){
@@ -7460,7 +7468,7 @@ async function csSave(){
     const r = await api('cashSave', TOKEN, p);
     // 회계 계정은 따로 붙인다 (기존 저장 함수를 안 건드리려고)
     try{ await api('cashAcctSet', TOKEN, r.id, $('csAcct2').value); }catch(e){}
-    toast('기록했어요'); csReset(); await loadCash();
+    toast('기록했어요 — 구분·통장은 그대로 두었어요'); csReset(true); await loadCash();
   }catch(e){ alert(e.message); }
 }
 function openAcct(){
