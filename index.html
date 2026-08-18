@@ -4711,6 +4711,9 @@ async function loadLinks(){
     { icon:'📈', name:'진행 현황 보고 페이지', url: base+'report.html?c='+rc, qr:true, share:true,
       who:'부모님·투자자·점주 (로그인 없음)',
       desc:'통장별 잔액·입출금 기록·공사 일정을 큰 글씨로 보여줍니다. 캘린더에 적으면 여기 자동 반영. 보기 전용이라 아무것도 못 바꿉니다.' },
+    { icon:'👁', name:'투자자 현황판 (로그인)', url: base+'investor.html', qr:true, share:true,
+      who:'투자자 (각자 계정으로 로그인)',
+      desc:'자금·입출금 내역·증빙 사진·월별 손익·일정·인력을 봅니다. 계정마다 따로 들어와서 누가 봤는지 남고, 서버에서 수정이 막혀 있어 절대 못 바꿉니다. 급여·주민번호는 안 보입니다.' },
   ]});
   if(pos) G.push({ title:'⚙️ 시스템 — 외부 업체 전달용', color:'#FFE3E3', rows:[
     { icon:'💳', name:'포스 결제 연동 주소', url: SUPABASE_URL+'/functions/v1/pos-hook?key='+pos, secret:true,

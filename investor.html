@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>순창담 본점 — 투자자 현황판</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<style>
+:root{ --brand:#F26522; --ink:#20242E; --line:#E9ECEF; --sub:#868E96; --paper:#F8F9FA;
+       --green:#2F9E44; --red:#E03131; --blue:#1971C2; }
+*{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent}
+body{font-family:Pretendard,-apple-system,sans-serif; background:var(--paper); color:var(--ink);
+  font-size:16px; line-height:1.65; word-break:keep-all; padding-bottom:60px}
+.hidden{display:none !important}
+.sub{color:var(--sub); font-size:14px}
+.wrap{max-width:960px; margin:0 auto; padding:0 16px}
+
+.login{max-width:400px; margin:70px auto; padding:0 20px}
+.login h1{font-size:24px; font-weight:800; margin-bottom:6px}
+.login input{width:100%; padding:15px; border:1px solid var(--line); border-radius:12px;
+  font-size:17px; font-family:inherit; margin-top:10px; background:#fff; color:var(--ink)}
+.login input:focus{outline:none; border-color:var(--brand)}
+.btn{display:block; width:100%; padding:16px; border:none; border-radius:12px; background:var(--brand);
+  color:#fff; font-size:17px; font-weight:800; font-family:inherit; cursor:pointer; margin-top:16px}
+.btn:disabled{opacity:.5}
+.err{color:var(--red); font-size:14.5px; margin-top:10px; min-height:20px}
+
+.top{background:#20242E; color:#fff; padding:20px 0 22px}
+.top .in{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+.top h1{font-size:19px; font-weight:800}
+.ro{background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.28); border-radius:999px;
+  padding:4px 12px; font-size:12.5px; font-weight:700}
+.top .who{margin-left:auto; font-size:13.5px; color:#AEB4C0}
+.top a{color:#AEB4C0; font-size:13.5px; text-decoration:none; cursor:pointer}
+.dday{margin-top:12px; font-size:14.5px; color:#DDE1E8}
+.dday b{color:#FFC078; font-size:17px}
+
+.tabs{display:flex; gap:4px; overflow-x:auto; background:#fff; border-bottom:1px solid var(--line);
+  padding:0 16px; position:sticky; top:0; z-index:10; scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:none; border:0; background:none; padding:14px 12px; font-size:14.5px; font-weight:700;
+  color:var(--sub); font-family:inherit; cursor:pointer; border-bottom:3px solid transparent}
+.tabs button.on{color:var(--brand); border-bottom-color:var(--brand)}
+
+.card{background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px; margin-top:14px}
+.card h2{font-size:16px; font-weight:800; margin-bottom:4px; display:flex; align-items:center; gap:8px}
+.kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-top:14px}
+.kpi{background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px}
+.kpi .l{font-size:13px; color:var(--sub); font-weight:600}
+.kpi .v{font-size:24px; font-weight:800; margin-top:3px; font-variant-numeric:tabular-nums}
+.kpi.g .v{color:var(--green)} .kpi.r .v{color:var(--red)} .kpi.b .v{color:var(--blue)}
+
+.tw{overflow-x:auto; margin-top:10px}
+table{width:100%; border-collapse:collapse; font-size:14.5px}
+th,td{padding:10px 12px; text-align:left; border-bottom:1px solid var(--line); white-space:nowrap}
+th{font-size:12.5px; color:var(--sub); font-weight:700; background:var(--paper)}
+td.n{text-align:right; font-variant-numeric:tabular-nums}
+.badge{display:inline-block; padding:2px 9px; border-radius:999px; font-size:12px; font-weight:700;
+  background:#F1F3F5; color:#495057}
+.badge.g{background:#EBFBEE; color:var(--green)} .badge.r{background:#FFF5F5; color:var(--red)}
+.bar{height:8px; border-radius:99px; background:#F1F3F5; overflow:hidden; margin-top:5px}
+.bar i{display:block; height:100%; background:var(--brand)}
+.lnk{color:var(--brand); font-weight:700; cursor:pointer; font-size:13px; background:none; border:0;
+  font-family:inherit; padding:2px 6px}
+.modal{position:fixed; inset:0; background:rgba(0,0,0,.7); display:flex; align-items:center;
+  justify-content:center; padding:20px; z-index:100}
+.modal img{max-width:100%; max-height:80vh; border-radius:10px; background:#fff}
+.note{background:#FFF9DB; border:1px solid #FFE066; border-radius:12px; padding:12px 14px;
+  font-size:14px; line-height:1.7; margin-top:12px}
+.empty{color:var(--sub); font-size:14.5px; padding:14px 0}
+</style>
+</head>
+<body>
+
+<div id="loginView" class="login">
+  <h1>순창담 본점</h1>
+  <p class="sub">투자자 현황판 · 보기 전용</p>
+  <input id="lgU" placeholder="이름" autocomplete="username">
+  <input id="lgP" type="password" placeholder="비밀번호" autocomplete="current-password">
+  <button class="btn" id="lgBtn" onclick="doLogin()">들어가기</button>
+  <div class="err" id="lgErr"></div>
+  <p class="sub" style="margin-top:20px; line-height:1.7">계정은 사장님께 받으세요.<br>
+    이 화면은 <b>보기만</b> 됩니다 — 아무것도 바꿀 수 없습니다.</p>
+</div>
+
+<div id="app" class="hidden">
+  <div class="top"><div class="wrap">
+    <div class="in">
+      <h1 id="hStore">순창담 본점</h1>
+      <span class="ro">👁 보기 전용</span>
+      <span class="who"><span id="hMe"></span> · <a onclick="doLogout()">나가기</a></span>
+    </div>
+    <div class="dday" id="hDday"></div>
+  </div></div>
+
+  <div class="tabs">
+    <button class="on" data-t="sum" onclick="go('sum',this)">💰 자금</button>
+    <button data-t="flow" onclick="go('flow',this)">📒 입출금 내역</button>
+    <button data-t="biz" onclick="go('biz',this)">📈 매출·손익</button>
+    <button data-t="cal" onclick="go('cal',this)">🗓 일정</button>
+    <button data-t="team" onclick="go('team',this)">👥 사람</button>
+  </div>
+
+  <div class="wrap">
+    <div id="v-sum"></div>
+    <div id="v-flow" class="hidden"></div>
+    <div id="v-biz" class="hidden"></div>
+    <div id="v-cal" class="hidden"></div>
+    <div id="v-team" class="hidden"></div>
+  </div>
+</div>
+
+<div id="photoModal" class="modal hidden" onclick="this.classList.add('hidden')">
+  <img id="photoImg" alt="증빙 자료">
+</div>
+
+<script>
+const SUPABASE_URL='https://zcjvriedzememkiltqfa.supabase.co';
+const SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjanZyaWVkemVtZW1raWx0cWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMjg2MTIsImV4cCI6MjA5OTYwNDYxMn0.2nZh82xFUNORqcKObAHUnz8K5EjjL-Nym0T4YkDHxMk';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const won=n=>(n==null?'-':Number(n).toLocaleString('ko-KR')+'원');
+const DW=['일','월','화','수','목','금','토'];
+let TOKEN=localStorage.getItem('sc_inv_token')||'', V=null;
+
+async function api(fn,...args){
+  const res=await fetch(SUPABASE_URL+'/rest/v1/rpc/store_api',{method:'POST',
+    headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON},
+    body:JSON.stringify({p_fn:fn,p_args:args})});
+  const d=await res.json();
+  if(!d||d.ok===false) throw new Error((d&&d.error)||'서버 오류');
+  return d.result;
+}
+async function doLogin(){
+  $('lgErr').textContent=''; $('lgBtn').disabled=true;
+  try{
+    const r=await api('login',$('lgU').value.trim(),$('lgP').value);
+    if(r.role!=='viewer'&&r.role!=='owner'){ $('lgErr').textContent='투자자 계정만 들어올 수 있어요.'; return; }
+    TOKEN=r.token; localStorage.setItem('sc_inv_token',TOKEN); await load();
+  }catch(e){ $('lgErr').textContent=e.message; }
+  finally{ $('lgBtn').disabled=false; }
+}
+async function doLogout(){ try{await api('logout',TOKEN);}catch(e){}
+  localStorage.removeItem('sc_inv_token'); TOKEN=''; location.reload(); }
+document.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!$('loginView').classList.contains('hidden')) doLogin(); });
+
+async function load(){
+  try{
+    V=await api('investorView',TOKEN);
+    $('loginView').classList.add('hidden'); $('app').classList.remove('hidden');
+    $('hStore').textContent=V.store; $('hMe').textContent=V.me;
+    $('hDday').innerHTML = V.dday!=null
+      ? (V.dday>0 ? '오픈까지 <b>D-'+V.dday+'</b> · '+V.open_date+' 개업 예정'
+                  : V.dday===0 ? '<b>오늘 오픈</b>' : '개업 <b>'+(-V.dday)+'일째</b> · '+V.open_date+' 오픈')
+      : '';
+    renderSum(); renderFlow(); renderBiz(); renderCal(); renderTeam();
+  }catch(e){
+    localStorage.removeItem('sc_inv_token'); TOKEN='';
+    $('loginView').classList.remove('hidden'); $('app').classList.add('hidden');
+    if(!/세션|로그인/.test(e.message)) $('lgErr').textContent=e.message;
+  }
+}
+function go(t,btn){
+  ['sum','flow','biz','cal','team'].forEach(x=>$('v-'+x).classList.toggle('hidden',x!==t));
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b===btn));
+  window.scrollTo({top:0});
+}
+
+function renderSum(){
+  const inv=(V.byCat||[]).filter(x=>x.direction==='입금');
+  const out=(V.byCat||[]).filter(x=>x.direction==='출금').sort((a,b)=>b.amount-a.amount);
+  const maxOut=Math.max(1,...out.map(x=>x.amount));
+  $('v-sum').innerHTML=
+    '<div class="kpis">'
+    + '<div class="kpi g"><div class="l">들어온 돈</div><div class="v">'+won(V.inSum)+'</div></div>'
+    + '<div class="kpi r"><div class="l">나간 돈</div><div class="v">'+won(V.outSum)+'</div></div>'
+    + '<div class="kpi b"><div class="l">남은 돈</div><div class="v">'+won(V.balance)+'</div></div>'
+    + '<div class="kpi"><div class="l">월 고정비</div><div class="v">'+won(V.fixedSum)+'</div></div>'
+    + '</div>'
+    + '<div class="card"><h2>💵 들어온 돈</h2>'
+    + '<div class="tw"><table><thead><tr><th>분류</th><th>건수</th><th style="text-align:right">금액</th></tr></thead><tbody>'
+    + ((inv.map(x=>'<tr><td><span class="badge g">'+esc(x.category)+'</span></td><td class="sub">'+x.cnt+'건</td>'
+        +'<td class="n"><b>'+won(x.amount)+'</b></td></tr>').join(''))
+       ||'<tr><td colspan="3" class="empty">아직 없어요.</td></tr>')
+    + '</tbody></table></div></div>'
+    + '<div class="card"><h2>🧾 어디에 썼나</h2>'
+    + ((out.map(x=>'<div style="margin-top:12px"><div style="display:flex; justify-content:space-between; font-size:14.5px">'
+        +'<b>'+esc(x.category)+'</b><span style="font-variant-numeric:tabular-nums">'+won(x.amount)
+        +' <span class="sub">('+x.cnt+'건)</span></span></div>'
+        +'<div class="bar"><i style="width:'+(x.amount/maxOut*100).toFixed(1)+'%"></i></div></div>').join(''))
+       ||'<div class="empty">아직 나간 돈이 없어요.</div>')
+    + '</div>'
+    + '<div class="card"><h2>🏦 통장</h2>'
+    + '<div class="tw"><table><thead><tr><th>통장</th><th>은행</th><th style="text-align:right">잔액</th></tr></thead><tbody>'
+    + (((V.accounts||[]).map(a=>'<tr><td><b>'+esc(a.name)+'</b></td><td class="sub">'+esc(a.bank||'-')+'</td>'
+        +'<td class="n">'+won(a.balance)+'</td></tr>').join(''))
+       ||'<tr><td colspan="3" class="empty">등록된 통장이 없어요.</td></tr>')
+    + '</tbody></table></div>'
+    + '<div class="note">통장을 지정하지 않고 적은 기록도 있어서, 통장 잔액 합계와 위의 «남은 돈»이 다를 수 있어요.</div>'
+    + '</div>'
+    + '<div class="card"><h2>📌 매달 나가는 돈</h2>'
+    + '<div class="tw"><table><thead><tr><th>항목</th><th>분류</th><th style="text-align:right">월</th></tr></thead><tbody>'
+    + (((V.fixed||[]).map(f=>'<tr><td><b>'+esc(f.name)+'</b></td><td class="sub">'+esc(f.category||'-')+'</td>'
+        +'<td class="n">'+won(f.monthly)+'</td></tr>').join(''))
+       ||'<tr><td colspan="3" class="empty">아직 등록된 고정비가 없어요.</td></tr>')
+    + '</tbody></table></div></div>';
+}
+
+function renderFlow(){
+  $('v-flow').innerHTML='<div class="card"><h2>📒 입출금 내역 <span class="sub" style="font-weight:400">최근 300건</span></h2>'
+    + '<div class="tw"><table><thead><tr><th>날짜</th><th>구분</th><th>분류</th>'
+    + '<th style="text-align:right">금액</th><th>내용</th><th>통장</th><th></th></tr></thead><tbody>'
+    + (((V.flows||[]).map(f=>
+        '<tr><td class="sub">'+f.flow_date+'</td>'
+        +'<td><span class="badge '+(f.direction==='입금'?'g':'r')+'">'+f.direction+'</span></td>'
+        +'<td>'+esc(f.category)+'</td>'
+        +'<td class="n"><b>'+(f.direction==='입금'?'+':'−')+won(f.amount)+'</b></td>'
+        +'<td class="sub" style="white-space:normal; max-width:260px">'+esc(f.memo||'-')+'</td>'
+        +'<td class="sub">'+esc(f.account||'-')+'</td>'
+        +'<td>'+(f.has_photo?'<button class="lnk" onclick="showPhoto(&quot;'+f.id+'&quot;)">📷 증빙</button>':'')+'</td></tr>').join(''))
+       ||'<tr><td colspan="7" class="empty">아직 기록이 없어요.</td></tr>')
+    + '</tbody></table></div></div>';
+}
+async function showPhoto(id){
+  try{ const r=await api('investorPhoto',TOKEN,id);
+    if(!r.b64){ alert('사진이 없어요.'); return; }
+    $('photoImg').src = r.b64.indexOf('data:')===0 ? r.b64 : 'data:image/jpeg;base64,'+r.b64;
+    $('photoModal').classList.remove('hidden');
+  }catch(e){ alert(e.message); }
+}
+
+function renderBiz(){
+  const m=V.months||[];
+  $('v-biz').innerHTML='<div class="card"><h2>📈 월별 매출·지출</h2>'
+    + (m.length
+      ? '<div class="tw"><table><thead><tr><th>월</th><th style="text-align:right">매출</th>'
+        +'<th style="text-align:right">지출</th><th style="text-align:right">차액</th></tr></thead><tbody>'
+        + m.map(x=>'<tr><td><b>'+x.ym+'</b></td><td class="n">'+won(x.sales)+'</td>'
+            +'<td class="n">'+won(x.exp)+'</td>'
+            +'<td class="n" style="color:'+(x.profit>=0?'var(--green)':'var(--red)')+'"><b>'
+            +(x.profit>=0?'+':'')+won(x.profit)+'</b></td></tr>').join('')
+        + '</tbody></table></div>'
+      : '<div class="empty">아직 매출이 없어요. 오픈하면 월별로 쌓입니다.</div>')
+    + '<div class="note">여기 «지출»은 매장을 돌리며 나가는 돈(식자재·인건비 등)이에요.<br>'
+    + '인테리어·보증금 같은 초기 투자는 «자금» 탭에서 따로 봅니다.</div></div>';
+}
+
+function renderCal(){
+  const ev=V.events||[], up=ev.filter(x=>x.dday>=0), past=ev.filter(x=>x.dday<0).reverse();
+  const row=function(x){
+    const d=new Date(x.ev_date+'T00:00:00');
+    return '<tr><td><b>'+x.ev_date.slice(5)+'</b> <span class="sub">('+DW[d.getDay()]+')</span></td>'
+      +'<td style="white-space:normal">'+esc(x.title)+'</td>'
+      +'<td>'+(x.category?'<span class="badge">'+esc(x.category)+'</span>':'')+'</td>'
+      +'<td class="sub">'+(x.dday===0?'오늘':x.dday>0?'D-'+x.dday:'D+'+(-x.dday))+'</td></tr>';
+  };
+  $('v-cal').innerHTML='<div class="card"><h2>🗓 앞으로</h2>'
+    + '<div class="tw"><table><thead><tr><th>날짜</th><th>내용</th><th>분류</th><th></th></tr></thead><tbody>'
+    + (up.map(row).join('')||'<tr><td colspan="4" class="empty">예정된 일정이 없어요.</td></tr>')
+    + '</tbody></table></div></div>'
+    + '<div class="card"><h2>✅ 지나온 일</h2>'
+    + '<div class="tw"><table><thead><tr><th>날짜</th><th>내용</th><th>분류</th><th></th></tr></thead><tbody>'
+    + (past.map(row).join('')||'<tr><td colspan="4" class="empty">기록이 없어요.</td></tr>')
+    + '</tbody></table></div></div>';
+}
+
+function renderTeam(){
+  const DEPTS=[['홀','🍽️ 홀'],['주방','👨‍🍳 주방'],['기타','⚙️ 관리·기타']];
+  let h='';
+  DEPTS.forEach(function(p){
+    const list=(V.staff||[]).filter(s=>s.dept===p[0]);
+    if(!list.length) return;
+    h+='<div class="card"><h2>'+p[1]+' <span class="sub" style="font-weight:400">'+list.length+'명</span></h2>'
+      +'<div class="tw"><table><thead><tr><th>이름</th><th>직급</th></tr></thead><tbody>'
+      + list.map(s=>'<tr><td><b>'+esc(s.name)+'</b></td><td class="sub">'+esc(s.position||'-')+'</td></tr>').join('')
+      +'</tbody></table></div></div>';
+  });
+  $('v-team').innerHTML=
+    '<div class="kpis"><div class="kpi"><div class="l">일하는 사람</div><div class="v">'+V.staffCnt+'<span style="font-size:15px">명</span></div></div>'
+    + '<div class="kpi"><div class="l">앞으로 잡힌 예약</div><div class="v">'+V.resvCnt+'<span style="font-size:15px">건</span></div></div></div>'
+    + (h||'<div class="card"><div class="empty">아직 등록된 직원이 없어요.</div></div>')
+    + '<div class="card"><div class="note">개인정보 보호를 위해 급여·연락처·주민번호는 이 화면에 나오지 않습니다.</div></div>';
+}
+
+if(TOKEN) load();
+</script>
+</body>
+</html>
