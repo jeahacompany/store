@@ -3010,29 +3010,44 @@ function startViewerMode(){
       + 'border-radius:999px; padding:3px 11px; font-size:12.5px; font-weight:700; vertical-align:middle';
     t.parentNode.insertBefore(b, t.nextSibling);
   }
-  const lock = root => {
-    (root.querySelectorAll ? root : document).querySelectorAll(
-      'input:not([type=date]):not([type=month]), textarea, select, input[type=file]'
-    ).forEach(el => {
-      if(el.closest('#tabbar')) return;
-      el.disabled = true; el.style.background = '#F8F9FA'; el.style.cursor = 'not-allowed';
-    });
-    document.querySelectorAll('button, .btn, a.btn').forEach(b => {
-      if(b.closest('#tabbar') || b.closest('.subtabs') || b.dataset.view === 'ok') return;
-      const t = (b.textContent||'').trim();
-      if(VIEW_BLOCK.test(t) || b.classList.contains('red') || b.classList.contains('green')){
-        b.style.display = 'none';
-      }
-    });
-    // 이름을 눌러 카드가 열리는 것도 막는다 (개인정보 상세)
-    document.querySelectorAll('#staffBody a.link').forEach(a => {
-      a.onclick = null; a.style.color = 'inherit'; a.style.cursor = 'default';
-    });
+  // ⚠️ 잠글 때 DOM 을 건드리면 감시기가 그걸 또 감지해 무한루프가 된다.
+  //    (실제로 그렇게 만들었다가 탭 전환이 멈췄다)
+  //    한 번 처리한 요소는 표시해두고 건너뛰고, 도는 동안은 감시를 끈다.
+  let obs = null, busy = false;
+  const lock = () => {
+    if(busy) return;
+    busy = true;
+    if(obs) obs.disconnect();
+    try{
+      document.querySelectorAll(
+        'input:not([data-vlock]), textarea:not([data-vlock]), select:not([data-vlock])'
+      ).forEach(el => {
+        el.dataset.vlock = '1';
+        if(el.closest('#tabbar')) return;
+        el.disabled = true; el.style.background = '#F8F9FA'; el.style.cursor = 'not-allowed';
+      });
+      document.querySelectorAll('button:not([data-vlock]), .btn:not([data-vlock])').forEach(b => {
+        b.dataset.vlock = '1';
+        if(b.closest('#tabbar') || b.closest('.subbar') || b.dataset.view === 'ok') return;
+        const t = (b.textContent||'').trim();
+        if(VIEW_BLOCK.test(t) || b.classList.contains('red') || b.classList.contains('green')){
+          b.style.display = 'none';
+        }
+      });
+      // 이름을 눌러 개인정보 카드가 열리는 것도 막는다
+      document.querySelectorAll('#staffBody a.link:not([data-vlock])').forEach(a => {
+        a.dataset.vlock = '1'; a.onclick = null;
+        a.style.color = 'inherit'; a.style.cursor = 'default';
+      });
+    } finally {
+      busy = false;
+      if(obs) obs.observe(document.body, {childList:true, subtree:true});
+    }
   };
-  lock(document);
-  // 탭을 옮기거나 목록을 다시 그릴 때마다 다시 잠근다
-  new MutationObserver(() => lock(document))
-    .observe(document.getElementById('main') || document.body, {childList:true, subtree:true});
+  lock();
+  obs = new MutationObserver(() => { clearTimeout(window.__vlockT);
+    window.__vlockT = setTimeout(lock, 60); });
+  obs.observe(document.body, {childList:true, subtree:true});
 }
 
 /* ---------- 오늘 ---------- */
