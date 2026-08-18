@@ -2831,7 +2831,9 @@ function buildMergedTabs(){
   Object.entries(TAB_MERGE).forEach(([g, cfg]) => {
     const subs = cfg.subs.filter(s => $('tab-'+s.id));          // 실제로 있는 것만
     if(!subs.length) return;
-    const shown = subs.filter(s => !s.owner || isOwner);        // 권한에 맞는 것만
+    const isView = !!(ME && ME.role === 'viewer');
+    const shown = subs.filter(s => (!s.owner || isOwner)        // 권한에 맞는 것만
+                               && !(isView && VIEWER_HIDE_SUBS.includes(s.id)));
     if(!shown.length){                                           // 볼 게 하나도 없으면 메뉴 자체를 숨긴다
       const n = document.querySelector('[data-t="'+g+'"]'); if(n) n.style.display = 'none';
       return;
@@ -2887,7 +2889,7 @@ function subTab(g, id){
 }
 
 function tab(name){
-  if(ME && ME.role==='viewer' && !['cal','settle','acct'].includes(name)) return;
+  if(ME && ME.role==='viewer' && !VIEWER_TABS.includes(name) && !VIEWER_SUBS.includes(name)) return;
   // 묶인 탭을 직접 부르면 그 그룹을 열고 해당 서브탭으로 간다
   const g = MERGED_OF[name];
   if(g){ tab(g); subTab(g, name); return; }
@@ -2976,12 +2978,59 @@ function boot(){
   try{ buildMergedTabs(); }catch(e){ reportError('mergeTabs', e.message); }
   try{ loadPositions().catch(()=>{}); }catch(e){}   // 직책 자동완성 미리 채워둔다
   if(ME && ME.role==='viewer'){
+    // 투자자도 매장 돌아가는 걸 거의 다 본다. 못 보는 것 — 고객 개인정보·급여·설정·로그
     document.querySelectorAll('#tabbar .nav-item').forEach(n => {
-      if(!['cal','acct'].includes(n.dataset.t)) n.style.display='none';
+      if(!VIEWER_TABS.includes(n.dataset.t)) n.style.display='none';
     });
-    document.querySelectorAll('#tabbar .nav-label').forEach(l => l.style.display='none');
-    tab('cal');
+    startViewerMode();
+    tab('today');
   } else tab('today');
+}
+
+/* ── 투자자 보기 모드 ─────────────────────────────────────────
+   관리자 화면을 그대로 쓰되 손댈 수 있는 것은 전부 잠근다.
+   서버에서도 두 겹으로 막혀 있으니 여기는 "안 보이게" 하는 역할이다.  */
+const VIEWER_TABS = ['today','cal','staffg','work','jobs','bar','money','buy','acct','cash','guest','docs'];
+const VIEWER_SUBS = ['staff','pos','shift','att','tasks','board','sales','exp','dep','inb','stock',
+                     'price','vendor','buylink','settle','booking','manual','info','legal','mread'];
+/* 투자자에게 숨길 서브탭 — 급여·개인정보·설정 */
+const VIEWER_HIDE_SUBS = ['labor','wage','pnl','book','cust','kakao','setup','links','trash','logs','ai'];
+/* 눌러선 안 되는 버튼 (글자로 가려낸다) */
+const VIEW_BLOCK = /저장|삭제|추가|등록|수정|승인|올리기|발급|초기화|불러오기|되살리기|보내기|복원|재발급|퇴사|전환|만들기|처리|완료|취소|넣기|적용|비우기/;
+function startViewerMode(){
+  document.body.classList.add('viewmode');
+  // 지금 보기 전용이라는 걸 화면에 분명히 남긴다
+  const t = $('pageTitle');
+  if(t && !$('viewBadge')){
+    const b = document.createElement('span');
+    b.id = 'viewBadge'; b.textContent = '👁 보기 전용';
+    b.style.cssText = 'margin-left:10px; background:#FFF0E6; color:#D9480F; border:1px solid #FFD8A8;'
+      + 'border-radius:999px; padding:3px 11px; font-size:12.5px; font-weight:700; vertical-align:middle';
+    t.parentNode.insertBefore(b, t.nextSibling);
+  }
+  const lock = root => {
+    (root.querySelectorAll ? root : document).querySelectorAll(
+      'input:not([type=date]):not([type=month]), textarea, select, input[type=file]'
+    ).forEach(el => {
+      if(el.closest('#tabbar')) return;
+      el.disabled = true; el.style.background = '#F8F9FA'; el.style.cursor = 'not-allowed';
+    });
+    document.querySelectorAll('button, .btn, a.btn').forEach(b => {
+      if(b.closest('#tabbar') || b.closest('.subtabs') || b.dataset.view === 'ok') return;
+      const t = (b.textContent||'').trim();
+      if(VIEW_BLOCK.test(t) || b.classList.contains('red') || b.classList.contains('green')){
+        b.style.display = 'none';
+      }
+    });
+    // 이름을 눌러 카드가 열리는 것도 막는다 (개인정보 상세)
+    document.querySelectorAll('#staffBody a.link').forEach(a => {
+      a.onclick = null; a.style.color = 'inherit'; a.style.cursor = 'default';
+    });
+  };
+  lock(document);
+  // 탭을 옮기거나 목록을 다시 그릴 때마다 다시 잠근다
+  new MutationObserver(() => lock(document))
+    .observe(document.getElementById('main') || document.body, {childList:true, subtree:true});
 }
 
 /* ---------- 오늘 ---------- */
@@ -4711,9 +4760,9 @@ async function loadLinks(){
     { icon:'📈', name:'진행 현황 보고 페이지', url: base+'report.html?c='+rc, qr:true, share:true,
       who:'부모님·투자자·점주 (로그인 없음)',
       desc:'통장별 잔액·입출금 기록·공사 일정을 큰 글씨로 보여줍니다. 캘린더에 적으면 여기 자동 반영. 보기 전용이라 아무것도 못 바꿉니다.' },
-    { icon:'👁', name:'투자자 현황판 (로그인)', url: base+'investor.html', qr:true, share:true,
+    { icon:'👁', name:'투자자 현황판 (로그인)', url: base+'index.html', qr:true, share:true,
       who:'투자자 (각자 계정으로 로그인)',
-      desc:'자금·입출금 내역·증빙 사진·월별 손익·일정·인력을 봅니다. 계정마다 따로 들어와서 누가 봤는지 남고, 서버에서 수정이 막혀 있어 절대 못 바꿉니다. 급여·주민번호는 안 보입니다.' },
+      desc:'관리자 화면을 그대로 봅니다 — 오늘 현황·매출·자금·매입·재고·예약·직원·매뉴얼까지. 서버에서 두 겹으로 잠겨 있어 아무것도 못 바꿉니다. 급여·주민번호·고객 개인정보는 아예 안 내려갑니다.' },
   ]});
   if(pos) G.push({ title:'⚙️ 시스템 — 외부 업체 전달용', color:'#FFE3E3', rows:[
     { icon:'💳', name:'포스 결제 연동 주소', url: SUPABASE_URL+'/functions/v1/pos-hook?key='+pos, secret:true,
