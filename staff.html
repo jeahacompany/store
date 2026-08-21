@@ -129,6 +129,21 @@ label{display:block; font-size:12px; color:var(--sub); margin:10px 0 4px}
 .sprow .cp{flex:0 0 auto; background:#F1F3F5; border-radius:7px; padding:2px 8px;
   font-size:12px; font-weight:600; color:#868E96}
 .sprow:active .cp{background:#F26522; color:#fff}
+/* QR 찍고 들어왔을 때 뜨는 확인 창 */
+#qrSheet{position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:flex-end;
+  justify-content:center; z-index:300; animation:qrfade .18s ease}
+@keyframes qrfade{from{opacity:0}to{opacity:1}}
+.qrcard{background:#fff; width:100%; max-width:520px; border-radius:22px 22px 0 0; padding:26px 20px 22px;
+  text-align:center; animation:qrup .26s cubic-bezier(.2,.9,.3,1.1)}
+@keyframes qrup{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.qrcard .qric{font-size:52px}
+.qrcard h2{font-size:23px; font-weight:800; margin:6px 0 2px}
+.qrbtn{display:block; width:100%; padding:17px; border:none; border-radius:13px; color:#fff;
+  font-size:18px; font-weight:800; font-family:inherit; cursor:pointer; margin-top:14px; background:var(--brand)}
+.qrbtn.in{background:var(--green)} .qrbtn.out{background:#1971C2}
+.qrbtn.ghost{background:#fff; color:var(--ink); border:1px solid var(--line); font-weight:600; font-size:16px; padding:14px}
+.qrbtn:disabled{opacity:.55}
+.qrerr{color:var(--red); font-size:14.5px; margin-top:10px; line-height:1.6}
 .spnotice{background:#FFF9DB; border:1px solid #FFE066; border-radius:12px; padding:12px 14px;
   margin-bottom:10px; font-size:15px; line-height:1.6; white-space:pre-wrap}
 /* 긴급연락망 — 급할 때 눈에 바로 들어와야 한다 */
@@ -657,6 +672,7 @@ async function boot(){
   show('mainView'); tab('home');
   loadMonth();
   loadMyReqs();
+  qrArrive();                      // QR 찍고 들어왔으면 바로 출퇴근 처리
   if(b.openTasks > 0) toast('할일이 '+b.openTasks+'건 있어요');
 }
 function renderDocsBanner(){
@@ -730,6 +746,53 @@ async function doClock(){
   }catch(e){ alert(e.message); }
   $('clockHint').textContent = '버튼을 누르면 위치 확인 후 기록돼요';
   btn.disabled = false;
+}
+
+/* ---------- QR 찍고 들어왔을 때 ----------
+   매장 QR을 찍으면 이 앱이 열린다. 이미 로그인돼 있으니 이름·번호를 또 물을 이유가 없다.
+   확인 한 번만 받고 바로 찍는다. (2026-08-21 — 사장님 지적으로 바꿈) */
+async function qrArrive(){
+  const code = new URLSearchParams(location.search).get('qr');
+  if(!code) return;
+  // 주소창을 깨끗이 (새로고침해도 또 찍히지 않게)
+  history.replaceState(null, '', location.pathname);
+  let kind = 'in';
+  try{ kind = (await api('clockQrKind', TOKEN, code)).kind; }
+  catch(e){ alert(e.message); return; }
+
+  const isIn = kind === 'in';
+  const box = document.createElement('div');
+  box.id = 'qrSheet';
+  box.innerHTML =
+      '<div class="qrcard">'
+    + '<div class="qric">' + (isIn ? '🌅' : '🌙') + '</div>'
+    + '<h2>' + (isIn ? '출근' : '퇴근') + ' 하시겠어요?</h2>'
+    + '<p class="sub" id="qrWho">' + esc(ME.name) + '님 · ' + nowHm() + '</p>'
+    + '<button class="qrbtn ' + (isIn ? 'in' : 'out') + '" id="qrGo">'
+    + (isIn ? '출근 찍기' : '퇴근 찍기') + '</button>'
+    + '<button class="qrbtn ghost" onclick="qrClose()">나중에</button>'
+    + '<div class="qrerr" id="qrErr"></div></div>';
+  document.body.appendChild(box);
+  $('qrGo').onclick = () => qrDo(code, isIn);
+}
+function qrClose(){ const b = $('qrSheet'); if(b) b.remove(); }
+function nowHm(){ const d=new Date();
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+async function qrDo(code, isIn){
+  const btn = $('qrGo'); btn.disabled = true; btn.textContent = '위치 확인 중...';
+  $('qrErr').textContent = '';
+  try{
+    const g = await getGps();
+    btn.textContent = '기록 중...';
+    const r = await api('clockQr', TOKEN, code, g.lat, g.lng);
+    qrClose();
+    toast(isIn ? '출근 완료! 오늘도 화이팅'
+               : '퇴근 완료! 오늘 ' + fmtMins(r.mins) + ' 근무');
+    const b = await api('boot', TOKEN); TODAY = b.today; renderClock(); loadMonth();
+  }catch(e){
+    $('qrErr').textContent = e.message;
+    btn.disabled = false; btn.textContent = isIn ? '출근 찍기' : '퇴근 찍기';
+  }
 }
 
 /* ---------- 근무 (내 기록 · 예상급여 · 일지) ---------- */

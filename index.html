@@ -781,7 +781,7 @@
               <input type="checkbox" id="qrOn" onchange="qrSave()" style="width:20px;height:20px;accent-color:#F26522">
               QR 출퇴근 쓰기</label></h2>
           <div class="sub" style="line-height:1.7">인쇄해서 카운터에 붙여두면 직원이 폰으로 찍고 출퇴근합니다.
-            <b>앱 설치도 로그인도 필요 없어요.</b> 찍을 때마다 <b>시각 · 위치 · 접속 IP</b>가 함께 기록됩니다.</div>
+            찍으면 <b>직원 앱이 열리고 확인 한 번에 바로 기록</b>돼요. 찍을 때마다 <b>시각 · 위치 · 접속 IP</b>가 함께 남습니다.</div>
           <div id="qrCards" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin-top:14px"></div>
         </div>
         <div class="card">
@@ -3174,7 +3174,9 @@ async function loadQr(){
   if(!$('qrCards')) return;
   try{
     QR = await api('qrGet', TOKEN);
-    const base = location.origin + location.pathname.replace(/[^/]*$/, '') + 'attend.html?c=';
+    // QR → 직원 앱으로 보낸다. 로그인돼 있으면 확인 한 번에 바로 찍힌다.
+    const root = location.origin + location.pathname.replace(/[^/]*$/, '');
+    const base = root + 'staff.html?qr=';
     $('qrOn').checked = !!QR.on;
     $('qrRadius').value = String(QR.radius || 300);
     const card = (kind, code, used) => {
@@ -3199,7 +3201,13 @@ async function loadQr(){
     };
     $('qrCards').innerHTML = card('in', QR.inCode, QR.usedIn) + card('out', QR.outCode, QR.usedOut)
       + '<div style="grid-column:1/-1"><button class="btn sm red" onclick="qrReset()">QR 새로 발급</button>'
-      + '<span class="sub" style="margin-left:8px">발급하면 <b>인쇄해둔 예전 QR은 즉시 못 씁니다.</b></span></div>';
+      + '<span class="sub" style="margin-left:8px">발급하면 <b>인쇄해둔 예전 QR은 즉시 못 씁니다.</b></span></div>'
+      + '<div style="grid-column:1/-1" class="sub" style="line-height:1.7">'
+      + '찍으면 <b>직원 앱이 열리고 확인 한 번에 바로 기록</b>됩니다. 로그인이 풀려 있으면 로그인 뒤 이어서 찍혀요.<br>'
+      + '폰을 바꿔 로그인이 안 될 때를 위한 예비 통로도 있습니다 — '
+      + '<a class="link" href="' + root + 'attend.html?c=' + QR.inCode + '" target="_blank">출근</a> · '
+      + '<a class="link" href="' + root + 'attend.html?c=' + QR.outCode + '" target="_blank">퇴근</a> '
+      + '(이름 + 연락처 뒤 4자리로 찍는 화면)</div>';
 
     $('qrGps').innerHTML = QR.gpsSet
       ? '<div class="badge g">📍 매장 위치 설정됨</div>'
