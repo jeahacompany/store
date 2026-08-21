@@ -60,6 +60,19 @@
   .kpi .label { font-size:13.5px; color:var(--sub); margin-bottom:6px; }
   .kpi .value { font-size:24px; font-weight:750; letter-spacing:-.4px; }
   .v-red { color:var(--red); } .v-orange { color:var(--orange); } .v-green { color:var(--green); }
+  /* 인사 달력 */
+  .hcgrid{ display:grid; grid-template-columns:repeat(7,1fr); gap:5px }
+  .hcdw{ text-align:center; font-size:12.5px; font-weight:800; color:var(--sub); padding:6px 0 }
+  .hcdw.s{ color:var(--red) } .hcdw.t{ color:#1971C2 }
+  .hccell{ min-height:86px; border:1px solid var(--line); border-radius:10px; padding:6px 7px;
+    background:var(--card); font-size:12px }
+  .hccell.blank{ border:none; background:none }
+  .hccell.has{ border-color:#FFD8A8; background:#FFFDF8 }
+  .hccell .d{ font-size:13px; font-weight:800; margin-bottom:4px }
+  .hccell .d.s{ color:var(--red) } .hccell .d.t{ color:#1971C2 }
+  .hcit{ background:#fff; border:1px solid var(--line); border-radius:6px; padding:2px 5px;
+    margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:11.5px }
+  @media(max-width:700px){ .hccell{ min-height:66px } .hcit{ font-size:10.5px } }
   /* 급여표 — 숫자는 오른쪽 정렬 + 자릿수 맞춤 */
   td.n { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap }
   .note-tip { background:#E7F5FF; border:1px solid #A5D8FF; border-radius:11px;
@@ -757,6 +770,52 @@
           <div id="attSummary" style="margin-bottom:10px"></div>
           <div class="table-scroll"><table><thead><tr><th>날짜</th><th>이름</th><th>출근</th><th>퇴근</th><th>시간</th><th></th></tr></thead>
           <tbody id="attBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- 출퇴근 QR -->
+      <div id="tab-qr" class="hidden">
+        <div class="card" style="border-color:#FFD8A8">
+          <h2>📱 출퇴근 QR
+            <label style="margin-left:auto; display:flex; align-items:center; gap:8px; font-size:14px; font-weight:700">
+              <input type="checkbox" id="qrOn" onchange="qrSave()" style="width:20px;height:20px;accent-color:#F26522">
+              QR 출퇴근 쓰기</label></h2>
+          <div class="sub" style="line-height:1.7">인쇄해서 카운터에 붙여두면 직원이 폰으로 찍고 출퇴근합니다.
+            <b>앱 설치도 로그인도 필요 없어요.</b> 찍을 때마다 <b>시각 · 위치 · 접속 IP</b>가 함께 기록됩니다.</div>
+          <div id="qrCards" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin-top:14px"></div>
+        </div>
+        <div class="card">
+          <h2>🛡️ 위치 확인 (GPS)</h2>
+          <div class="sub">QR 사진을 저장해두거나 링크를 즐겨찾기 해도, <b>매장 반경 밖에서는 처리되지 않습니다.</b></div>
+          <div id="qrGps" style="margin-top:12px"></div>
+          <label style="margin-top:12px">허용 반경</label>
+          <select id="qrRadius" onchange="qrSave()" style="width:200px">
+            <option value="50">50m</option><option value="100">100m</option>
+            <option value="200">200m</option><option value="300">300m</option>
+            <option value="500">500m</option><option value="1000">1000m</option>
+          </select>
+          <div class="sub" style="margin-top:8px">반경을 좁힐수록 정확하지만, 실내에서 위치가 튀면 안 찍힐 수 있어요.
+            <b>200~300m를 권합니다.</b></div>
+        </div>
+      </div>
+
+      <!-- 인사 달력 -->
+      <div id="tab-hrcal" class="hidden">
+        <div class="card">
+          <h2>👔 인사 달력
+            <span style="margin-left:auto; display:flex; gap:6px; align-items:center">
+              <button class="btn sm ghost" onclick="hcMove(-1)">◀</button>
+              <b id="hcYm" style="font-size:16px; min-width:110px; text-align:center">-</b>
+              <button class="btn sm ghost" onclick="hcMove(1)">▶</button>
+              <button class="btn sm ghost" onclick="hcToday()">이번 달</button>
+            </span></h2>
+          <div class="sub">생일 · 입사기념일 · 연차 · 반차 · 휴무 · 서류 만료를 한 달력에서 챙깁니다.</div>
+          <div class="cards" id="hcKpi" style="margin-top:12px"></div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap; margin:14px 0 8px; font-size:13px">
+            <span>🎂 생일</span><span>🎉 입사기념일</span><span>🌴 연차</span>
+            <span>🌗 반차</span><span>🏖️ 휴무</span><span>📄 서류만료</span>
+          </div>
+          <div id="hcCal"></div>
         </div>
       </div>
 
@@ -2883,6 +2942,7 @@ const TAB_MERGE = {
            {id:'mread', name:'📖 매뉴얼 읽음'}] },
   work:  { title:'근무·근태', icon:'🗓️', subs:[
            {id:'shift', name:'📅 근무표'}, {id:'att', name:'⏱️ 근태'},
+           {id:'qr', name:'📱 출퇴근 QR'}, {id:'hrcal', name:'👔 인사 달력'},
            {id:'pay', name:'💵 월 급여', owner:true}, {id:'annual', name:'🌴 연차'},
            {id:'labor', name:'💸 인건비표', owner:true}, {id:'wage', name:'🧮 급여 계산기'}] },
   jobs:  { title:'오더·업무', icon:'✅', subs:[
@@ -3020,6 +3080,8 @@ function loadForTab(name){
   if(name==='trash') loadTrash();
   if(name==='wage') wcInit();
   if(name==='pay') loadPay2();
+  if(name==='qr') loadQr();
+  if(name==='hrcal') loadHrCal();
   if(name==='annual') loadAnnual();
   if(name==='kakao') loadKakao();
   if(name==='legal') loadLegal();
@@ -3074,6 +3136,108 @@ function boot(){
     startViewerMode();
     tab('today');
   } else tab('today');
+}
+
+/* ── 출퇴근 QR ────────────────────────────────────────────────
+   매장에 붙여두면 로그인 없이 폰으로 찍는다. 시각·위치·IP가 같이 남는다. */
+let QR = null;
+async function loadQr(){
+  if(!$('qrCards')) return;
+  try{
+    QR = await api('qrGet', TOKEN);
+    const base = location.origin + location.pathname.replace(/[^/]*$/, '') + 'attend.html?c=';
+    $('qrOn').checked = !!QR.on;
+    $('qrRadius').value = String(QR.radius || 300);
+    const card = (kind, code, used) => {
+      const url = base + code;
+      const png = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=' + encodeURIComponent(url);
+      const isIn = kind === 'in';
+      return '<div style="border:1px solid var(--line); border-radius:14px; padding:16px; text-align:center;'
+        + 'background:' + (isIn ? '#F4FCF5' : '#F3F8FE') + '">'
+        + '<div style="font-size:17px; font-weight:800; color:' + (isIn?'var(--green)':'#1971C2') + '">'
+        + (isIn ? '🌅 출근용' : '🌙 퇴근용') + '</div>'
+        + '<div class="sub" style="margin-bottom:10px">지금까지 ' + used + '번 사용</div>'
+        + '<img src="' + png + '" alt="' + (isIn?'출근':'퇴근') + ' QR" '
+        + 'style="width:200px; height:200px; background:#fff; border-radius:10px; padding:8px" '
+        + 'onerror="this.style.display=\'none\'; this.nextElementSibling.classList.remove(\'hidden\')">'
+        + '<div class="sub hidden" style="padding:20px">QR 그림을 불러오지 못했어요. 아래 주소를 QR로 만들어 쓰세요.</div>'
+        + '<input readonly value="' + esc(url) + '" style="width:100%; margin-top:10px; font-size:12.5px; background:#fff">'
+        + '<div style="display:flex; gap:6px; margin-top:8px; justify-content:center; flex-wrap:wrap">'
+        + '<button class="btn sm" onclick="bkClip(\'' + esc(url) + '\',\'주소를 복사했어요\')">복사</button>'
+        + '<a class="btn sm ghost" href="' + esc(url) + '" target="_blank">열어보기</a>'
+        + '<a class="btn sm ghost" href="' + png + '" target="_blank">QR 이미지</a>'
+        + '</div></div>';
+    };
+    $('qrCards').innerHTML = card('in', QR.inCode, QR.usedIn) + card('out', QR.outCode, QR.usedOut)
+      + '<div style="grid-column:1/-1"><button class="btn sm red" onclick="qrReset()">QR 새로 발급</button>'
+      + '<span class="sub" style="margin-left:8px">발급하면 <b>인쇄해둔 예전 QR은 즉시 못 씁니다.</b></span></div>';
+
+    $('qrGps').innerHTML = QR.gpsSet
+      ? '<div class="badge g">📍 매장 위치 설정됨</div>'
+        + '<div class="sub" style="margin-top:6px">위도 ' + Number(QR.lat).toFixed(5)
+        + ' · 경도 ' + Number(QR.lng).toFixed(5) + '</div>'
+      : '<div class="badge r">📍 매장 위치 미설정</div>'
+        + '<div class="sub" style="margin-top:6px"><b>지금은 어디서든 찍힙니다.</b> '
+        + '매장 안에서 설정 탭의 «지금 위치를 매장으로» 를 눌러주세요.</div>';
+  }catch(e){ $('qrCards').innerHTML = '<div class="sub">'+esc(e.message)+'</div>'; }
+}
+async function qrSave(){
+  try{ await api('qrSet', TOKEN, { on:$('qrOn').checked, radius:+$('qrRadius').value });
+    toast($('qrOn').checked ? '저장했어요' : 'QR 출퇴근을 껐어요'); loadQr(); }
+  catch(e){ toast(e.message, true); }
+}
+async function qrReset(){
+  if(!confirm('QR을 새로 발급할까요?\n\n• 인쇄해둔 예전 QR은 즉시 못 씁니다\n'
+    + '• 새 QR을 다시 인쇄해 붙이셔야 해요\n\nQR 사진이 밖으로 샜을 때만 쓰세요.')) return;
+  try{ await api('qrSet', TOKEN, { reset:true }); toast('새 QR을 발급했어요 — 다시 인쇄해주세요'); loadQr(); }
+  catch(e){ toast(e.message, true); }
+}
+
+/* ── 인사 달력 ── */
+let HC_YM = '';
+const HC_ICON = {'생일':'🎂','입사기념일':'🎉','연차':'🌴','반차':'🌗','휴무':'🏖️','서류만료':'📄'};
+function hcMove(n){
+  const d = new Date((HC_YM || localYm()) + '-01T00:00:00');
+  d.setMonth(d.getMonth() + n);
+  HC_YM = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+  loadHrCal();
+}
+function hcToday(){ HC_YM = localYm(); loadHrCal(); }
+async function loadHrCal(){
+  if(!$('hcCal')) return;
+  HC_YM = HC_YM || localYm();
+  $('hcYm').textContent = HC_YM.replace('-','년 ') + '월';
+  $('hcCal').innerHTML = '<div class="sub">불러오는 중...</div>';
+  try{
+    const r = await api('hrCalendar', TOKEN, HC_YM);
+    const c = r.cnt || {};
+    $('hcKpi').innerHTML =
+        kpiBox('재직 직원', (c.staff||0)+'명')
+      + kpiBox('이번 달 휴가', (c.leave||0)+'건')
+      + kpiBox('생일', (c.birth||0)+'명')
+      + kpiBox('서류 만료', (c.expire||0)+'건', '', (c.expire ? 'r' : ''));
+
+    const by = {};
+    (r.items||[]).forEach(it => { (by[it.on_date] = by[it.on_date] || []).push(it); });
+    const first = new Date(r.from + 'T00:00:00'), last = new Date(r.to + 'T00:00:00');
+    let h = '<div class="hcgrid">'
+      + ['일','월','화','수','목','금','토'].map((d,i) =>
+          '<div class="hcdw'+(i===0?' s':i===6?' t':'')+'">'+d+'</div>').join('');
+    for(let i=0; i<first.getDay(); i++) h += '<div class="hccell blank"></div>';
+    for(let day=1; day<=last.getDate(); day++){
+      const ds = HC_YM + '-' + String(day).padStart(2,'0');
+      const dow = new Date(ds + 'T00:00:00').getDay();
+      const list = by[ds] || [];
+      h += '<div class="hccell'+(list.length?' has':'')+'">'
+        + '<div class="d'+(dow===0?' s':dow===6?' t':'')+'">'+day+'</div>'
+        + list.map(it => '<div class="hcit" title="'+esc(it.name+' '+it.kind+' '+(it.memo||''))+'">'
+            + (HC_ICON[it.kind]||'•') + ' ' + esc(it.name)
+            + (it.kind==='서류만료' && it.memo ? ' <span class="sub">'+esc(it.memo)+'</span>' : '')
+            + '</div>').join('')
+        + '</div>';
+    }
+    $('hcCal').innerHTML = h + '</div>';
+  }catch(e){ $('hcCal').innerHTML = '<div class="sub">'+esc(e.message)+'</div>'; }
 }
 
 /* ── 월 급여 ──────────────────────────────────────────────────
@@ -3195,7 +3359,7 @@ const VIEWER_TABS = ['today','cal','staffg','work','jobs','bar','money','buy','a
 const VIEWER_SUBS = ['staff','pos','shift','att','tasks','board','sales','exp','dep','inb','stock',
                      'price','vendor','buylink','settle','booking','manual','info','legal','mread'];
 /* 투자자에게 숨길 서브탭 — 급여·개인정보·설정 */
-const VIEWER_HIDE_SUBS = ['labor','wage','pnl','book','cust','kakao','setup','links','trash','logs','ai'];
+const VIEWER_HIDE_SUBS = ['labor','wage','pay','annual','qr','hrcal','pnl','book','cust','kakao','setup','links','trash','logs','ai'];
 /* 눌러선 안 되는 버튼 (글자로 가려낸다) */
 const VIEW_BLOCK = /저장|삭제|추가|등록|수정|승인|올리기|발급|초기화|불러오기|되살리기|보내기|복원|재발급|퇴사|전환|만들기|처리|완료|취소|넣기|적용|비우기/;
 function startViewerMode(){
@@ -5651,7 +5815,14 @@ async function loadDash2(){
   }else hero.classList.add('hidden');
 
   // ── 챙겨야 할 것 ──
+  //   숫자만 보여주면 뭘 해야 할지 모른다. "누가 무엇을 안 했다"를 맨 위에 붙인다.
   const al = [];
+  try{
+    const todo = await api('dashTodo', TOKEN);
+    (todo||[]).filter(t => t.pri === 1).forEach(t => {
+      al.push([t.kind === 'noout' ? 'a' : 'r', t.msg, '', "tab('work')"]);
+    });
+  }catch(e){}
   if(d.staffPending) al.push(['r','가입 승인 대기 '+d.staffPending+'명','바로 승인해주세요',"tab('staffg')"]);
   if(d.noContract)   al.push(['r','근로계약서 없는 직원 '+d.noContract+'명','안 쓰면 500만원 이하 과태료',"tab('staffg')"]);
   if(d.noDocs)       al.push(['a','보건증 안 낸 직원 '+d.noDocs+'명','식품위생법 위반 — 사장이 과태료',"tab('staffg')"]);
