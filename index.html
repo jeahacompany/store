@@ -60,6 +60,10 @@
   .kpi .label { font-size:13.5px; color:var(--sub); margin-bottom:6px; }
   .kpi .value { font-size:24px; font-weight:750; letter-spacing:-.4px; }
   .v-red { color:var(--red); } .v-orange { color:var(--orange); } .v-green { color:var(--green); }
+  /* 급여표 — 숫자는 오른쪽 정렬 + 자릿수 맞춤 */
+  td.n { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap }
+  .note-tip { background:#E7F5FF; border:1px solid #A5D8FF; border-radius:11px;
+    padding:12px 14px; font-size:14px; line-height:1.75; color:#1864AB }
 
   /* card & table */
   .card { background:var(--card); border:1px solid var(--line); border-radius:13px; padding:18px; margin-bottom:14px; transition:box-shadow .15s; }
@@ -753,6 +757,86 @@
           <div id="attSummary" style="margin-bottom:10px"></div>
           <div class="table-scroll"><table><thead><tr><th>날짜</th><th>이름</th><th>출근</th><th>퇴근</th><th>시간</th><th></th></tr></thead>
           <tbody id="attBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- 월 급여 — 근태에서 자동 계산 -->
+      <div id="tab-pay" class="hidden">
+        <div class="card no-print">
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+            <button class="btn sm ghost" onclick="payMove(-1)">◀ 이전 달</button>
+            <b id="payYm" style="font-size:17px">-</b>
+            <button class="btn sm ghost" onclick="payMove(1)">다음 달 ▶</button>
+            <span class="badge" id="payGain" style="margin-left:6px"></span>
+            <button class="btn sm ghost" style="margin-left:auto" onclick="payOpenSetup()">⚙️ 요율 설정</button>
+            <button class="btn sm ghost" onclick="window.print()">인쇄</button>
+          </div>
+          <div class="sub" style="margin-top:8px; background:#FFF9DB; border:1px solid #FFE066;
+               border-radius:10px; padding:10px 12px; line-height:1.7">
+            <b>참고용 추정치예요.</b> 근태 기록에서 자동으로 계산합니다 —
+            기본급 + <b>주휴수당</b>(주 15시간 이상) + <b>야간</b>(22~06시)·<b>연장</b>(하루 8시간 초과) 가산.
+            소득세·지방소득세와 4대보험 상·하한은 넣지 않았어요.
+            <b>확정 급여와 신고는 노무사·세무사에게 확인하세요.</b>
+          </div>
+        </div>
+        <div class="cards" id="payKpi" style="margin-top:12px"></div>
+        <div class="card">
+          <h2>💵 직원별 급여 <span class="sub" style="font-weight:400">— 근태에서 자동</span></h2>
+          <div class="table-scroll" style="margin-top:10px"><table><thead><tr>
+            <th>직원</th><th>소속</th><th>근무일</th><th>시간</th>
+            <th>기본급</th><th>주휴수당</th><th>야간</th><th>연장</th>
+            <th>세전 합계</th><th>4대보험 공제</th><th>실수령(예상)</th>
+            <th>사업주 4대보험</th><th>진짜 인건비</th>
+          </tr></thead><tbody id="payBody"></tbody></table></div>
+        </div>
+        <div class="card">
+          <h2>🏛️ 사업주가 따로 더 내는 돈</h2>
+          <div class="sub">직원 급여 말고도 <b>사업주 4대보험</b>이 급여의 약 10%만큼 더 나갑니다.
+            시급을 정할 때 이것까지 «진짜 인건비»로 보셔야 해요.</div>
+          <div class="table-scroll" style="margin-top:10px"><table><thead><tr>
+            <th>보험</th><th>요율</th><th style="text-align:right">직원 공제</th><th style="text-align:right">사업주 부담</th>
+          </tr></thead><tbody id="payInsBody"></tbody></table></div>
+          <div class="note-tip" id="payTip" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+      <!-- 연차 -->
+      <div id="tab-annual" class="hidden">
+        <div class="card">
+          <h2>🌴 연차 현황 <button class="btn sm ghost" style="margin-left:auto" onclick="loadAnnual()">↻ 새로고침</button></h2>
+          <div class="sub" style="line-height:1.7">입사일만 넣어두면 자동으로 계산돼요.
+            <b>1년 미만</b>은 한 달 개근마다 1일(최대 11일), <b>1년 이상</b>은 15일부터 시작합니다.
+            <br>미리 챙기지 않으면 나중에 <b>미사용 연차수당</b>으로 돌아옵니다. (근로기준법 제60조)</div>
+          <div class="table-scroll" style="margin-top:12px"><table><thead><tr>
+            <th>직원</th><th>소속</th><th>입사일</th><th>근속</th>
+            <th>발생</th><th>사용</th><th>잔여</th><th></th>
+          </tr></thead><tbody id="annBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- 급여 요율 설정 -->
+      <div class="modal-bg hidden" id="paySetupModal">
+        <div class="modal">
+          <h2>급여 요율 설정</h2>
+          <div class="sub" style="margin-bottom:10px">4대보험 요율은 <b>해마다 바뀝니다.</b>
+            달라지면 여기서 고치세요. (2026년 기준값이 들어 있어요)</div>
+          <label style="display:flex; align-items:center; gap:9px; cursor:pointer">
+            <input type="checkbox" id="ps5" style="width:20px;height:20px;accent-color:#F26522">
+            <span>상시 근로자 <b>5인 이상</b>
+              <span class="sub">— 켜면 야간·연장 가산(0.5배)을 계산에 넣어요. 5인 미만은 의무가 아닙니다</span></span>
+          </label>
+          <div class="grid2" style="margin-top:12px">
+            <div><label>국민연금 (노·사 각각 %)</label><input id="psPen" type="number" step="0.001" style="width:100%"></div>
+            <div><label>건강보험 (노·사 각각 %)</label><input id="psHea" type="number" step="0.001" style="width:100%"></div>
+            <div><label>장기요양 (건강보험료의 %)</label><input id="psLtc" type="number" step="0.001" style="width:100%"></div>
+            <div><label>고용보험 — 근로자 %</label><input id="psEwk" type="number" step="0.001" style="width:100%"></div>
+            <div><label>고용보험 — 사업주 %</label><input id="psEer" type="number" step="0.001" style="width:100%"></div>
+            <div><label>산재보험 (전액 사업주 %)</label><input id="psInj" type="number" step="0.001" style="width:100%"></div>
+          </div>
+          <div style="margin-top:14px; display:flex; gap:8px">
+            <button class="btn" onclick="paySetupSave()">저장</button>
+            <button class="btn ghost" onclick="closeModal('paySetupModal')">닫기</button>
+          </div>
         </div>
       </div>
 
@@ -2799,6 +2883,7 @@ const TAB_MERGE = {
            {id:'mread', name:'📖 매뉴얼 읽음'}] },
   work:  { title:'근무·근태', icon:'🗓️', subs:[
            {id:'shift', name:'📅 근무표'}, {id:'att', name:'⏱️ 근태'},
+           {id:'pay', name:'💵 월 급여', owner:true}, {id:'annual', name:'🌴 연차'},
            {id:'labor', name:'💸 인건비표', owner:true}, {id:'wage', name:'🧮 급여 계산기'}] },
   jobs:  { title:'오더·업무', icon:'✅', subs:[
            {id:'tasks', name:'📢 오더'}, {id:'board', name:'🗂️ 업무보드'}] },
@@ -2934,6 +3019,8 @@ function loadForTab(name){
   if(name==='buylink') loadBuy();
   if(name==='trash') loadTrash();
   if(name==='wage') wcInit();
+  if(name==='pay') loadPay2();
+  if(name==='annual') loadAnnual();
   if(name==='kakao') loadKakao();
   if(name==='legal') loadLegal();
   if(name==='links') loadLinks();
@@ -2987,6 +3074,118 @@ function boot(){
     startViewerMode();
     tab('today');
   } else tab('today');
+}
+
+/* ── 월 급여 ──────────────────────────────────────────────────
+   근태 → 급여 → 인건비가 한 줄로 이어진다. 숫자는 전부 서버에서 계산한다. */
+let PAY_YM = '', PAY = null;
+function payMove(n){
+  const d = new Date((PAY_YM || localYm()) + '-01T00:00:00');
+  d.setMonth(d.getMonth() + n);
+  PAY_YM = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+  loadPay2();
+}
+async function loadPay2(){
+  if(!$('payBody')) return;
+  PAY_YM = PAY_YM || localYm();
+  $('payYm').textContent = PAY_YM.replace('-','년 ') + '월';
+  $('payBody').innerHTML = '<tr><td colspan="13" class="sub">계산 중...</td></tr>';
+  try{
+    PAY = await api('payrollMonth', TOKEN, PAY_YM);
+    const s = PAY.sum || {}, r = PAY.rates || {};
+    $('payGain').textContent = PAY.gain ? '야간·연장 가산 적용 중 (5인 이상)' : '5인 미만 — 가산 없음';
+    $('payGain').className = 'badge ' + (PAY.gain ? 'a' : '');
+
+    const rate = s.pay ? Math.round(s.realCost / Math.max(s.pay,1) * 1000)/10 : 0;
+    const share = PAY.sales ? Math.round(s.realCost / PAY.sales * 1000)/10 : null;
+    $('payKpi').innerHTML =
+        kpiBox('세전 급여', fmtWon(s.pay), '직원 '+(s.people||0)+'명 · '+(s.hours||0)+'시간')
+      + kpiBox('직원 4대보험 공제', '−'+fmtWon(s.empIns), '실수령 '+fmtWon(s.net))
+      + kpiBox('사업주 4대보험', fmtWon(s.ownerIns), '급여의 '+(s.pay?Math.round(s.ownerIns/s.pay*1000)/10:0)+'%', 'r')
+      + kpiBox('진짜 인건비', fmtWon(s.realCost), share!=null ? '매출 대비 '+share+'%' : '세전의 '+rate+'%', 'b');
+
+    $('payBody').innerHTML = (PAY.rows||[]).map(x => {
+      const mon = x.pay_type === 'monthly';
+      return '<tr><td><b>'+esc(x.name)+'</b>'
+        + (mon ? ' <span class="badge">월급제</span>' : '')
+        + '<div class="sub">'+esc(x.position||'')+'</div></td>'
+        + '<td class="sub">'+esc(x.dept||'')+'</td>'
+        + '<td>'+(mon ? '<span class="sub">-</span>' : x.days+'일')+'</td>'
+        + '<td>'+(mon ? '<span class="sub">-</span>' : x.hours+'h')+'</td>'
+        + '<td class="n">'+(mon ? '<span class="sub">-</span>' : fmtWon(x.base_pay))+'</td>'
+        + '<td class="n">'+(x.hol_pay ? '<b style="color:#1971C2">'+fmtWon(x.hol_pay)+'</b>'
+            + '<div class="sub">'+x.hol_hours+'h분</div>' : '<span class="sub">-</span>')+'</td>'
+        + '<td class="n">'+(x.night_pay ? fmtWon(x.night_pay) : '<span class="sub">-</span>')+'</td>'
+        + '<td class="n">'+(x.over_pay ? fmtWon(x.over_pay) : '<span class="sub">-</span>')+'</td>'
+        + '<td class="n"><b>'+fmtWon(x.pay)+'</b></td>'
+        + '<td class="n sub">−'+fmtWon(x.emp_ins)+'</td>'
+        + '<td class="n">'+fmtWon(x.net)+'</td>'
+        + '<td class="n sub">+'+fmtWon(x.owner_ins)+'</td>'
+        + '<td class="n"><b style="color:#E03131">'+fmtWon(x.real_cost)+'</b></td></tr>';
+    }).join('') || '<tr><td colspan="13" class="sub">이 달 근태 기록이 없어요.</td></tr>';
+
+    const sum = (k) => (PAY.rows||[]).reduce((a,x)=>a+(x[k]||0),0);
+    const line = (nm, why, emp, own) =>
+      '<tr><td><b>'+nm+'</b></td><td class="sub">'+why+'</td>'
+      + '<td class="n sub">'+(emp ? '−'+fmtWon(emp) : '-')+'</td>'
+      + '<td class="n">'+fmtWon(own)+'</td></tr>';
+    $('payInsBody').innerHTML =
+        line('국민연금', '보수 × '+r.pension+'% (노·사 각각)', sum('e_pen'), sum('o_pen'))
+      + line('건강보험', '보수 × '+r.health+'% (노·사 각각)', sum('e_hea'), sum('o_hea'))
+      + line('장기요양', '건강보험료 × '+r.ltc+'%', sum('e_ltc'), sum('o_ltc'))
+      + line('고용보험', '근로자 '+r.emp_wk+'% · 사업주 '+r.emp_er+'%', sum('e_emp'), sum('o_emp'))
+      + line('산재보험', '전액 사업주 · '+r.injury+'% (음식업 예시)', 0, sum('o_inj'))
+      + '<tr style="background:#F8F9FA"><td colspan="2"><b>합계 (월)</b></td>'
+      + '<td class="n"><b>−'+fmtWon(s.empIns)+'</b></td>'
+      + '<td class="n"><b>'+fmtWon(s.ownerIns)+'</b></td></tr>';
+
+    $('payTip').innerHTML =
+        '<b>두루누리 사회보험료 지원</b> — 10인 미만 사업장에서 월 보수 270만원 미만인 '
+      + '<b>새로 뽑은 직원</b>은 국민연금·고용보험료의 <b>80%를 최대 36개월</b> 지원받습니다.<br>'
+      + '9월에 직원 뽑으실 때 <b>4대보험정보연계센터</b>에서 꼭 신청하세요 — 사업주 부담이 크게 줄어요.';
+  }catch(e){ $('payBody').innerHTML = '<tr><td colspan="13" class="sub">'+esc(e.message)+'</td></tr>'; }
+}
+function kpiBox(label, val, sub, cls){
+  return '<div class="kpi"><div class="label">'+label+'</div>'
+    + '<div class="value'+(cls==='r'?' v-red':cls==='b'?' v-orange':'')+'">'+val+'</div>'
+    + (sub ? '<div class="sub">'+sub+'</div>' : '') + '</div>';
+}
+function payOpenSetup(){
+  const r = (PAY && PAY.rates) || {};
+  $('ps5').checked = !!r.emp5plus;
+  $('psPen').value = r.pension; $('psHea').value = r.health; $('psLtc').value = r.ltc;
+  $('psEwk').value = r.emp_wk;  $('psEer').value = r.emp_er; $('psInj').value = r.injury;
+  $('paySetupModal').classList.remove('hidden');
+}
+async function paySetupSave(){
+  try{
+    await api('payrollSetupSave', TOKEN, {
+      emp5plus:$('ps5').checked, pension:+$('psPen').value, health:+$('psHea').value,
+      ltc:+$('psLtc').value, emp_wk:+$('psEwk').value, emp_er:+$('psEer').value, injury:+$('psInj').value });
+    toast('저장했어요'); closeModal('paySetupModal'); loadPay2();
+  }catch(e){ toast(e.message, true); }
+}
+
+/* ── 연차 ── */
+async function loadAnnual(){
+  if(!$('annBody')) return;
+  $('annBody').innerHTML = '<tr><td colspan="8" class="sub">불러오는 중...</td></tr>';
+  try{
+    const rows = await api('leaveStatus', TOKEN);
+    $('annBody').innerHTML = rows.map(x => {
+      const left = (x.granted||0) - (x.used||0);
+      const warn = left > 0 && x.years >= 1 && (x.used||0) === 0;
+      return '<tr><td><b>'+esc(x.name)+'</b><div class="sub">'+esc(x.position||'')+'</div></td>'
+        + '<td class="sub">'+esc(x.dept||'')+'</td>'
+        + '<td>'+(x.hired_at || '<span class="badge r">입사일 없음</span>')+'</td>'
+        + '<td class="sub">'+(x.hired_at ? (x.years >= 1 ? x.years+'년' : '1년 미만') : '-')+'</td>'
+        + '<td>'+(x.granted||0)+'일</td>'
+        + '<td class="sub">'+(x.used||0)+'일</td>'
+        + '<td><b style="font-size:16px">'+left+'일</b></td>'
+        + '<td>'+(warn ? '<span class="badge a">미사용 — 사용 촉진 검토</span>'
+            : !x.hired_at ? '<span class="sub">입사일을 넣어주세요</span>' : '')+'</td></tr>';
+    }).join('') || '<tr><td colspan="8" class="sub">재직 중인 직원이 없어요.</td></tr>';
+  }catch(e){ $('annBody').innerHTML = '<tr><td colspan="8" class="sub">'+esc(e.message)+'</td></tr>'; }
 }
 
 /* ── 투자자 보기 모드 ─────────────────────────────────────────
